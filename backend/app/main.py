@@ -1,13 +1,25 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import get_settings
-from app.routers import admin, ai, auth, complaints, notifications
+from app.core.errors import AppError, default_code
+from app.routers import admin, auth, notifications, public
 from app.services.storage import ensure_bucket
 
 settings = get_settings()
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    ensure_bucket()
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,15 +30,24 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
-app.include_router(complaints.router)
-app.include_router(ai.router)
+app.include_router(public.router)
 app.include_router(admin.router)
 app.include_router(notifications.router)
 
 
-@app.on_event("startup")
-def on_startup():
-    ensure_bucket()
+@app.exception_handler(AppError)
+def handle_app_error(request, exc: AppError):
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail, "code": exc.code})
+
+
+@app.exception_handler(HTTPException)
+def handle_http_exception(request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail, "code": default_code(exc.status_code)})
+
+
+@app.exception_handler(RequestValidationError)
+def handle_validation_error(request, exc: RequestValidationError):
+    return JSONResponse(status_code=422, content={"detail": "Ma'lumotlar noto'g'ri kiritildi", "code": "validation_error"})
 
 
 @app.get("/api/health")

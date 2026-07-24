@@ -10,10 +10,13 @@ class Settings(BaseSettings):
     environment: str = "development"
 
     database_url: str = "postgresql+psycopg://ariza:ariza@localhost:5433/ariza"
+    redis_url: str = "redis://localhost:6379/0"
 
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7
+
+    ticket_prefix: str = "UY"
 
     s3_endpoint_url: str = "http://localhost:9000"
     s3_access_key: str = "ariza"
@@ -27,10 +30,23 @@ class Settings(BaseSettings):
     smtp_host: str | None = None
     smtp_port: int = 587
 
-    # Optional: when set, AI service will call an external vision/LLM API
-    # instead of the built-in keyword heuristics. Left blank by default so
-    # the project runs fully offline out of the box.
-    ai_provider_api_key: str | None = None
+    # AI (docs/07-ai-layer.md)
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "gemma3:12b"
+    ai_confidence_threshold: float = 0.75
+
+    # STT
+    stt_provider: str = "whisper"
+    stt_whisper_model: str = "medium"
+    mohirai_api_key: str | None = None
+
+    # Notifications
+    eskiz_email: str | None = None
+    eskiz_password: str | None = None
+    telegram_bot_token: str | None = None
+    bot_api_token: str | None = None
+
+    public_base_url: str = "http://localhost:3000"
 
 
 @lru_cache

@@ -149,6 +149,8 @@ Bitta katta migratsiya EMAS — 5 ta kichik, har biri alohida tekshiriladi:
    - `organizations` → `departments` (`is_external=true`, names.uz = name).
    - Kategoriya enum → `categories` qatorlariga (10 mavjud kod + 5 yangi: transport, kommunal, kadastr, soliq, ijtimoiy).
    - `images` → `complaint_files (kind='image')`.
+
+   > **Amalda qilingan (2026-07-24, B1.1):** `organizations` nomlarini 1:1 `departments`ga ko'chirish o'rniga, M2 to'g'ridan-to'g'ri canonical 14 bo'lim + 15 kategoriya ro'yxatini (4 tilda, `app/seed.py` bilan bir xil) kiritadi, `complaints.assigned_department_id` esa M3'da murojaatning (backfill qilingan) kategoriyasining standart bo'limidan olinadi. Sabab: eski `organizations` jadvalida yangi taksonomiyaning (transport/kommunal/kadastr/soliq/ijtimoiy) ko'pi umuman yo'q edi, nomga qarab moslashtirish esa mo'rt bo'lardi. Amaldagi (bo'sh) dev bazada buning ma'lumot yo'qotish oqibati yo'q. Tafsilot: `backend/alembic/versions/m2_data_migration.py` docstring'i.
 3. **M3 — complaints ustunlari:** yangi ustunlar qo'shish; `citizen_id` to'ldirish (user→citizen xarita orqali); `category_id` to'ldirish (enum kod → categories.code); `ticket_number` generatsiya (created_at yili bo'yicha ketma-ket); status xaritasi:
    `yangi→new, korib_chiqilmoqda→ai_processed, masul_tashkilotga_yuborildi→assigned, jarayonda→in_progress, hal_qilindi→resolved, rad_etildi→rejected`.
 4. **M4 — eski ustun/jadvallarni o'chirish:** complaints.user_id/organization_id/district/category(enum)/ai_category(enum); jadvallar: organizations, images. Eski enum tiplar DROP.

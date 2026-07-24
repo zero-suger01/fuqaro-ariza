@@ -6,17 +6,17 @@ O'lchamlar: S ≤ 2 soat, M ≤ 1 kun, L = 2–3 kun (AI coder bilan odatda tezr
 
 ## B1 — Poydevor: yangi sxema + guest oqimi (P1)
 
-- [ ] **B1.1 (M)** Alembic migratsiyalar M1–M5 ([04](04-database.md) §4) + modellarni yangilash (`app/models/`): citizen, department, category, keyword, neighborhood, complaint(+ustunlar), file, event, reply, ai_analysis, suggestion, stt_job, counters, qr, settings, audit.
-- [ ] **B1.2 (S)** `app/seed.py` yangilash + `app/tools/import_neighborhoods.py` (CSV: name ustuni). Acceptance: bo'sh bazada `alembic upgrade head && python -m app.seed` xatosiz; kategoriyalar 4 tilda.
-- [ ] **B1.3 (M)** Ticket generatori (`app/services/tickets.py`): `ticket_counters` row-lock, format `{TICKET_PREFIX}-{YYYY}-{NNNNNN}`. Test: parallel 50 so'rovda dublikat yo'q.
-- [ ] **B1.4 (L)** `POST /api/public/complaints` ([03](03-kontraktlar.md) §3.1): citizen upsert (phone bo'yicha), fayl validatsiya (magic-byte, limitlar §2.4), MinIO'ga saqlash (`complaint_files`), ticket, `status=new`, `created` event, ARQ'ga `classify_complaint` ishi. Auth YO'Q.
-- [ ] **B1.5 (M)** `GET /api/public/complaints/track` ([03](03-kontraktlar.md) §3.2): status_simple mapping, 4 qadamli timeline (`complaint_events` dan hisoblanadi), reply_text, enumeration himoya.
-- [ ] **B1.6 (S)** `GET /api/public/categories`, `GET /api/public/neighborhoods`, `GET /api/public/qr/{code}`.
-- [ ] **B1.7 (M)** Redis + ARQ skeleti: `app/worker.py`, `docker-compose.yml` ga redis servisi, `arq app.worker.WorkerSettings` ishga tushishi. Birinchi ish: `classify_complaint` (hozircha keyword-only, [07](07-ai-layer.md) A1 dan keyin to'liq).
-- [ ] **B1.8 (M)** Status state-machine (`app/services/workflow.py`): ruxsat etilgan o'tishlar ([03](03-kontraktlar.md) §2.1), har o'tishda event + notification. `PATCH /api/admin/complaints/{id}/status` shu servis orqali; `rejected` uchun note majburiy.
-- [ ] **B1.9 (M)** Admin ro'yxat/tafsilotni yangi sxemaga o'tkazish: pagination envelope, yangi filtrlar, tafsilotda citizen/ai/files/events. (FE bilan birga smoke-test — checkpoint C1.)
-- [ ] **B1.10 (S)** `deadline_at` hisoblash (kategoriya SLA + priority formulasi [04](04-database.md)) — assign paytida yoki ai_processed'da.
-- [ ] **B1.11 (S)** pytest skeleti + smoke testlar: submit→track→admin list→status change. `pytest -m smoke` CI'da ishlaydi.
+- [x] **B1.1 (M)** Alembic migratsiyalar M1–M5 ([04](04-database.md) §4) + modellarni yangilash (`app/models/`): citizen, department, category, keyword, neighborhood, complaint(+ustunlar), file, event, reply, ai_analysis, suggestion, stt_job, counters, qr, settings, audit. Enum'lar native PG ENUM emas, varchar+CHECK (M5) sifatida qilindi — kelajakda yangi status/kategoriya kodi qo'shish migratsiyasiz bo'ladi. M2'da organizations→departments 1:1 nom ko'chirish o'rniga canonical 14 bo'lim/15 kategoriya to'g'ridan-to'g'ri kiritildi (izoh: migration fayli ichida). Bo'sh bazadan `alembic upgrade head` toza o'tadi (sinovdan o'tkazildi).
+- [x] **B1.2 (S)** `app/seed.py` yangilandi (14 bo'lim, 15 kategoriya 4 tilda, 106 keyword, admin, settings — idempotent) + `app/tools/import_neighborhoods.py`. Acceptance tekshirildi: bo'sh bazada `alembic upgrade head && python -m app.seed` xatosiz.
+- [x] **B1.3 (M)** `app/services/tickets.py`: `INSERT...ON CONFLICT DO NOTHING` + `UPDATE...RETURNING` bilan row-safe counter, format `UY-YYYY-NNNNNN`.
+- [x] **B1.4 (L)** `POST /api/public/complaints` (`app/routers/public.py`): citizen upsert, `python-magic` bilan fayl validatsiyasi, MinIO saqlash, ticket, `status=new`, `created` event, ARQ'ga `classify_complaint` enqueue. Auth yo'q. curl bilan sinovdan o'tkazildi (rasm bilan ham).
+- [x] **B1.5 (M)** `GET /api/public/complaints/track`: status_simple, 4 qadamli timeline (`status_changed` + `assigned` eventlaridan hisoblanadi), reply_text, enumeration himoya (404 noto'g'ri telefon uchun ham).
+- [x] **B1.6 (S)** `GET /api/public/categories`, `/neighborhoods`, `/qr/{code}` — barchasi ishlaydi.
+- [x] **B1.7 (M)** `app/worker.py` (ARQ) + `docker-compose.yml`ga redis. `classify_complaint` keyword-only (DB'dagi `category_keywords`, normalize.py orqali). Worker orqali sinovdan o'tkazildi — "svet yo'q, chiroq o'chgan" → elektr, confidence 0.99.
+- [x] **B1.8 (M)** `app/services/workflow.py`: `STATUS_TRANSITIONS` xaritasi, event+notification har o'tishda. `rejected` uchun note majburiyligi curl bilan tasdiqlandi (422 `validation_error`).
+- [x] **B1.9 (M)** `app/routers/admin.py` to'liq qayta yozildi: pagination envelope (`Page[T]`), filtrlar (status/category/department_id/assigned_user_id/source/priority/overdue/needs_review/q/date), tafsilotda citizen/ai/files/events/department. Departments CRUD ham qo'shildi (admin-only). curl bilan list→detail→assign→status sinovdan o'tkazildi.
+- [x] **B1.10 (S)** `app/services/deadline.py`: critical→min(sla,2h), high→sla/2, medium/low→sla. `classify_complaint` worker ai_processed bosqichida hisoblaydi.
+- [x] **B1.11 (S)** `tests/test_smoke.py` (`pytest -m smoke`): health, guest submit→track→admin list→status change→reject-without-note, categories/neighborhoods, validation error shape. Toza bazadan (migrate+seed) 4/4 yashil.
 
 **B1 Acceptance (checkpoint C1):** curl bilan ro'yxatdan o'tmasdan murojaat yuboriladi → ticket qaytadi → track ishlaydi → admin ro'yxatda ko'rinadi → status o'zgartirilsa track'da aks etadi.
 

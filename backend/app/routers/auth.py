@@ -1,51 +1,102 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import or_
+import uuid
+
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.deps import oauth2_scheme
+from app.core.errors import AppError
+from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
 from app.database import get_db
+from app.models.citizen import Citizen
 from app.models.user import User
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserOut
+from app.schemas.auth import LoginRequest, MeOut, RegisterRequest, TokenResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(
-        or_(User.phone == payload.phone, User.email == payload.email if payload.email else False)
-    ).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Bu telefon yoki email allaqachon ro'yxatdan o'tgan")
-
-    user = User(
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        phone=payload.phone,
-        email=payload.email,
-        password_hash=hash_password(payload.password),
+def _citizen_me(citizen: Citizen) -> MeOut:
+    return MeOut(
+        kind="citizen",
+        id=citizen.id,
+        first_name=citizen.first_name,
+        last_name=citizen.last_name,
+        fullname=citizen.fullname,
+        phone=citizen.phone,
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
 
-    token = create_access_token(str(user.id))
-    return TokenResponse(access_token=token, user=UserOut.model_validate(user))
+
+def _staff_me(user: User) -> MeOut:
+    return MeOut(
+        kind="staff",
+        id=user.id,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        fullname=user.fullname,
+        phone=user.phone,
+        email=user.email,
+        role=user.role,
+        department_id=user.department_id,
+    )
+
+
+@router.post("/register", response_model=TokenResponse, status_code=201)
+def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    """Citizen cabinet registration — staff accounts are admin-created only."""
+    existing = db.execute(select(Citizen).where(Citizen.phone == payload.phone)).scalar_one_or_none()
+    if existing and existing.password_hash:
+        raise AppError(400, "already_exists", "Bu telefon raqami bilan kabinet allaqachon ochilgan")
+
+    if existing is None:
+        citizen = Citizen(
+            phone=payload.phone,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            language=payload.language,
+            password_hash=hash_password(payload.password),
+        )
+        db.add(citizen)
+    else:
+        citizen = existing
+        citizen.first_name = payload.first_name
+        citizen.last_name = payload.last_name
+        citizen.password_hash = hash_password(payload.password)
+
+    db.commit()
+    db.refresh(citizen)
+
+    token = create_access_token(str(citizen.id), extra_claims={"kind": "citizen"})
+    return TokenResponse(access_token=token, user=_citizen_me(citizen))
 
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(
-        or_(User.phone == payload.login, User.email == payload.login)
-    ).first()
-    if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Login yoki parol noto'g'ri")
+    staff = db.execute(select(User).where((User.phone == payload.login) | (User.email == payload.login))).scalar_one_or_none()
+    if staff is not None and staff.is_active and verify_password(payload.password, staff.password_hash):
+        token = create_access_token(str(staff.id), extra_claims={"kind": "staff"})
+        return TokenResponse(access_token=token, user=_staff_me(staff))
 
-    token = create_access_token(str(user.id))
-    return TokenResponse(access_token=token, user=UserOut.model_validate(user))
+    citizen = db.execute(select(Citizen).where(Citizen.phone == payload.login)).scalar_one_or_none()
+    if citizen is not None and citizen.password_hash and verify_password(payload.password, citizen.password_hash):
+        token = create_access_token(str(citizen.id), extra_claims={"kind": "citizen"})
+        return TokenResponse(access_token=token, user=_citizen_me(citizen))
+
+    raise AppError(401, "unauthorized", "Login yoki parol noto'g'ri")
 
 
-@router.get("/me", response_model=UserOut)
-def me(current_user: User = Depends(get_current_user)):
-    return current_user
+@router.get("/me", response_model=MeOut)
+def me(token: str | None = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    payload = decode_access_token(token) if token else None
+    if payload is None:
+        raise AppError(401, "unauthorized", "Tizimga kirish talab qilinadi")
+
+    if payload.get("kind") == "staff":
+        user = db.get(User, uuid.UUID(payload["sub"]))
+        if user is not None and user.is_active:
+            return _staff_me(user)
+    elif payload.get("kind") == "citizen":
+        citizen = db.get(Citizen, uuid.UUID(payload["sub"]))
+        if citizen is not None:
+            return _citizen_me(citizen)
+
+    raise AppError(401, "unauthorized", "Tizimga kirish talab qilinadi")

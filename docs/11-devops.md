@@ -5,21 +5,22 @@ Egasi: backend sherik (D-tasklar), lekin ikkovlon ham lokal muhitni ko'tara olis
 ## 1. Lokal dev (hozir ham ishlaydi)
 
 ```bash
-docker compose up -d          # postgres:5433, minio:9000/9001 (+ B1.7 dan keyin redis:6379)
+docker compose up -d          # postgres:5433, minio:9000/9001, redis:6379
 cd backend && python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt   # macOS: python-magic uchun `brew install libmagic` ham kerak
 alembic upgrade head && python -m app.seed
 uvicorn app.main:app --reload --port 8000
-# alohida terminal (P2+): arq app.worker.WorkerSettings
+# alohida terminal — AI klassifikatsiya (B1.7 dan) shu worker orqali ishlaydi:
+arq app.worker.WorkerSettings
 cd frontend && npm install && npm run dev     # :3000
-# ixtiyoriy lokal AI: ollama pull gemma3:4b && ollama serve
+# ixtiyoriy lokal AI (B2+): ollama pull gemma3:4b && ollama serve
 ```
 
 `.env` namunalari: `backend/.env.example` (yangi kalitlar [03-kontraktlar.md](03-kontraktlar.md) §9 bo'yicha to'ldirib boriladi), `frontend/.env.local` → `NEXT_PUBLIC_API_URL=http://localhost:8000`.
 
 ## 2. D-tasklar
 
-- [ ] **D1 (S)** compose'ga `redis` qo'shish (B1.7 bilan birga).
+- [x] **D1 (S)** compose'ga `redis` qo'shildi (B1.7 bilan birga), `redis:7-alpine`, healthcheck bilan.
 - [ ] **D2 (M)** Dockerfile'lar: `backend/Dockerfile` (uvicorn, non-root, ffmpeg o'rnatilgan), worker (xuddi shu image, boshqa command), `frontend/Dockerfile` (multi-stage, `output: "standalone"`), keyin `bot/Dockerfile` (T3.3).
 - [ ] **D3 (M)** `docker-compose.prod.yml`: nginx + frontend + backend + worker + redis + postgres + minio + ollama (+ bot). Volume'lar, healthcheck'lar, `restart: unless-stopped`, ichki tarmoq (faqat nginx 80/443 ochiq).
 - [ ] **D4 (S)** nginx konfig: `/` → frontend, `/api` → backend, `/storage` → minio (read-only proxy — bucket'ni internetga to'g'ridan ochmaslik), client_max_body_size 60m, gzip. HTTPS: certbot yoki Cloudflare tunnel.

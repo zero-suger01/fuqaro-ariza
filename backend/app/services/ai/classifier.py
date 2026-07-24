@@ -1,85 +1,60 @@
-"""Text-based complaint classifier.
+"""Keyword classifier v1 — DB-backed dictionary, no LLM fallback yet.
 
-Real object-detection models (YOLO/RT-DETR) or a CLIP/vision-language model
-would need labeled training data and GPU hosting that this project does not
-have. Until that pipeline is wired up, `analyze` scores complaint text
-against per-category keyword sets. Swap this module out for a real vision
-model call by implementing `analyze()` with the same return shape -
-callers (routers/ai.py, routers/complaints.py) don't need to change.
+This is the "hozircha keyword-only" version called out in
+docs/05-backend-tasklar.md B1.7. The full v2 (margin/threshold scoring +
+Ollama fallback) is B2.1/B2.2 in docs/07-ai-layer.md §3-4 and will extend
+`classify()` without changing its return shape or callers.
 """
-import re
+import uuid
 from dataclasses import dataclass
 
-from app.models.complaint import ComplaintCategory
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-KEYWORDS: dict[ComplaintCategory, list[str]] = {
-    ComplaintCategory.CHIQINDI: [
-        "chiqindi", "axlat", "musor", "keladigan", "olib ketilmayapti", "poligon",
-        "tashlandiq", "iflos", "konteyner", "chiqindilar",
-    ],
-    ComplaintCategory.YOL: [
-        "yol", "asfalt", "chuqur", "yoriq", "yomg'ir", "svetofor", "yo'l belgisi",
-        "piyodalar", "ko'cha yuzasi", "chuqurcha",
-    ],
-    ComplaintCategory.ELEKTR: [
-        "elektr", "svet", "ustun", "sim", "transformator", "quvvat", "tok",
-        "lampochka", "chiroq", "elektr ta'minoti",
-    ],
-    ComplaintCategory.GAZ: [
-        "gaz", "gaz hidi", "gaz sizmoqda", "gaz quvuri", "portlash xavfi", "gaz ta'minoti",
-    ],
-    ComplaintCategory.SUV: [
-        "suv", "quvur", "suv toshqini", "ichimlik suvi", "kanalizatsiya", "suv oqmoqda",
-        "suv ta'minoti", "vodoprovod",
-    ],
-    ComplaintCategory.DARAXT: [
-        "daraxt", "shox", "yiqilgan daraxt", "butalar", "yashil maydon", "daraxtlar kesilmoqda",
-    ],
-    ComplaintCategory.EKOLOGIYA: [
-        "ekologiya", "hid", "tutun", "havo ifloslanishi", "chiqindi yoqilmoqda", "atrof-muhit",
-    ],
-    ComplaintCategory.QURILISH: [
-        "qurilish", "noqonuniy qurilish", "bino", "inshoot", "ruxsatnomasiz", "qurilish chiqindisi",
-    ],
-    ComplaintCategory.OBODONLASHTIRISH: [
-        "obodonlashtirish", "hovli", "skameyka", "bolalar maydonchasi", "landshaft", "yashillashtirish",
-        "tozalik",
-    ],
-}
+from app.models.category import Category
+from app.models.keyword import CategoryKeyword
+from app.services.ai.normalize import candidate_phrases, normalize
 
-DEFAULT_CATEGORY = ComplaintCategory.BOSHQA
+DEFAULT_CATEGORY_CODE = "boshqa"
+NEEDS_REVIEW_THRESHOLD = 0.6
 
 
 @dataclass
 class ClassificationResult:
-    category: ComplaintCategory
+    category_id: uuid.UUID | None
+    category_code: str
     confidence: float
-    scores: dict[str, float]
+    needs_review: bool
 
 
-def _normalize(text: str) -> str:
-    return re.sub(r"\s+", " ", text.lower()).strip()
+def classify(db: Session, text: str) -> ClassificationResult:
+    normalized = normalize(text)
+    candidates = candidate_phrases(normalized)
 
+    rows = db.execute(select(CategoryKeyword.category_id, CategoryKeyword.keyword_norm, CategoryKeyword.weight)).all()
+    scores: dict[uuid.UUID, int] = {}
+    for category_id, keyword_norm, weight in rows:
+        if keyword_norm not in candidates:
+            continue
+        hit_weight = weight * 2 if " " in keyword_norm else weight
+        scores[category_id] = scores.get(category_id, 0) + hit_weight
 
-def analyze(text: str) -> ClassificationResult:
-    normalized = _normalize(text)
-    scores: dict[ComplaintCategory, int] = {cat: 0 for cat in KEYWORDS}
-
-    for category, words in KEYWORDS.items():
-        for word in words:
-            if word in normalized:
-                scores[category] += 1
-
-    total_hits = sum(scores.values())
-    if total_hits == 0:
+    if not scores:
+        default = db.execute(select(Category).where(Category.code == DEFAULT_CATEGORY_CODE)).scalar_one_or_none()
         return ClassificationResult(
-            category=DEFAULT_CATEGORY,
+            category_id=default.id if default else None,
+            category_code=DEFAULT_CATEGORY_CODE,
             confidence=0.35,
-            scores={c.value: 0.0 for c in KEYWORDS},
+            needs_review=True,
         )
 
-    best_category = max(scores, key=lambda c: scores[c])
-    confidence = min(0.99, 0.55 + 0.15 * scores[best_category])
-    normalized_scores = {c.value: round(s / total_hits, 2) for c, s in scores.items()}
-
-    return ClassificationResult(category=best_category, confidence=round(confidence, 2), scores=normalized_scores)
+    best_id = max(scores, key=lambda c: scores[c])
+    total = sum(scores.values())
+    confidence = round(min(0.99, scores[best_id] / total), 2)
+    category = db.get(Category, best_id)
+    return ClassificationResult(
+        category_id=best_id,
+        category_code=category.code if category else DEFAULT_CATEGORY_CODE,
+        confidence=confidence,
+        needs_review=confidence < NEEDS_REVIEW_THRESHOLD,
+    )

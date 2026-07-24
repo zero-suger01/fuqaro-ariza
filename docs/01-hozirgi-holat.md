@@ -1,74 +1,57 @@
 # 01 — Hozirgi holat (codebase auditi)
 
-Audit sanasi: 2026-07-24, `main` @ d317716 ("Initial commit"). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan.
+Audit sanasi: 2026-07-24, `main` (B1 — backend poydevor + guest oqimi tugallangan, AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan.
 
 ## 1. Nima bor (ishlaydi)
 
 ### Backend — FastAPI (Python), `backend/`
 
-- **Stack:** FastAPI 0.115, SQLAlchemy 2, Alembic, PostgreSQL (5433), MinIO (boto3), JWT (python-jose), bcrypt. TZ'dagi NestJS EMAS — bu farq [02-arxitektura.md](02-arxitektura.md) da hal qilingan (FastAPI qoladi).
-- **Modellar** (`app/models/`): `User` (user/admin rollari), `Complaint`, `ComplaintImage`, `Comment`, `Organization`, `Notification`.
-- **Auth** (`routers/auth.py`): register/login (telefon yoki email + parol), JWT 7 kun, `/api/auth/me`.
-- **Murojaatlar** (`routers/complaints.py`): yaratish (multipart, rasmlar bilan, description ≥20 belgi), mening ro'yxatim, tafsilot. Yaratishda sinxron keyword-AI ishlaydi.
-- **AI** (`services/ai/classifier.py`): 10 kategoriya bo'yicha **hardcoded Python dict** keyword'lar, substring hisoblash, confidence = 0.55 + 0.15×hit (topilmasa `boshqa`, 0.35). `routers/ai.py` → `/api/ai/analyze` (auth talab qiladi). `recommend.py` — kategoriya→tashkilot nomlari (hardcoded).
-- **Admin** (`routers/admin.py`): murojaatlar ro'yxati (status/kategoriya/tuman/mahalla/sana/search filtrlar), tafsilot, status o'zgartirish, tashkilot biriktirish, izoh, tashkilotlar ro'yxati, dashboard/chart statistikasi.
-- **Bildirishnoma** (`services/notifications.py`): in-app + ixtiyoriy SMTP email. SMS/Telegram yo'q (enum'da bor, xolos).
-- **Storage** (`services/storage.py`): MinIO bucket (public-read), rasm yuklash.
-- **Seed** (`app/seed.py`): 9 tashkilot + admin (`+998900000000`/`admin123`).
-- Alembic: bitta init migratsiya. `/api/health` bor.
+- **Stack:** FastAPI 0.115, SQLAlchemy 2, Alembic, PostgreSQL (5433), Redis (6379) + ARQ worker, MinIO (boto3, `python-magic` fayl validatsiyasi), JWT (python-jose), bcrypt.
+- **DB sxemasi to'liq [04-database.md](04-database.md) ga mos:** citizens, users(staff), departments, categories, category_keywords, neighborhoods, complaints(+barcha yangi ustunlar), complaint_files, complaint_events, replies, ai_analyses, keyword_suggestions, stt_jobs, ticket_counters, qr_codes, settings, audit_logs. Alembic 5 ta migratsiya (`m1_new_tables`…`m5_indexes_checks`) — bo'sh bazadan `alembic upgrade head` toza o'tadi (sinovdan o'tkazilgan). Enum'lar native PG ENUM emas — varchar + CHECK constraint (yangi status/kategoriya kodi qo'shish uchun migratsiya kerak emas, faqat CHECK yangilanadi).
+- **Seed** (`app/seed.py`, idempotent): 14 bo'lim + 15 kategoriya (4 tilda: uz/oz/ru/en), 106 keyword (`app/services/ai/normalize.py` orqali normalizatsiyalangan, kirill+lotin+sheva variantlari bilan), admin (`+998900000000`/`admin123`), 3 ta settings. `app/tools/import_neighborhoods.py` — CSV import.
+- **Guest oqim (auth YO'Q):** `POST /api/public/complaints` (citizen upsert, fayl validatsiya magic-byte bilan, MinIO, ticket generatsiya, `created` event, ARQ'ga classify enqueue), `GET /api/public/complaints/track` (4 qadamli timeline, enumeration himoya), `GET /api/public/categories|neighborhoods|qr/{code}`.
+- **AI (keyword-only, B2 LLM fallback hali yo'q):** `app/services/ai/normalize.py` (kirill→lotin, apostrof, punktuatsiya), `app/services/ai/classifier.py` (DB'dagi `category_keywords`dan scoring). `app/worker.py` (ARQ) — `classify_complaint` ishi: keyword tahlil → `ai_analyses` yozuv → kategoriya/`deadline_at`/`needs_review` → `status=ai_processed` → event. curl bilan sinovdan o'tkazilgan (masalan "svet yo'q, chiroq o'chgan" → `elektr`, confidence 0.99).
+- **Workflow:** `app/services/workflow.py` — `STATUS_TRANSITIONS` xaritasi ([03](03-kontraktlar.md) §2.1), har o'tishda event+notification; `rejected` uchun note majburiy (422 `invalid_transition`/`validation_error` tekshirilgan).
+- **Admin API** (JWT, RBAC `operator/employee/manager/admin`): `GET/PATCH /api/admin/complaints[...]` (pagination envelope, filtrlar: status/category/department_id/assigned_user_id/source/priority/overdue/needs_review/q/date), `POST .../assign`, `PATCH .../status`, `GET/POST/PATCH /api/admin/departments` (admin-only), `GET /api/admin/stats/dashboard`.
+- **Auth:** `/api/auth/register` (fuqaro kabineti), `/login` (staff YOKI citizen, JWT'da `kind` claim), `/me` (kind bo'yicha javob).
+- **Xato formati:** global exception handler'lar (`app/main.py`) — hamma xato `{"detail","code"}` shaklida (`AppError` + default kod xaritasi).
+- **Testlar:** `tests/test_smoke.py`, `pytest -m smoke` — health, guest submit→track→admin list→status→reject-without-note, categories/neighborhoods, validation shape. Toza bazadan 4/4 yashil.
+- **Infra:** `docker-compose.yml` — Postgres + MinIO + Redis (barchasi healthcheck bilan).
 
-### Frontend — Next.js, `frontend/`
+### Frontend — Next.js, `frontend/` — **ESKI HOLATDA, YANGI BACKEND BILAN ISHLAMAYDI**
 
-- **Stack:** Next.js **16.2.11** (App Router) + React 19.2 + Tailwind v4 + Recharts + Leaflet. `frontend/AGENTS.md` ogohlantiradi: bu Next.js versiyasi training data'dan farq qilishi mumkin — shubha bo'lsa `node_modules/next/dist/docs/` o'qilsin.
-- **Dizayn tokenlari** (`globals.css`): navy sidebar + oltin accent (#c9a227), Inter/JetBrains Mono, radius/shadow tizimi. Toza va professional.
-- **Sahifalar:** `/` (fuqaro dashboard), `/login`, `/register`, `/ariza/yangi` (forma: rasm, matn, debounce'li AI tahlil, GPS/xarita, manzil), `/murojaatlarim` + `[id]` (StatusTimeline), `/bildirishnomalar`, `/admin` (dashboard, murojaatlar+tafsilot, statistika, tashkilotlar).
-- **Infra:** `lib/api.ts` (fetch wrapper, token localStorage), `lib/auth.tsx` (context), `lib/types.ts` + `lib/status.ts` (backend bilan qo'lda sinxron tiplar/labellar), `AppShell` (sidebar+topbar, admin guard), `MapPicker`, UI kitchasi (Card/Badge/Button/Input).
+Bu sessiyada frontend'ga tegilmadi. Eski sahifalar (`/ariza/yangi`, `/murojaatlarim`, `/admin`, `lib/api.ts`, `lib/types.ts`) hali eski `/api/complaints`, `/api/admin/*` (eski shakl), `ComplaintCategory`/`ComplaintStatus` enum'lariga mo'ljallangan — bular backend'da endi YO'Q (o'chirildi). **Keyingi sessiya: F-workstream to'liq qayta qurilishi kerak** ([06-frontend-tasklar.md](06-frontend-tasklar.md) F1.*, guest wizard + admin panelni yangi kontraktga moslash). Saqlab qolinadigan narsalar o'zgarmadi: dizayn tokenlari (navy+gold), UI kitchasi, `MapPicker`.
 
 ### Infra
 
-- `docker-compose.yml`: faqat Postgres + MinIO (app konteynerlari yo'q). CI/CD, nginx yo'q.
+- `docker-compose.yml`: Postgres + MinIO + Redis. App konteynerlari, CI/CD, nginx hali yo'q (D2-D8).
 
-## 2. Kritik muammolar (mavjud kodda)
+## 2. Hal qilingan muammolar (bu sessiyada)
 
-| # | Muammo | Qayerda | Oqibat |
-|---|---|---|---|
-| K1 | **Murojaat uchun ro'yxatdan o'tish MAJBURIY** | butun oqim | 70+ fuqaro uchun asosiy to'siq. Yangi arxitekturada guest-flow bo'ladi |
-| K2 | **Mobilda navigatsiya yo'q** — sidebar `hidden md:flex` | `Sidebar.tsx` | Telefonda menyu umuman ko'rinmaydi; fuqarolar esa asosan telefonda |
-| K3 | Ticket raqami yo'q (faqat UUID) | `Complaint` | Fuqaro "mening raqamim" deb aytolmaydi, SMS/qog'ozga yozib bo'lmaydi |
-| K4 | Login'siz holat tekshirish yo'q | — | Guest-flow'ning ikkinchi yarmi yo'q |
-| K5 | Pagination yo'q (admin ro'yxat butun jadvalni oladi) | `admin.py`, admin FE | 1000+ murojaatda sekinlashadi |
-| K6 | Fayl validatsiyasi yo'q (tur/hajm/magic-byte), bucket public-read | `storage.py` | Xavfsizlik: istalgan fayl yuklash mumkin |
-| K7 | Rate limit / captcha yo'q | butun API | Spam va brute-force ochiq |
-| K8 | Statistika UTC bilan ishlaydi ("bugun" noto'g'ri) | `admin.py` | Asia/Tashkent bo'yicha hisoblash kerak |
-| K9 | Kategoriya va keywordlar kodga qotirilgan | `classifier.py` | Admin keyword qo'sha olmaydi — o'rganish sikli imkonsiz |
-| K10 | AI sinxron chaqiriladi (submit ichida) | `complaints.py` | LLM qo'shilsa submit sekundlab qotadi — queue kerak |
-| K11 | JWT localStorage'da | `api.ts` | XSS'ga zaif; MVP uchun qolsa ham, admin uchun keyin httpOnly cookie ko'rib chiqiladi |
-| K12 | Email uniqueness sharti g'alati yozilgan | `auth.py:17` | Ishlaydi, lekin chalkash — refactor |
+K1 (majburiy ro'yxatdan o'tish) — backend'da yo'q endi (guest submit). K3 (ticket raqami) — bor (`UY-2026-000001`). K4 (login'siz holat tekshirish) — bor (`/api/public/complaints/track`). K5 (pagination) — bor (`Page[T]` envelope). K6 (fayl validatsiyasi) — bor (`python-magic` + hajm limiti). K9 (keyword'lar kodga qotirilgan) — endi DB'da (`category_keywords`, admin CRUD hali yo'q — B2.6). K10 (AI sinxron) — endi async (ARQ worker). K12 (email uniqueness) — auth.py qayta yozilganda yo'qoldi.
 
-## 3. TZ va yangi talablar bo'yicha YO'Q narsalar (gap-jadval)
+**Hali ochiq:** K2 (mobil nav — frontend, tegilmadi), K7 (rate limit/captcha — B4.3/B4.7), K8 (statistika UTC — B5.6), K11 (JWT localStorage — frontend).
+
+## 3. TZ va yangi talablar bo'yicha YO'Q narsalar (yangilangan gap-jadval)
 
 | Soha | Yo'q narsa | Qayerda hal qilinadi |
 |---|---|---|
-| Fuqaro UX | Guest wizard, sodda 4-bosqichli holat ko'rinishi, katta shrift/tugmalar, public landing | [06](06-frontend-tasklar.md), [10](10-ui-ux.md) |
-| Ticket | `UY-2026-000123` format, yillik counter | [03](03-kontraktlar.md), [05](05-backend-tasklar.md) |
-| i18n | uz/oz/ru/en — hech biri yo'q (hammasi lotin-o'zbek hardcoded) | [03](03-kontraktlar.md) §7, [06](06-frontend-tasklar.md) |
-| AI | Lokal LLM fallback (Ollama+Gemma), priority, sentiment, summary, javob drafti, teglar, o'rganish sikli, ovoz→matn | [07-ai-layer.md](07-ai-layer.md) |
-| Workflow | To'liq status lifecycle, SLA/deadline, eskalatsiya, timeline (event history) jadvali | [03](03-kontraktlar.md), [05](05-backend-tasklar.md) |
-| Tashkiliy | Departments (ichki bo'lim + tashqi tashkilot), 4 xodim roli, biriktirish (assignment), javoblar (replies) | [04-database.md](04-database.md) |
-| Bildirishnoma | SMS (Eskiz), Telegram orqali xabar | [05](05-backend-tasklar.md) B4 |
-| Media | Video, audio fayllar (faqat rasm bor) | [03](03-kontraktlar.md), [05](05-backend-tasklar.md) |
-| Analitika | Heatmap, mahalla/bo'lim/xodim KPI, AI KPI, eksport | [05](05-backend-tasklar.md) B5, [06](06-frontend-tasklar.md) F4 |
-| Qidiruv | Global search (ticket/telefon/mahalla/teg) | [05](05-backend-tasklar.md) B5 |
-| Xavfsizlik | Rate limit, captcha (guest form uchun), fayl validatsiya, audit log | [05](05-backend-tasklar.md) B4 |
-| Kanallar | Telegram bot, QR landing, mobil ilova | [08](08-telegram-bot.md), [06](06-frontend-tasklar.md) F3, [09](09-mobile.md) |
-| DevOps | App dockerfile'lari, nginx, CI, backup, Ollama servisi | [11-devops.md](11-devops.md) |
-| DB | citizens, departments, categories (jadval), keywords, events, replies, ai_analyses, files, audit va h.k. | [04-database.md](04-database.md) |
+| Fuqaro UX | Guest wizard UI, sodda 4-bosqichli holat ko'rinishi, katta shrift/tugmalar, public landing (backend tayyor, **frontend yo'q**) | [06](06-frontend-tasklar.md) F1.*, [10](10-ui-ux.md) |
+| i18n | uz/oz/ru/en — backend `?lang=` qabul qiladi (categories), lekin FE next-intl hali yo'q | [06](06-frontend-tasklar.md) |
+| AI | Lokal LLM fallback (Ollama+Gemma), o'rganish sikli, ovoz→matn (STT) — hammasi B2 | [07-ai-layer.md](07-ai-layer.md) |
+| Workflow | Eskalatsiya (B4.5), javoblar UI (backend `replies` jadval+model tayyor, endpoint yo'q — B3.1) | [05](05-backend-tasklar.md) B3-B4 |
+| Tashkiliy | Xodimlar CRUD endpoint yo'q (B3.2), RBAC dependency'lar tayyor | [05](05-backend-tasklar.md) B3.2 |
+| Bildirishnoma | SMS (Eskiz), Telegram — hali stub (faqat in-app) | [05](05-backend-tasklar.md) B4.1-B4.2 |
+| Media | Video/audio upload backend qabul qiladi va saqlaydi, lekin STT transkripsiya yo'q | [07](07-ai-layer.md) §6, B2.4 |
+| Analitika | Heatmap, KPI, Excel eksport | [05](05-backend-tasklar.md) B5 |
+| Qidiruv | Global search `q` bor (ticket/telefon/matn ILIKE), pg_trgm optimizatsiya yo'q | B5.3 |
+| Xavfsizlik | Rate limit, captcha, audit log yozish (jadval bor, middleware yo'q) | B4.3-B4.7 |
+| Kanallar | Telegram bot, QR landing generatsiya (jadval+endpoint skeleti bor, PNG/PDF generatsiya yo'q), mobil ilova | [08](08-telegram-bot.md), B5.4, [09](09-mobile.md) |
+| DevOps | App dockerfile'lari, nginx, CI, backup | D2-D8 |
+| Frontend | **BUTUN F-workstream** — yangi backend kontraktiga moslashtirish kerak | [06](06-frontend-tasklar.md) |
 
-## 4. Saqlab qolinadigan narsalar
+## 4. Keyingi qadam (tavsiya)
 
-- FastAPI backend skeleti, auth/JWT, MinIO storage, Alembic — hammasi asos bo'lib qoladi.
-- Frontend dizayn tokenlari (navy+gold), UI kitchasi, admin sahifalar strukturasi — admin panel shular ustiga quriladi.
-- `MapPicker`, `StatusTimeline` (yangi statuslarga moslanadi), Recharts grafiklar.
-- Keyword klassifikator g'oyasi — lekin data DB'ga ko'chadi va normalizatsiya + LLM fallback qo'shiladi ([07](07-ai-layer.md)).
-
-Xulosa: mavjud kod — yaxshi "admin-MVP" skelet. Endi ustiga (1) fuqaro tomonini guest+sodda qilib qayta qurish, (2) AI qatlamini chuqurlashtirish, (3) workflow/SLA, (4) kanallar (bot, QR, SMS) qo'shiladi.
+1. **F1.\*** — fuqaro guest wizard'ini yangi `/api/public/*` kontraktiga yozish (eng yuqori qiymat — checkpoint C1 uchun frontend yarmi shu).
+2. Yoki **B2.\*** — AI qatlamini chuqurlashtirish (Ollama fallback, STT) davom ettirish.
+3. Ikkovi ham backend B1 ustiga qurilgani uchun mustaqil — birga ishlasa parallel bo'ladi.

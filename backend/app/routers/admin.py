@@ -1,205 +1,249 @@
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_admin
+from app.core.constants import STATUS_ASSIGNED, STATUS_IN_PROGRESS, STATUS_RESOLVED
+from app.core.deps import get_current_admin, get_current_operator_up
+from app.core.errors import AppError
 from app.database import get_db
-from app.models.comment import Comment
-from app.models.complaint import Complaint, ComplaintCategory, ComplaintStatus
-from app.models.organization import Organization
+from app.models.category import Category
+from app.models.citizen import Citizen
+from app.models.complaint import Complaint
+from app.models.department import Department
 from app.models.user import User
 from app.schemas.admin import (
-    CategoryPoint,
+    AiAnalysisOut,
+    AssignRequest,
+    CitizenBrief,
+    ComplaintDetail,
+    ComplaintListItem,
     DashboardStats,
-    MonthlyPoint,
-    ResolutionTimeStats,
-    StatsResponse,
-    TopIssue,
-)
-from app.schemas.complaint import (
-    CommentCreate,
-    CommentOut,
-    ComplaintOut,
-    OrgAssignRequest,
-    OrganizationOut,
+    DepartmentBrief,
+    DepartmentIn,
+    DepartmentOut,
+    DepartmentPatch,
+    EventOut,
+    FileOut,
+    ReplyOut,
     StatusUpdateRequest,
 )
-from app.services.notifications import notify
+from app.schemas.common import Page
+from app.schemas.public import CategoryBrief
+from app.services import workflow
 
-router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
-
-
-STATUS_LABELS = {
-    ComplaintStatus.YANGI: "Yangi",
-    ComplaintStatus.KORIB_CHIQILMOQDA: "Ko'rib chiqilmoqda",
-    ComplaintStatus.MASUL_TASHKILOTGA_YUBORILDI: "Mas'ul tashkilotga yuborildi",
-    ComplaintStatus.JARAYONDA: "Jarayonda",
-    ComplaintStatus.HAL_QILINDI: "Hal qilindi",
-    ComplaintStatus.RAD_ETILDI: "Rad etildi",
-}
+router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
-@router.get("/complaints", response_model=list[ComplaintOut])
+def _category_brief(category: Category) -> CategoryBrief:
+    return CategoryBrief(code=category.code, name=category.name("uz"))
+
+
+def _department_brief(department: Department) -> DepartmentBrief:
+    return DepartmentBrief(id=department.id, code=department.code, name=department.name("uz"))
+
+
+def _complaint_to_detail(complaint: Complaint) -> ComplaintDetail:
+    latest_ai = complaint.ai_analyses[-1] if complaint.ai_analyses else None
+    ai_out = None
+    if latest_ai is not None:
+        ai_out = AiAnalysisOut(
+            engine=latest_ai.engine,
+            suggested_category=_category_brief(latest_ai.suggested_category) if latest_ai.suggested_category else None,
+            confidence=latest_ai.confidence,
+            priority=latest_ai.priority,
+            sentiment=latest_ai.sentiment,
+            summary=latest_ai.summary,
+            suggested_reply=latest_ai.suggested_reply,
+            tags=latest_ai.tags,
+            created_at=latest_ai.created_at,
+        )
+
+    return ComplaintDetail(
+        id=complaint.id,
+        ticket_number=complaint.ticket_number,
+        status=complaint.status,
+        priority=complaint.priority,
+        source=complaint.source,
+        language=complaint.language,
+        description=complaint.description,
+        category=_category_brief(complaint.category),
+        citizen=CitizenBrief.model_validate(complaint.citizen),
+        latitude=complaint.latitude,
+        longitude=complaint.longitude,
+        address=complaint.address,
+        neighborhood_name=complaint.neighborhood.name if complaint.neighborhood else None,
+        department=_department_brief(complaint.assigned_department) if complaint.assigned_department else None,
+        assigned_user_id=complaint.assigned_user_id,
+        deadline_at=complaint.deadline_at,
+        needs_review=complaint.needs_review,
+        rejected_reason=complaint.rejected_reason,
+        files=[FileOut.model_validate(f) for f in complaint.files],
+        events=[EventOut.model_validate(e) for e in complaint.events],
+        replies=[ReplyOut.model_validate(r) for r in complaint.replies],
+        ai=ai_out,
+        created_at=complaint.created_at,
+        updated_at=complaint.updated_at,
+        resolved_at=complaint.resolved_at,
+    )
+
+
+@router.get("/complaints", response_model=Page[ComplaintListItem], dependencies=[Depends(get_current_operator_up)])
 def list_complaints(
-    status: ComplaintStatus | None = None,
-    category: ComplaintCategory | None = None,
-    district: str | None = None,
-    neighborhood: str | None = None,
+    status: str | None = None,
+    category: str | None = None,
+    department_id: uuid.UUID | None = None,
+    assigned_user_id: uuid.UUID | None = None,
+    source: str | None = None,
+    priority: str | None = None,
+    overdue: bool = False,
+    needs_review: bool = False,
+    q: str | None = Query(None),
     date_from: date | None = None,
     date_to: date | None = None,
-    search: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Complaint)
+    query = db.query(Complaint).join(Citizen, Complaint.citizen_id == Citizen.id).join(
+        Category, Complaint.category_id == Category.id
+    )
     if status:
         query = query.filter(Complaint.status == status)
     if category:
-        query = query.filter(Complaint.category == category)
-    if district:
-        query = query.filter(Complaint.district.ilike(f"%{district}%"))
-    if neighborhood:
-        query = query.filter(Complaint.neighborhood.ilike(f"%{neighborhood}%"))
+        query = query.filter(Category.code == category)
+    if department_id:
+        query = query.filter(Complaint.assigned_department_id == department_id)
+    if assigned_user_id:
+        query = query.filter(Complaint.assigned_user_id == assigned_user_id)
+    if source:
+        query = query.filter(Complaint.source == source)
+    if priority:
+        query = query.filter(Complaint.priority == priority)
+    if overdue:
+        query = query.filter(
+            Complaint.deadline_at < datetime.now(timezone.utc),
+            Complaint.status.notin_(["resolved", "closed", "rejected", "archived"]),
+        )
+    if needs_review:
+        query = query.filter(Complaint.needs_review.is_(True))
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(Complaint.ticket_number.ilike(like), Citizen.phone.ilike(like), Complaint.description.ilike(like))
+        )
     if date_from:
         query = query.filter(Complaint.created_at >= date_from)
     if date_to:
         query = query.filter(Complaint.created_at < date_to + timedelta(days=1))
-    if search:
-        query = query.filter(Complaint.description.ilike(f"%{search}%"))
-    return query.order_by(Complaint.created_at.desc()).all()
+
+    total = query.count()
+    rows = (
+        query.order_by(Complaint.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    )
+
+    items = [
+        ComplaintListItem(
+            id=c.id,
+            ticket_number=c.ticket_number,
+            status=c.status,
+            priority=c.priority,
+            category=_category_brief(c.category),
+            citizen=CitizenBrief.model_validate(c.citizen),
+            neighborhood_name=c.neighborhood.name if c.neighborhood else None,
+            created_at=c.created_at,
+            deadline_at=c.deadline_at,
+            needs_review=c.needs_review,
+        )
+        for c in rows
+    ]
+    return Page(items=items, total=total, page=page, page_size=page_size)
 
 
-@router.get("/complaints/{complaint_id}", response_model=ComplaintOut)
+@router.get("/complaints/{complaint_id}", response_model=ComplaintDetail, dependencies=[Depends(get_current_operator_up)])
 def get_complaint(complaint_id: uuid.UUID, db: Session = Depends(get_db)):
     complaint = db.get(Complaint, complaint_id)
-    if not complaint:
-        raise HTTPException(status_code=404, detail="Murojaat topilmadi")
-    return complaint
+    if complaint is None:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+    return _complaint_to_detail(complaint)
 
 
-@router.patch("/complaints/{complaint_id}/status", response_model=ComplaintOut)
-def update_status(complaint_id: uuid.UUID, payload: StatusUpdateRequest, db: Session = Depends(get_db)):
-    complaint = db.get(Complaint, complaint_id)
-    if not complaint:
-        raise HTTPException(status_code=404, detail="Murojaat topilmadi")
-
-    complaint.status = payload.status
-    if payload.status == ComplaintStatus.HAL_QILINDI:
-        complaint.resolved_at = datetime.utcnow()
-    db.commit()
-    db.refresh(complaint)
-
-    notify(
-        db,
-        complaint.user,
-        f"Murojaatingiz holati o'zgardi: {STATUS_LABELS[payload.status]}",
-        complaint_id=complaint.id,
-    )
-    return complaint
-
-
-@router.post("/complaints/{complaint_id}/assign", response_model=ComplaintOut)
-def assign_organization(complaint_id: uuid.UUID, payload: OrgAssignRequest, db: Session = Depends(get_db)):
-    complaint = db.get(Complaint, complaint_id)
-    if not complaint:
-        raise HTTPException(status_code=404, detail="Murojaat topilmadi")
-    organization = db.get(Organization, payload.organization_id)
-    if not organization:
-        raise HTTPException(status_code=404, detail="Tashkilot topilmadi")
-
-    complaint.organization_id = organization.id
-    complaint.status = ComplaintStatus.MASUL_TASHKILOTGA_YUBORILDI
-    db.commit()
-    db.refresh(complaint)
-
-    notify(
-        db,
-        complaint.user,
-        f"Murojaatingiz {organization.name} tashkilotiga yuborildi",
-        complaint_id=complaint.id,
-    )
-    return complaint
-
-
-@router.post("/complaints/{complaint_id}/comments", response_model=CommentOut, status_code=201)
-def add_comment(
+@router.patch("/complaints/{complaint_id}/status", response_model=ComplaintDetail)
+def update_status(
     complaint_id: uuid.UUID,
-    payload: CommentCreate,
+    payload: StatusUpdateRequest,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    staff: User = Depends(get_current_operator_up),
 ):
     complaint = db.get(Complaint, complaint_id)
-    if not complaint:
-        raise HTTPException(status_code=404, detail="Murojaat topilmadi")
-
-    comment = Comment(complaint_id=complaint_id, admin_id=admin.id, comment=payload.comment)
-    db.add(comment)
+    if complaint is None:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+    workflow.change_status(db, complaint, payload.status, actor_type="staff", actor_id=staff.id, note=payload.note)
     db.commit()
-    db.refresh(comment)
-    return comment
+    db.refresh(complaint)
+    return _complaint_to_detail(complaint)
 
 
-@router.get("/organizations", response_model=list[OrganizationOut])
-def list_organizations(db: Session = Depends(get_db)):
-    return db.query(Organization).order_by(Organization.name).all()
+@router.post("/complaints/{complaint_id}/assign", response_model=ComplaintDetail)
+def assign_complaint(
+    complaint_id: uuid.UUID,
+    payload: AssignRequest,
+    db: Session = Depends(get_db),
+    staff: User = Depends(get_current_operator_up),
+):
+    complaint = db.get(Complaint, complaint_id)
+    if complaint is None:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+    if db.get(Department, payload.department_id) is None:
+        raise AppError(404, "not_found", "Bo'lim topilmadi")
+
+    workflow.assign(db, complaint, payload.department_id, payload.assigned_user_id, actor_id=staff.id)
+    db.commit()
+    db.refresh(complaint)
+    return _complaint_to_detail(complaint)
 
 
-@router.get("/stats/dashboard", response_model=DashboardStats)
+@router.get("/departments", response_model=list[DepartmentOut], dependencies=[Depends(get_current_operator_up)])
+def list_departments(db: Session = Depends(get_db)):
+    return db.execute(select(Department).order_by(Department.code)).scalars().all()
+
+
+@router.post("/departments", response_model=DepartmentOut, status_code=201, dependencies=[Depends(get_current_admin)])
+def create_department(payload: DepartmentIn, db: Session = Depends(get_db)):
+    if db.execute(select(Department).where(Department.code == payload.code)).scalar_one_or_none():
+        raise AppError(400, "already_exists", "Bu kod band")
+    department = Department(**payload.model_dump())
+    db.add(department)
+    db.commit()
+    db.refresh(department)
+    return department
+
+
+@router.patch("/departments/{department_id}", response_model=DepartmentOut, dependencies=[Depends(get_current_admin)])
+def update_department(department_id: uuid.UUID, payload: DepartmentPatch, db: Session = Depends(get_db)):
+    department = db.get(Department, department_id)
+    if department is None:
+        raise AppError(404, "not_found", "Bo'lim topilmadi")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(department, field, value)
+    db.commit()
+    db.refresh(department)
+    return department
+
+
+@router.get("/stats/dashboard", response_model=DashboardStats, dependencies=[Depends(get_current_operator_up)])
 def dashboard_stats(db: Session = Depends(get_db)):
-    now = datetime.utcnow()
-    today_start = datetime(now.year, now.month, now.day)
+    now = datetime.now(timezone.utc)
+    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
     week_start = today_start - timedelta(days=today_start.weekday())
-    month_start = datetime(now.year, now.month, 1)
-
-    today_count = db.query(Complaint).filter(Complaint.created_at >= today_start).count()
-    week_count = db.query(Complaint).filter(Complaint.created_at >= week_start).count()
-    month_count = db.query(Complaint).filter(Complaint.created_at >= month_start).count()
-    resolved_count = db.query(Complaint).filter(Complaint.status == ComplaintStatus.HAL_QILINDI).count()
-    in_progress_count = db.query(Complaint).filter(
-        Complaint.status.in_([ComplaintStatus.JARAYONDA, ComplaintStatus.MASUL_TASHKILOTGA_YUBORILDI])
-    ).count()
+    month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
 
     return DashboardStats(
-        today=today_count,
-        this_week=week_count,
-        this_month=month_count,
-        resolved=resolved_count,
-        in_progress=in_progress_count,
-    )
-
-
-@router.get("/stats/charts", response_model=StatsResponse)
-def chart_stats(db: Session = Depends(get_db)):
-    twelve_months_ago = datetime.utcnow() - timedelta(days=365)
-    monthly_rows = (
-        db.query(func.to_char(Complaint.created_at, "YYYY-MM").label("month"), func.count().label("count"))
-        .filter(Complaint.created_at >= twelve_months_ago)
-        .group_by("month")
-        .order_by("month")
-        .all()
-    )
-
-    category_rows = (
-        db.query(Complaint.category, func.count().label("count"))
-        .group_by(Complaint.category)
-        .order_by(func.count().desc())
-        .all()
-    )
-
-    resolved = db.query(Complaint).filter(
-        Complaint.status == ComplaintStatus.HAL_QILINDI, Complaint.resolved_at.isnot(None)
-    ).all()
-    if resolved:
-        avg_seconds = sum((c.resolved_at - c.created_at).total_seconds() for c in resolved) / len(resolved)
-        avg_hours = round(avg_seconds / 3600, 1)
-    else:
-        avg_hours = None
-
-    return StatsResponse(
-        monthly=[MonthlyPoint(month=row.month, count=row.count) for row in monthly_rows],
-        by_category=[CategoryPoint(category=row.category.value, count=row.count) for row in category_rows],
-        resolution_time=ResolutionTimeStats(average_hours=avg_hours, resolved_count=len(resolved)),
-        top_issues=[TopIssue(category=row.category.value, count=row.count) for row in category_rows[:5]],
+        today=db.query(Complaint).filter(Complaint.created_at >= today_start).count(),
+        this_week=db.query(Complaint).filter(Complaint.created_at >= week_start).count(),
+        this_month=db.query(Complaint).filter(Complaint.created_at >= month_start).count(),
+        resolved=db.query(Complaint).filter(Complaint.status == STATUS_RESOLVED).count(),
+        in_progress=db.query(Complaint).filter(Complaint.status.in_([STATUS_IN_PROGRESS, STATUS_ASSIGNED])).count(),
     )
