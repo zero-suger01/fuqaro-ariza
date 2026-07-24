@@ -6,7 +6,7 @@ Audit sanasi: 2026-07-24, `main` (B1+B2+B3 backend to'liq, B4 qisman — SMS/rat
 
 ### Backend — FastAPI (Python), `backend/`
 
-- **Stack:** FastAPI 0.115, SQLAlchemy 2, Alembic, PostgreSQL (5433), Redis (6379) + ARQ worker (jobs + kunlik cron), MinIO (boto3, `python-magic` fayl validatsiyasi), JWT (python-jose), bcrypt, `faster-whisper` (STT), `httpx` (Ollama).
+- **Stack:** FastAPI 0.115, SQLAlchemy 2, Alembic, PostgreSQL (5433), Redis (6379) + ARQ worker (jobs + kunlik/30-daqiqalik cronlar), MinIO (boto3, `python-magic` fayl validatsiyasi, Pillow+`pillow-heif` EXIF strip), JWT (python-jose), bcrypt, `faster-whisper` (STT), `httpx` (Ollama, Eskiz, Turnstile).
 - **DB sxemasi to'liq [04-database.md](04-database.md) ga mos:** citizens, users(staff), departments, categories, category_keywords, neighborhoods, complaints(+barcha yangi ustunlar), complaint_files, complaint_events, replies, ai_analyses, keyword_suggestions, stt_jobs, ticket_counters, qr_codes, settings, audit_logs. Alembic 5 ta migratsiya — bo'sh bazadan `alembic upgrade head` toza o'tadi.
 - **Seed** (`app/seed.py`, idempotent): 14 bo'lim + 15 kategoriya (4 tilda), 106 keyword, admin (`+998900000000`/`admin123`), 3 ta settings. `app/tools/import_neighborhoods.py` — CSV import ishlaydi va sinovdan o'tgan: `backend/data/uychi_mfy_SAMPLE.csv` (8 ta "NAMUNA —" belgili o'ylab topilgan nom) import qilindi, `/api/public/neighborhoods` va wizard Step2'da to'g'ri ko'rinmoqda. **Bu haqiqiy ma'lumot emas** — internetdan Uychi tumani rasmiy 62 ta MFY ro'yxatini ishonchli topib bo'lmadi, hokimlikdan real ro'yxat kutilmoqda (tafsilot: [04-database.md](04-database.md) §neighborhoods).
 - **Guest oqim (auth YO'Q):** `POST /api/public/complaints`, `GET /api/public/complaints/track`, `GET /api/public/categories|neighborhoods|qr/{code}`, `POST/GET /api/public/stt[/{id}]`.
@@ -48,7 +48,7 @@ K7 (rate limit/captcha) — hal qilindi (B4.3/B4.7).
 | Workflow | **Eskalatsiya croni tayyor** (deadline o'tgan → manager, 24h javobsiz → admin) | — |
 | Bildirishnoma | **SMS (Eskiz) tayyor** (real kalitlar kelganda ishlaydi). Telegram hali stub | [05](05-backend-tasklar.md) B4.2 |
 | Analitika | Heatmap, KPI (group_by), Excel eksport — na backend, na FE | [05](05-backend-tasklar.md) B5, [06](06-frontend-tasklar.md) F4 |
-| Xavfsizlik | **Rate limit va captcha tayyor.** Fayl xavfsizligi yakuni (EXIF strip) va audit log yozish qolgan | B4.4, B4.6 |
+| Xavfsizlik | **Rate limit, captcha va fayl xavfsizligi (EXIF strip) tayyor.** Audit log yozish qolgan | B4.6 |
 | Kanallar | Telegram bot, QR generatsiya (PNG/PDF), mobil ilova | [08](08-telegram-bot.md), B5.4, [09](09-mobile.md) |
 | DevOps | App dockerfile'lari, nginx, CI, backup | D2-D8 |
 | Mahalla ma'lumoti | `neighborhoods` jadvalida faqat 8 ta NAMUNA (test) yozuv bor — real Uychi tumani MFY ro'yxati hali hokimlikdan olinmagan | `python -m app.tools.import_neighborhoods <csv>` (real CSV kelganda NAMUNA yozuvlarni tozalab qayta import qilish) |
@@ -58,7 +58,7 @@ K7 (rate limit/captcha) — hal qilindi (B4.3/B4.7).
 Guest oqim VA admin panel (backend+frontend) endi **to'liq ishlaydi va sinovdan o'tgan** — loyihaning yadrosi (checkpoint C1) tayyor. Qolgan eng yuqori qiymatli yo'nalishlar:
 
 1. ~~**Mahalla CSV import**~~ — mexanizm sinovdan o'tkazildi (8 ta NAMUNA yozuv bilan, `backend/data/uychi_mfy_SAMPLE.csv`). Hokimlikdan real 62 ta MFY ro'yxati kelganda: yangi CSV → `python -m app.tools.import_neighborhoods <csv>` → NAMUNA yozuvlarni o'chirish.
-2. ~~**B4.1/B4.3/B4.5/B4.7**~~ — SMS (Eskiz), rate limit, eskalatsiya croni, captcha tayyor va sinovdan o'tkazildi. Qolgan B4: Telegram (B4.2), fayl xavfsizligi yakuni (B4.4), audit log (B4.6) — keyingi navbatda shular.
+2. ~~**B4.1/B4.3/B4.4/B4.5/B4.7**~~ — SMS (Eskiz), rate limit, EXIF strip, eskalatsiya croni, captcha tayyor va sinovdan o'tkazildi. Qolgan B4: Telegram (B4.2), audit log (B4.6) — keyingi navbatda shular.
 3. **F3** — QR landing (`/go`), fuqaro kabineti (`/kabinet`) — Telegram bot (T-fazalar) bilan birga qilinsa mantiqan to'g'ri keladi.
 4. **Jonli UX testi** — checkpoint C1/C3 talabi: kamida bitta 60+ yoshli odam yordamisiz murojaat yubora olishi kerak. Wizard tayyor, endi real sinov mumkin.
 5. **F4/B5** — analitika (heatmap/KPI/eksport) — pilot ma'lumot to'planganidan keyin qiymatliroq.

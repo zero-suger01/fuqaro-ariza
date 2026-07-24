@@ -13,6 +13,7 @@ from fastapi import UploadFile
 from app.config import get_settings
 from app.core.constants import FILE_LIMITS
 from app.core.errors import AppError
+from app.services.image_privacy import strip_exif
 
 settings = get_settings()
 
@@ -63,6 +64,11 @@ def validate_file(file: UploadFile, expected_kind: str) -> tuple[bytes, str]:
     real_mime = magic.from_buffer(data, mime=True)
     if real_mime not in limits["mimes"]:
         raise AppError(422, "invalid_file", f"Fayl turi ruxsat etilmagan: {real_mime}")
+
+    if expected_kind == "image":
+        # B4.4: telefon kamerasi EXIF'iga yozadigan GPS/qurilma metadatasini
+        # tozalash — fuqaro faqat xaritadan tanlagan joylashuvni bermoqchi.
+        data = strip_exif(data, real_mime)
 
     return data, real_mime
 
