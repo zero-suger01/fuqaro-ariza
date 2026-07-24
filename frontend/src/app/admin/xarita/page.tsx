@@ -50,7 +50,7 @@ export default function MapDashboardPage() {
   }, [mode, category, status, dateFrom, dateTo]);
 
   return (
-    <AppShell title="Xarita">
+    <AppShell title="Xarita" requireRoles={["admin"]}>
       <Card>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 items-end">
           <div>

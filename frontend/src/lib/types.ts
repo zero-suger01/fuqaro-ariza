@@ -1,6 +1,6 @@
 // --- Auth (docs/03-kontraktlar.md §4) ---
 
-export type StaffRole = "operator" | "employee" | "manager" | "admin";
+export type StaffRole = "department_staff" | "admin";
 
 export interface AuthUser {
   kind: "citizen" | "staff";
@@ -12,6 +12,7 @@ export interface AuthUser {
   email: string | null;
   role: StaffRole | null;
   department_id: string | null;
+  department_name: string | null;
 }
 
 // --- Admin API (docs/03-kontraktlar.md §5) ---
@@ -92,6 +93,7 @@ export interface ComplaintListItem {
   category: CategoryBrief;
   citizen: CitizenBrief;
   neighborhood_name: string | null;
+  department: DepartmentBrief | null;
   created_at: string;
   deadline_at: string | null;
   needs_review: boolean;
@@ -149,6 +151,8 @@ export interface DashboardStats {
   by_priority: Record<string, number>;
   ai_accuracy_7d: number | null;
   by_neighborhood: NeighborhoodStat[];
+  ai_auto_routed_7d: number;
+  ai_routing_corrected_7d: number;
 }
 
 export interface HeatmapPoint {

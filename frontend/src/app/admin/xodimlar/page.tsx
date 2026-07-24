@@ -16,7 +16,7 @@ const EMPTY_FORM = {
   phone: "",
   email: "",
   password: "",
-  role: "operator" as StaffRole,
+  role: "department_staff" as StaffRole,
   department_id: "",
 };
 
@@ -169,7 +169,7 @@ export default function StaffUsersPage() {
       <Card className="flex items-center gap-3">
         <UserCog className="h-5 w-5 text-text-muted shrink-0" />
         <p className="text-sm text-text-muted">
-          Rol ruxsatlari: operator — ko&apos;rish/biriktirish; xodim — o&apos;z bo&apos;limi, ijro/javob; menejer — o&apos;z bo&apos;limi to&apos;liq; admin — hammasi.
+          Rol ruxsatlari: bo&apos;lim vakili — faqat o&apos;z bo&apos;limiga AI avtomatik yo&apos;naltirgan (yoki admin biriktirgan) murojaatlarni ko&apos;radi, ijro/javob yozadi; admin — tizim boshqaruvi, monitoring va bo&apos;limga biriktirish/qayta yo&apos;naltirish.
         </p>
       </Card>
     </AppShell>

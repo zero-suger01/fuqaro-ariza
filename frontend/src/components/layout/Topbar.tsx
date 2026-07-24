@@ -21,7 +21,10 @@ export function Topbar({ title }: { title: string }) {
         </div>
         <div className="hidden sm:block leading-tight">
           <div className="text-sm font-medium text-text-primary">{user?.fullname}</div>
-          <div className="text-xs text-text-muted">{user?.role ? ROLE_LABELS[user.role] : ""}</div>
+          <div className="text-xs text-text-muted">
+            {user?.role ? ROLE_LABELS[user.role] : ""}
+            {user?.department_name ? ` — ${user.department_name}` : ""}
+          </div>
         </div>
       </div>
     </header>

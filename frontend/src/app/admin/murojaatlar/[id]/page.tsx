@@ -391,26 +391,28 @@ export default function AdminComplaintDetailPage() {
             </Card>
           )}
 
-          <Card>
-            <h2 className="text-base font-semibold text-text-primary mb-4">Bo&apos;limga biriktirish</h2>
-            {complaint.department && (
-              <p className="text-sm text-text-secondary mb-3">
-                Hozirgi bo&apos;lim: <strong className="text-text-primary">{complaint.department.name}</strong>
-              </p>
-            )}
-            <Label>Bo&apos;lim</Label>
-            <Select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className="mb-3">
-              <option value="">Tanlanmagan</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.names.uz ?? d.code}
-                </option>
-              ))}
-            </Select>
-            <Button onClick={handleAssign} disabled={saving || !selectedDept} variant="secondary" className="w-full">
-              Biriktirish
-            </Button>
-          </Card>
+          {user?.role === "admin" && (
+            <Card>
+              <h2 className="text-base font-semibold text-text-primary mb-4">Bo&apos;limga biriktirish / qayta yo&apos;naltirish</h2>
+              {complaint.department && (
+                <p className="text-sm text-text-secondary mb-3">
+                  Hozirgi bo&apos;lim: <strong className="text-text-primary">{complaint.department.name}</strong>
+                </p>
+              )}
+              <Label>Bo&apos;lim</Label>
+              <Select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className="mb-3">
+                <option value="">Tanlanmagan</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.names.uz ?? d.code}
+                  </option>
+                ))}
+              </Select>
+              <Button onClick={handleAssign} disabled={saving || !selectedDept} variant="secondary" className="w-full">
+                Biriktirish
+              </Button>
+            </Card>
+          )}
 
           <Card>
             <h2 className="text-base font-semibold text-text-primary mb-2">Rasmiy javob</h2>

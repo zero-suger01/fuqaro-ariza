@@ -232,6 +232,7 @@ export default function AdminComplaintsPage() {
                     <p className="text-xs text-text-muted mt-1">
                       {c.citizen.fullname} · {c.citizen.phone}
                       {c.neighborhood_name ? ` · ${c.neighborhood_name}` : ""}
+                      {c.department ? ` · ${c.department.name}` : ""}
                     </p>
                     <p className="text-xs mt-1">
                       {new Date(c.created_at).toLocaleDateString("uz-UZ")}

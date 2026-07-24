@@ -59,7 +59,7 @@ export default function KpiPage() {
   }));
 
   return (
-    <AppShell title="KPI" requireRoles={["manager", "admin"]}>
+    <AppShell title="KPI" requireRoles={["admin"]}>
       <Card>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex gap-2">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ClipboardList, Building2, Users, AlertTriangle, Clock, ArrowRight } from "lucide-react";
+import { ClipboardList, Building2, Users, AlertTriangle, Clock, ArrowRight, Route, Wrench } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -33,7 +33,7 @@ export default function AdminDashboardPage() {
   const priorityEntries = Object.entries(stats?.by_priority ?? {}) as [string, number][];
 
   return (
-    <AppShell title="Dashboard">
+    <AppShell title="Dashboard" requireRoles={["admin"]}>
       <div className="flex flex-col md:flex-row gap-4 flex-wrap">
         <StatCard label="Bugungi murojaatlar" value={stats?.today ?? 0} />
         <StatCard label="Haftalik murojaatlar" value={stats?.this_week ?? 0} />
@@ -81,15 +81,35 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
-          <div className="flex items-center gap-3 mt-6 pt-6 border-t border-border">
-            <div className="h-11 w-11 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
-              <Clock className="h-5 w-5 text-accent" />
+          <div className="flex flex-wrap items-center gap-6 mt-6 pt-6 border-t border-border">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
+                <Clock className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-text-primary font-mono">
+                  {stats?.ai_accuracy_7d != null ? `${Math.round(stats.ai_accuracy_7d * 100)}%` : "—"}
+                </p>
+                <p className="text-sm text-text-muted">AI aniqligi (oxirgi 7 kun)</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-semibold text-text-primary font-mono">
-                {stats?.ai_accuracy_7d != null ? `${Math.round(stats.ai_accuracy_7d * 100)}%` : "—"}
-              </p>
-              <p className="text-sm text-text-muted">AI aniqligi (oxirgi 7 kun)</p>
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
+                <Route className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-text-primary font-mono">{stats?.ai_auto_routed_7d ?? 0}</p>
+                <p className="text-sm text-text-muted">AI avtomatik yo&apos;naltirgan (7 kun)</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
+                <Wrench className="h-5 w-5 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-text-primary font-mono">{stats?.ai_routing_corrected_7d ?? 0}</p>
+                <p className="text-sm text-text-muted">Admin to&apos;g&apos;irlagan (7 kun)</p>
+              </div>
             </div>
           </div>
         </Card>
