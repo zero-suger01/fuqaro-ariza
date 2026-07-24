@@ -191,7 +191,7 @@ class UserIn(BaseModel):
     phone: str = Field(min_length=7, max_length=16)
     email: str | None = None
     password: str = Field(min_length=6, max_length=128)
-    role: str = "operator"
+    role: str = "department_staff"
     department_id: uuid.UUID | None = None
 
     @field_validator("role")
@@ -227,6 +227,7 @@ class ComplaintListItem(BaseModel):
     category: CategoryBrief
     citizen: CitizenBrief
     neighborhood_name: str | None
+    department: DepartmentBrief | None
     created_at: datetime
     deadline_at: datetime | None
     needs_review: bool
@@ -293,6 +294,8 @@ class DashboardStats(BaseModel):
     by_priority: dict[str, int]
     ai_accuracy_7d: float | None
     by_neighborhood: list[NeighborhoodStat]
+    ai_auto_routed_7d: int
+    ai_routing_corrected_7d: int
 
 
 class MonthlyPoint(BaseModel):

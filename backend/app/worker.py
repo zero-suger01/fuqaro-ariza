@@ -25,6 +25,7 @@ from app.services.ai.classifier import classify
 from app.services.ai.learning import mine_keyword_suggestions
 from app.services.ai.llm import LlmError, classify_with_llm
 from app.services.ai.stt import SttError, transcribe
+from app.services import workflow
 from app.services.deadline import compute_deadline
 from app.services.escalation import escalate_overdue
 from app.services.storage import download_to_temp
@@ -115,6 +116,15 @@ async def classify_complaint(ctx, complaint_id: str) -> None:
                 payload={"engine": engine_used, "confidence": final_confidence, "needs_review": needs_review},
             )
         )
+
+        # B6 avto-routing: AI ishonchli bo'lsa (needs_review=False) va
+        # kategoriya real bo'limga bog'langan bo'lsa, murojaat admin
+        # kutmasdan avtomatik shu bo'limga biriktiriladi (docs/03 §6 workflow).
+        # Ishonchsiz holatlar biriktirilmagan qoladi — admin panelidagi
+        # needs_review navbatida qo'lda yo'naltiriladi.
+        if not needs_review and category is not None and category.department_id:
+            workflow.assign(db, complaint, category.department_id, None, actor_type="ai")
+
         db.commit()
     finally:
         db.close()

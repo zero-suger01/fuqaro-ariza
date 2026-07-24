@@ -74,8 +74,13 @@ def assign(
     department_id: uuid.UUID,
     assigned_user_id: uuid.UUID | None,
     *,
-    actor_id: uuid.UUID,
+    actor_id: uuid.UUID | None = None,
+    actor_type: str = "staff",
 ) -> Complaint:
+    """`actor_type="ai"` (`actor_id=None`) — B6 avto-routing: `classify_complaint`
+    worker AI ishonchli bo'lganda shu funksiyani chaqirib, o'zi murojaatni
+    kategoriyaning bo'limiga biriktiradi. `actor_type="staff"` — admin qo'lda
+    biriktirgan/qayta yo'naltirgan holat (docs/03-kontraktlar.md §6 workflow)."""
     complaint.assigned_department_id = department_id
     complaint.assigned_user_id = assigned_user_id
 
@@ -90,7 +95,7 @@ def assign(
         ComplaintEvent(
             complaint_id=complaint.id,
             event_type="assigned",
-            actor_type="staff",
+            actor_type=actor_type,
             actor_id=actor_id,
             payload={"department_id": str(department_id), "user_id": str(assigned_user_id) if assigned_user_id else None},
         )

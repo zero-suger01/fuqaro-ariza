@@ -65,7 +65,7 @@ def escalate_overdue(db: Session) -> dict[str, int]:
         manager_event, admin_event = _escalation_events(complaint)
 
         if manager_event is None:
-            query = select(User).where(User.role == "manager", User.is_active.is_(True))
+            query = select(User).where(User.role == "department_staff", User.is_active.is_(True))
             if complaint.assigned_department_id is not None:
                 query = query.where(User.department_id == complaint.assigned_department_id)
             managers = db.execute(query).scalars().all()

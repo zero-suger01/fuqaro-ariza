@@ -49,6 +49,4 @@ def require_roles(*roles: str):
 
 
 get_current_admin = require_roles("admin")
-get_current_operator_up = require_roles("operator", "employee", "manager", "admin")
-get_current_employee_up = require_roles("employee", "manager", "admin")
-get_current_manager_up = require_roles("manager", "admin")
+get_current_staff_up = require_roles("department_staff", "admin")

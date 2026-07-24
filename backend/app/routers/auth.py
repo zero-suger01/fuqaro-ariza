@@ -37,6 +37,7 @@ def _staff_me(user: User) -> MeOut:
         email=user.email,
         role=user.role,
         department_id=user.department_id,
+        department_name=user.department.name("uz") if user.department else None,
     )
 
 

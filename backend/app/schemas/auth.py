@@ -31,6 +31,7 @@ class MeOut(BaseModel):
     email: str | None = None
     role: str | None = None
     department_id: uuid.UUID | None = None
+    department_name: str | None = None
 
     class Config:
         from_attributes = True

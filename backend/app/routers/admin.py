@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
 from app.core.constants import STATUS_ASSIGNED, STATUS_IN_PROGRESS, STATUS_RESOLVED, TERMINAL_STATUSES
-from app.core.deps import get_current_admin, get_current_employee_up, get_current_manager_up, get_current_operator_up
+from app.core.deps import get_current_admin, get_current_staff_up
 from app.core.errors import AppError
 from app.core.security import hash_password
 from app.database import get_db
@@ -77,13 +77,13 @@ settings = get_settings()
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 # RBAC matrix (docs/03-kontraktlar.md §5). None = no restriction beyond role gate.
+# "assigned" endi bu yerda yo'q — bo'limga biriktirish/qayta yo'naltirish B6'dan
+# beri faqat admin ishi (AI avtomatik yo'naltiradi, admin xato bo'lsa to'g'irlaydi).
 ROLE_ALLOWED_STATUSES = {
-    "operator": {"assigned", "rejected"},
-    "employee": {"in_progress", "need_info", "resolved"},
-    "manager": {"in_progress", "need_info", "resolved", "rejected", "closed"},
+    "department_staff": {"in_progress", "need_info", "resolved", "rejected", "closed"},
     "admin": None,
 }
-DEPARTMENT_SCOPED_ROLES = ("employee", "manager")
+DEPARTMENT_SCOPED_ROLES = ("department_staff",)
 
 
 def _check_status_permission(staff: User, new_status: str) -> None:
@@ -220,7 +220,7 @@ def list_complaints(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    staff: User = Depends(get_current_operator_up),
+    staff: User = Depends(get_current_staff_up),
 ):
     query = _build_complaints_query(
         db,
@@ -252,6 +252,7 @@ def list_complaints(
             category=_category_brief(c.category),
             citizen=CitizenBrief.model_validate(c.citizen),
             neighborhood_name=c.neighborhood.name if c.neighborhood else None,
+            department=_department_brief(c.assigned_department) if c.assigned_department else None,
             created_at=c.created_at,
             deadline_at=c.deadline_at,
             needs_review=c.needs_review,
@@ -275,10 +276,11 @@ def export_complaints_xlsx(
     date_from: date | None = None,
     date_to: date | None = None,
     db: Session = Depends(get_db),
-    staff: User = Depends(get_current_operator_up),
+    staff: User = Depends(get_current_admin),
 ):
     """B5.5 — xuddi shu filtrlar (list_complaints bilan bir xil), lekin
-    pagination'siz: filtrlangan hammasi bitta faylga."""
+    pagination'siz: filtrlangan hammasi bitta faylga. B6: eksport ham
+    "workflowni nazorat qilish" toifasiga kiradi, faqat admin."""
     query = _build_complaints_query(
         db,
         staff,
@@ -340,7 +342,7 @@ def export_complaints_xlsx(
 
 
 @router.get("/complaints/{complaint_id}", response_model=ComplaintDetail)
-def get_complaint(complaint_id: uuid.UUID, db: Session = Depends(get_db), staff: User = Depends(get_current_operator_up)):
+def get_complaint(complaint_id: uuid.UUID, db: Session = Depends(get_db), staff: User = Depends(get_current_staff_up)):
     complaint = db.get(Complaint, complaint_id)
     if complaint is None:
         raise AppError(404, "not_found", "Murojaat topilmadi")
@@ -353,7 +355,7 @@ def update_status(
     complaint_id: uuid.UUID,
     payload: StatusUpdateRequest,
     db: Session = Depends(get_db),
-    staff: User = Depends(get_current_operator_up),
+    staff: User = Depends(get_current_staff_up),
 ):
     complaint = db.get(Complaint, complaint_id)
     if complaint is None:
@@ -371,12 +373,14 @@ def assign_complaint(
     complaint_id: uuid.UUID,
     payload: AssignRequest,
     db: Session = Depends(get_db),
-    staff: User = Depends(get_current_operator_up),
+    staff: User = Depends(get_current_admin),
 ):
+    """B6: bo'limga biriktirish/qayta yo'naltirish endi faqat admin ishi —
+    AI ishonchli bo'lganda avtomatik biriktiradi (worker.py), admin esa
+    ishonchsiz holatlarni yo'naltiradi yoki AI xato yo'naltirsa to'g'irlaydi."""
     complaint = db.get(Complaint, complaint_id)
     if complaint is None:
         raise AppError(404, "not_found", "Murojaat topilmadi")
-    _check_department_access(complaint, staff)
     if db.get(Department, payload.department_id) is None:
         raise AppError(404, "not_found", "Bo'lim topilmadi")
 
@@ -391,7 +395,7 @@ def create_reply(
     complaint_id: uuid.UUID,
     payload: ReplyIn,
     db: Session = Depends(get_db),
-    staff: User = Depends(get_current_employee_up),
+    staff: User = Depends(get_current_staff_up),
 ):
     complaint = db.get(Complaint, complaint_id)
     if complaint is None:
@@ -429,7 +433,7 @@ def create_comment(
     complaint_id: uuid.UUID,
     payload: CommentIn,
     db: Session = Depends(get_db),
-    staff: User = Depends(get_current_operator_up),
+    staff: User = Depends(get_current_staff_up),
 ):
     """Internal note — not visible to the citizen (unlike replies)."""
     complaint = db.get(Complaint, complaint_id)
@@ -451,7 +455,7 @@ def create_comment(
     return _complaint_to_detail(complaint)
 
 
-@router.get("/departments", response_model=list[DepartmentOut], dependencies=[Depends(get_current_operator_up)])
+@router.get("/departments", response_model=list[DepartmentOut], dependencies=[Depends(get_current_staff_up)])
 def list_departments(db: Session = Depends(get_db)):
     return db.execute(select(Department).order_by(Department.code)).scalars().all()
 
@@ -479,7 +483,7 @@ def update_department(department_id: uuid.UUID, payload: DepartmentPatch, db: Se
     return department
 
 
-@router.get("/categories", response_model=list[CategoryAdminOut], dependencies=[Depends(get_current_operator_up)])
+@router.get("/categories", response_model=list[CategoryAdminOut], dependencies=[Depends(get_current_staff_up)])
 def list_categories(db: Session = Depends(get_db)):
     return db.execute(select(Category).order_by(Category.sort_order)).scalars().all()
 
@@ -514,7 +518,7 @@ def update_category(category_id: uuid.UUID, payload: CategoryPatch, db: Session 
 @router.get(
     "/categories/{category_id}/keywords",
     response_model=list[KeywordOut],
-    dependencies=[Depends(get_current_operator_up)],
+    dependencies=[Depends(get_current_staff_up)],
 )
 def list_keywords(category_id: uuid.UUID, db: Session = Depends(get_db)):
     if db.get(Category, category_id) is None:
@@ -665,7 +669,7 @@ def reject_keyword_suggestion(
     )
 
 
-@router.get("/stats/dashboard", response_model=DashboardStats, dependencies=[Depends(get_current_operator_up)])
+@router.get("/stats/dashboard", response_model=DashboardStats, dependencies=[Depends(get_current_admin)])
 def dashboard_stats(db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
@@ -694,6 +698,38 @@ def dashboard_stats(db: Session = Depends(get_db)):
         .all()
     )
 
+    # B6: AI avto-yo'naltirish monitoring — so'nggi 7 kunda AI qancha murojaatni
+    # o'zi bo'limga yubordi, va shulardan qanchasini admin keyin qo'lda
+    # boshqa bo'limga qayta yo'naltirdi (AI xato yo'naltirgan degani).
+    ai_assigned_events = (
+        db.query(ComplaintEvent.complaint_id, ComplaintEvent.created_at)
+        .filter(
+            ComplaintEvent.event_type == "assigned",
+            ComplaintEvent.actor_type == "ai",
+            ComplaintEvent.created_at >= seven_days_ago,
+        )
+        .all()
+    )
+    ai_routing_corrected_7d = 0
+    if ai_assigned_events:
+        complaint_ids = [cid for cid, _ in ai_assigned_events]
+        staff_by_complaint: dict[uuid.UUID, list[datetime]] = defaultdict(list)
+        for cid, created_at in (
+            db.query(ComplaintEvent.complaint_id, ComplaintEvent.created_at)
+            .filter(
+                ComplaintEvent.event_type == "assigned",
+                ComplaintEvent.actor_type == "staff",
+                ComplaintEvent.complaint_id.in_(complaint_ids),
+            )
+            .all()
+        ):
+            staff_by_complaint[cid].append(created_at)
+        ai_routing_corrected_7d = sum(
+            1
+            for cid, ai_created_at in ai_assigned_events
+            if any(t > ai_created_at for t in staff_by_complaint.get(cid, []))
+        )
+
     return DashboardStats(
         today=db.query(Complaint).filter(Complaint.created_at >= today_start).count(),
         this_week=db.query(Complaint).filter(Complaint.created_at >= week_start).count(),
@@ -710,10 +746,12 @@ def dashboard_stats(db: Session = Depends(get_db)):
             NeighborhoodStat(neighborhood_id=nid, neighborhood_name=name, count=count)
             for nid, name, count in neighborhood_rows
         ],
+        ai_auto_routed_7d=len(ai_assigned_events),
+        ai_routing_corrected_7d=ai_routing_corrected_7d,
     )
 
 
-@router.get("/stats/heatmap", response_model=list[HeatmapPoint], dependencies=[Depends(get_current_operator_up)])
+@router.get("/stats/heatmap", response_model=list[HeatmapPoint], dependencies=[Depends(get_current_admin)])
 def stats_heatmap(date_from: date | None = None, date_to: date | None = None, db: Session = Depends(get_db)):
     """docs/03-kontraktlar.md §5: [{lat, lng, weight}]. Yaqin koordinatalar
     (~11m, 4 xona) bitta nuqtaga birlashtirilib, weight = shu joydagi
@@ -736,7 +774,7 @@ def stats_heatmap(date_from: date | None = None, date_to: date | None = None, db
 _MAP_POINTS_LIMIT = 2000
 
 
-@router.get("/stats/map-points", response_model=list[MapPoint], dependencies=[Depends(get_current_operator_up)])
+@router.get("/stats/map-points", response_model=list[MapPoint], dependencies=[Depends(get_current_admin)])
 def stats_map_points(
     category: str | None = None,
     status: str | None = None,
@@ -797,7 +835,7 @@ def _kpi_label(group_by: str, complaint: Complaint) -> str:
     return complaint.category.name("uz") if complaint.category else "Noma'lum"
 
 
-@router.get("/stats/kpi", response_model=list[KpiRow], dependencies=[Depends(get_current_manager_up)])
+@router.get("/stats/kpi", response_model=list[KpiRow], dependencies=[Depends(get_current_admin)])
 def stats_kpi(
     group_by: str = Query(...),
     date_from: date | None = None,
@@ -1007,7 +1045,7 @@ def create_qr_code(payload: QrCodeIn, db: Session = Depends(get_db)):
     return _qr_to_out(qr)
 
 
-@router.get("/stats/ai-trend", response_model=list[AiTrendPoint], dependencies=[Depends(get_current_operator_up)])
+@router.get("/stats/ai-trend", response_model=list[AiTrendPoint], dependencies=[Depends(get_current_admin)])
 def stats_ai_trend(days: int = Query(30, ge=1, le=180), db: Session = Depends(get_db)):
     """F4.2 — 'aniqlik trendi, LLM ulushi kamayishi grafigi'. Kunlik
     kesimda: accuracy = ai_category_id==category_id ulushi (ai_processed

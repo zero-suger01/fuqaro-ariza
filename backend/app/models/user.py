@@ -18,7 +18,7 @@ class User(Base):
     phone: Mapped[str] = mapped_column(String(16), unique=True, index=True)
     email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
-    role: Mapped[str] = mapped_column(String(20), default="operator")
+    role: Mapped[str] = mapped_column(String(20), default="department_staff")
     department_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("departments.id"), nullable=True, index=True
     )
