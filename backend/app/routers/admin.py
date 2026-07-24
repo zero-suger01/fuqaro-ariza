@@ -11,6 +11,7 @@ from app.core.errors import AppError
 from app.core.security import hash_password
 from app.database import get_db
 from app.i18n.messages import reply_text as sms_reply_text
+from app.models.audit_log import AuditLog
 from app.models.category import Category
 from app.models.citizen import Citizen
 from app.models.complaint import Complaint
@@ -23,6 +24,7 @@ from app.models.user import User
 from app.schemas.admin import (
     AiAnalysisOut,
     AssignRequest,
+    AuditLogOut,
     CategoryAdminOut,
     CategoryIn,
     CategoryPatch,
@@ -603,3 +605,46 @@ def update_user(user_id: uuid.UUID, payload: UserPatch, db: Session = Depends(ge
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.get("/audit-logs", response_model=Page[AuditLogOut], dependencies=[Depends(get_current_admin)])
+def list_audit_logs(
+    user_id: uuid.UUID | None = None,
+    entity: str | None = None,
+    action: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    query = db.query(AuditLog)
+    if user_id:
+        query = query.filter(AuditLog.user_id == user_id)
+    if entity:
+        query = query.filter(AuditLog.entity == entity)
+    if action:
+        query = query.filter(AuditLog.action == action)
+    if date_from:
+        query = query.filter(AuditLog.created_at >= date_from)
+    if date_to:
+        query = query.filter(AuditLog.created_at < date_to + timedelta(days=1))
+
+    total = query.count()
+    rows = query.order_by(AuditLog.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+
+    items = [
+        AuditLogOut(
+            id=row.id,
+            user_id=row.user_id,
+            user_fullname=row.user.fullname if row.user else None,
+            action=row.action,
+            entity=row.entity,
+            entity_id=row.entity_id,
+            meta=row.meta,
+            ip=row.ip,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+    return Page(items=items, total=total, page=page, page_size=page_size)

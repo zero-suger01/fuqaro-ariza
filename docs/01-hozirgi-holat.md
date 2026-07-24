@@ -1,6 +1,6 @@
 # 01 — Hozirgi holat (codebase auditi)
 
-Audit sanasi: 2026-07-24, `main` (B1+B2+B3 backend to'liq, B4 qisman — SMS/rate-limit/captcha; F1+F2 frontend to'liq — AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan.
+Audit sanasi: 2026-07-24, `main` (B1+B2+B3 backend to'liq, B4 deyarli to'liq — faqat Telegram/B4.2 qolgan; F1+F2 frontend to'liq — AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan.
 
 ## 1. Nima bor (ishlaydi)
 
@@ -48,7 +48,7 @@ K7 (rate limit/captcha) — hal qilindi (B4.3/B4.7).
 | Workflow | **Eskalatsiya croni tayyor** (deadline o'tgan → manager, 24h javobsiz → admin) | — |
 | Bildirishnoma | **SMS (Eskiz) tayyor** (real kalitlar kelganda ishlaydi). Telegram hali stub | [05](05-backend-tasklar.md) B4.2 |
 | Analitika | Heatmap, KPI (group_by), Excel eksport — na backend, na FE | [05](05-backend-tasklar.md) B5, [06](06-frontend-tasklar.md) F4 |
-| Xavfsizlik | **Rate limit, captcha va fayl xavfsizligi (EXIF strip) tayyor.** Audit log yozish qolgan | B4.6 |
+| Xavfsizlik | **Rate limit, captcha, fayl xavfsizligi (EXIF strip) va audit log — barchasi tayyor.** | — |
 | Kanallar | Telegram bot, QR generatsiya (PNG/PDF), mobil ilova | [08](08-telegram-bot.md), B5.4, [09](09-mobile.md) |
 | DevOps | App dockerfile'lari, nginx, CI, backup | D2-D8 |
 | Mahalla ma'lumoti | `neighborhoods` jadvalida faqat 8 ta NAMUNA (test) yozuv bor — real Uychi tumani MFY ro'yxati hali hokimlikdan olinmagan | `python -m app.tools.import_neighborhoods <csv>` (real CSV kelganda NAMUNA yozuvlarni tozalab qayta import qilish) |
@@ -58,7 +58,7 @@ K7 (rate limit/captcha) — hal qilindi (B4.3/B4.7).
 Guest oqim VA admin panel (backend+frontend) endi **to'liq ishlaydi va sinovdan o'tgan** — loyihaning yadrosi (checkpoint C1) tayyor. Qolgan eng yuqori qiymatli yo'nalishlar:
 
 1. ~~**Mahalla CSV import**~~ — mexanizm sinovdan o'tkazildi (8 ta NAMUNA yozuv bilan, `backend/data/uychi_mfy_SAMPLE.csv`). Hokimlikdan real 62 ta MFY ro'yxati kelganda: yangi CSV → `python -m app.tools.import_neighborhoods <csv>` → NAMUNA yozuvlarni o'chirish.
-2. ~~**B4.1/B4.3/B4.4/B4.5/B4.7**~~ — SMS (Eskiz), rate limit, EXIF strip, eskalatsiya croni, captcha tayyor va sinovdan o'tkazildi. Qolgan B4: Telegram (B4.2), audit log (B4.6) — keyingi navbatda shular.
+2. ~~**B4.1/B4.3/B4.4/B4.5/B4.6/B4.7**~~ — SMS (Eskiz), rate limit, EXIF strip, eskalatsiya croni, audit log, captcha — barchasi tayyor va sinovdan o'tkazildi. Qolgan yagona B4 tasklari: Telegram (B4.2, `telegram_chat_id` bilan avval bot ulanishi kerak — [08-telegram-bot.md](08-telegram-bot.md) bilan birga qilinsa mantiqan to'g'ri).
 3. **F3** — QR landing (`/go`), fuqaro kabineti (`/kabinet`) — Telegram bot (T-fazalar) bilan birga qilinsa mantiqan to'g'ri keladi.
 4. **Jonli UX testi** — checkpoint C1/C3 talabi: kamida bitta 60+ yoshli odam yordamisiz murojaat yubora olishi kerak. Wizard tayyor, endi real sinov mumkin.
 5. **F4/B5** — analitika (heatmap/KPI/eksport) — pilot ma'lumot to'planganidan keyin qiymatliroq.

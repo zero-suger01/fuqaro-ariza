@@ -313,3 +313,18 @@ class StatsResponse(BaseModel):
     by_category: list[CategoryPoint]
     resolution_time: ResolutionTimeStats
     top_issues: list[TopIssue]
+
+
+class AuditLogOut(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    user_fullname: str | None
+    action: str
+    entity: str
+    entity_id: uuid.UUID
+    meta: dict | None
+    ip: str | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

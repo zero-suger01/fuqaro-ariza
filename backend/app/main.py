@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
+from app.core.audit import audit_log_middleware
 from app.core.errors import AppError, default_code
 from app.routers import admin, auth, citizen, notifications, public
 from app.services.storage import ensure_bucket
@@ -28,6 +29,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.middleware("http")(audit_log_middleware)
 
 app.include_router(auth.router)
 app.include_router(public.router)
