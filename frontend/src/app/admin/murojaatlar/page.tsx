@@ -57,8 +57,10 @@ export default function AdminComplaintsPage() {
 
   useEffect(() => {
     apiGet<CategoryAdmin[]>("/api/admin/categories").then(setCategories).catch(() => setCategories([]));
-    apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => setDepartments([]));
-  }, []);
+    if (user?.role === "admin") {
+      apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => setDepartments([]));
+    }
+  }, [user?.role]);
 
   function filterParams(): URLSearchParams {
     const params = new URLSearchParams();
@@ -130,17 +132,19 @@ export default function AdminComplaintsPage() {
               ))}
             </Select>
           </div>
-          <div>
-            <Label>Bo&apos;lim</Label>
-            <Select value={filters.department_id} onChange={(e) => update("department_id", e.target.value)}>
-              <option value="">Barchasi</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.names.uz ?? d.code}
-                </option>
-              ))}
-            </Select>
-          </div>
+          {user?.role === "admin" && (
+            <div>
+              <Label>Bo&apos;lim</Label>
+              <Select value={filters.department_id} onChange={(e) => update("department_id", e.target.value)}>
+                <option value="">Barchasi</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.names.uz ?? d.code}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
           <div>
             <Label>Muhimlik</Label>
             <Select value={filters.priority} onChange={(e) => update("priority", e.target.value as Priority)}>
