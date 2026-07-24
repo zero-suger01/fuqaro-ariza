@@ -1,6 +1,6 @@
 # 01 — Hozirgi holat (codebase auditi)
 
-Audit sanasi: 2026-07-24, `main` (B1+B2+B3+B4+B5 backend to'liq; F1+F2+F3+F4 frontend to'liq — AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan. Qolgan yagona yirik yo'nalish — standalone Telegram bot jarayoni (T-fazalar, backend `/api/bot/*` allaqachon tayyor).
+Audit sanasi: 2026-07-24, `main` (B1+B2+B3+B4+B5 backend to'liq; F1+F2+F3+F4 frontend to'liq; T1/T3.1/T3.2 Telegram bot kod jihatdan tayyor — AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan. Qolgan yagona to'siq — real `TELEGRAM_BOT_TOKEN` (@BotFather) va DevOps (D2-D8).
 
 ## 1. Nima bor (ishlaydi)
 
@@ -53,7 +53,7 @@ K7 (rate limit/captcha) — hal qilindi (B4.3/B4.7).
 | Bildirishnoma | **SMS (Eskiz) va Telegram (B4.2) yuborish tayyor** (real `TELEGRAM_BOT_TOKEN` kelganda ishlaydi). Bot API (`/api/bot/*`) ham tayyor — qolgan yagona narsa standalone `bot/` (aiogram) jarayoni | [05](05-backend-tasklar.md) B4.2, [08](08-telegram-bot.md) |
 | Analitika | **To'liq tayyor** (heatmap, KPI, mahalla kesimi, global qidiruv, Excel eksport — backend+FE) | — |
 | Xavfsizlik | **Rate limit, captcha, fayl xavfsizligi (EXIF strip) va audit log — barchasi tayyor.** | — |
-| Kanallar | **QR generatsiya (PNG/PDF) va Bot API (backend) tayyor.** Standalone Telegram bot jarayoni, mobil ilova qolgan | [08](08-telegram-bot.md), [09](09-mobile.md) |
+| Kanallar | **QR generatsiya (PNG/PDF), Bot API va Telegram bot (aiogram, kod tayyor) bor.** Real bot tokeni va mobil ilova qolgan | [08](08-telegram-bot.md), [09](09-mobile.md) |
 | DevOps | App dockerfile'lari, nginx, CI, backup | D2-D8 |
 | Mahalla ma'lumoti | `neighborhoods` jadvalida faqat 8 ta NAMUNA (test) yozuv bor — real Uychi tumani MFY ro'yxati hali hokimlikdan olinmagan | `python -m app.tools.import_neighborhoods <csv>` (real CSV kelganda NAMUNA yozuvlarni tozalab qayta import qilish) |
 
@@ -65,6 +65,6 @@ Guest oqim, admin panel, QR/kabinet VA analitika (backend+frontend) endi **to'li
 2. ~~**B4 (B4.1-B4.7)**~~ — SMS (Eskiz), Telegram xabar yuborish + Bot API (`/api/bot/*`, B4.2), rate limit, EXIF strip, eskalatsiya croni, audit log, captcha — barchasi tayyor va sinovdan o'tkazildi. B4 to'liq yopildi.
 3. ~~**F3.1/F3.2/F3.3 + B5.4**~~ — QR landing (`/go`), admin QR yaratish/PDF (`/admin/qr`) va fuqaro kabineti (`/kabinet`) barchasi tayyor va sinovdan o'tkazildi. F3 endi to'liq.
 4. ~~**B5.1-B5.5 + F4.1-F4.3**~~ — heatmap, KPI, mahalla kesimi, global qidiruv, Excel eksport (backend) + xarita/KPI/eksport sahifalari (frontend) — barchasi tayyor va sinovdan o'tkazildi. Yo'l-yo'lakay wizard xaritasining noto'g'ri standart koordinatasi (F1.4'dan beri, Uychi o'rniga Chust) topilib tuzatildi.
-5. **T-fazalar (Telegram bot)** — endi loyihaning eng katta ochiq bo'shlig'i. Backend tomoni (B4.2: Telegram xabar yuborish + `X-Bot-Token` bilan himoyalangan `/api/bot/citizens/link`, `/api/bot/complaints`) tayyor va sinovdan o'tkazilgan; qolgani — standalone `bot/` (aiogram) jarayoni. Real `TELEGRAM_BOT_TOKEN` (@BotFather) kelmaguncha bot serverga ulanib ishlay olmaydi. F3.1'dagi "Telegram orqali" tugmasi ham shu bot tayyor bo'lgach to'liq ishga tushadi.
+5. ~~**T1 + T3.1/T3.2 (Telegram bot — asosiy oqim)**~~ — standalone `bot/` (aiogram 3) jarayoni kod jihatdan tayyor: til tanlash, kontakt bog'lash, murojaat FSM (matn/ovoz/rasm/mahalla/lokatsiya), "Murojaatlarim", QR deep-link, xatolarni yumshoq ko'rsatish, `/help` + 4 tilda buyruqlar menyusi. Real backend'ga qarshi qo'lda sinovdan o'tkazildi (to'liq zanjir: til→kontakt→tavsif→mahalla→tasdiq→real ticket). **Qolgan yagona to'siq:** @BotFather'dan `TELEGRAM_BOT_TOKEN` — u kelmaguncha bot Telegram serveriga ulanib ishga tushmaydi (real Telegram orqali sinov qilib bo'lmaydi). Qolgan ishlar: T3.3 (Dockerfile/compose), T2.2 (fuqaro botdan "qo'shimcha ma'lumot"ga javob yozishi — alohida kontrakt kengaytmasi kerak).
 6. **Jonli UX testi** — checkpoint C1/C3 talabi: kamida bitta 60+ yoshli odam yordamisiz murojaat yubora olishi kerak. Wizard tayyor, endi real sinov mumkin.
 7. **DevOps (D2-D8)** — app dockerfile'lari, nginx, CI, backup hali yo'q; pilot serverga chiqishdan oldin kerak bo'ladi.
