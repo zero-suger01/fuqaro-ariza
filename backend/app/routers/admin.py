@@ -1,9 +1,12 @@
+import io
 import secrets
 import uuid
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
+from openpyxl import Workbook
+from openpyxl.styles import Font
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -14,6 +17,7 @@ from app.core.errors import AppError
 from app.core.security import hash_password
 from app.database import get_db
 from app.i18n.messages import reply_text as sms_reply_text
+from app.models.ai_analysis import AiAnalysis
 from app.models.audit_log import AuditLog
 from app.models.category import Category
 from app.models.citizen import Citizen
@@ -41,6 +45,7 @@ from app.schemas.admin import (
     DepartmentBrief,
     DepartmentIn,
     DepartmentOut,
+    AiTrendPoint,
     DepartmentPatch,
     EventOut,
     FileOut,
@@ -48,6 +53,7 @@ from app.schemas.admin import (
     KeywordIn,
     KeywordOut,
     KpiRow,
+    MapPoint,
     NeighborhoodStat,
     QrCodeIn,
     QrCodeOut,
@@ -144,24 +150,24 @@ def _complaint_to_detail(complaint: Complaint) -> ComplaintDetail:
     )
 
 
-@router.get("/complaints", response_model=Page[ComplaintListItem])
-def list_complaints(
-    status: str | None = None,
-    category: str | None = None,
-    department_id: uuid.UUID | None = None,
-    assigned_user_id: uuid.UUID | None = None,
-    source: str | None = None,
-    priority: str | None = None,
-    overdue: bool = False,
-    needs_review: bool = False,
-    q: str | None = Query(None),
-    date_from: date | None = None,
-    date_to: date | None = None,
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
-    staff: User = Depends(get_current_operator_up),
+def _build_complaints_query(
+    db: Session,
+    staff: User,
+    *,
+    status: str | None,
+    category: str | None,
+    department_id: uuid.UUID | None,
+    assigned_user_id: uuid.UUID | None,
+    source: str | None,
+    priority: str | None,
+    overdue: bool,
+    needs_review: bool,
+    q: str | None,
+    date_from: date | None,
+    date_to: date | None,
 ):
+    """Shared by list_complaints and export_complaints_xlsx (B5.5) so the two
+    never drift apart on what "the same filtered set" means."""
     query = db.query(Complaint).join(Citizen, Complaint.citizen_id == Citizen.id).join(
         Category, Complaint.category_id == Category.id
     )
@@ -195,6 +201,42 @@ def list_complaints(
         query = query.filter(Complaint.created_at >= date_from)
     if date_to:
         query = query.filter(Complaint.created_at < date_to + timedelta(days=1))
+    return query
+
+
+@router.get("/complaints", response_model=Page[ComplaintListItem])
+def list_complaints(
+    status: str | None = None,
+    category: str | None = None,
+    department_id: uuid.UUID | None = None,
+    assigned_user_id: uuid.UUID | None = None,
+    source: str | None = None,
+    priority: str | None = None,
+    overdue: bool = False,
+    needs_review: bool = False,
+    q: str | None = Query(None),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    staff: User = Depends(get_current_operator_up),
+):
+    query = _build_complaints_query(
+        db,
+        staff,
+        status=status,
+        category=category,
+        department_id=department_id,
+        assigned_user_id=assigned_user_id,
+        source=source,
+        priority=priority,
+        overdue=overdue,
+        needs_review=needs_review,
+        q=q,
+        date_from=date_from,
+        date_to=date_to,
+    )
 
     total = query.count()
     rows = (
@@ -217,6 +259,84 @@ def list_complaints(
         for c in rows
     ]
     return Page(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get("/complaints/export.xlsx")
+def export_complaints_xlsx(
+    status: str | None = None,
+    category: str | None = None,
+    department_id: uuid.UUID | None = None,
+    assigned_user_id: uuid.UUID | None = None,
+    source: str | None = None,
+    priority: str | None = None,
+    overdue: bool = False,
+    needs_review: bool = False,
+    q: str | None = Query(None),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    db: Session = Depends(get_db),
+    staff: User = Depends(get_current_operator_up),
+):
+    """B5.5 — xuddi shu filtrlar (list_complaints bilan bir xil), lekin
+    pagination'siz: filtrlangan hammasi bitta faylga."""
+    query = _build_complaints_query(
+        db,
+        staff,
+        status=status,
+        category=category,
+        department_id=department_id,
+        assigned_user_id=assigned_user_id,
+        source=source,
+        priority=priority,
+        overdue=overdue,
+        needs_review=needs_review,
+        q=q,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    rows = query.order_by(Complaint.created_at.desc()).all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Murojaatlar"
+    headers = [
+        "Ticket", "Holat", "Muhimlik", "Kategoriya", "Fuqaro", "Telefon", "Mahalla",
+        "Bo'lim", "Xodim", "Manba", "Yaratildi", "Muddat", "Hal qilindi", "Ko'rib chiqish kerak",
+    ]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    for c in rows:
+        ws.append([
+            c.ticket_number,
+            c.status,
+            c.priority,
+            c.category.name("uz") if c.category else "",
+            c.citizen.fullname if c.citizen else "",
+            c.citizen.phone if c.citizen else "",
+            c.neighborhood.name if c.neighborhood else "",
+            c.assigned_department.name("uz") if c.assigned_department else "",
+            c.assigned_user.fullname if c.assigned_user else "",
+            c.source,
+            c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else "",
+            c.deadline_at.strftime("%Y-%m-%d %H:%M") if c.deadline_at else "",
+            c.resolved_at.strftime("%Y-%m-%d %H:%M") if c.resolved_at else "",
+            "ha" if c.needs_review else "",
+        ])
+
+    for column_cells in ws.columns:
+        length = max(len(str(cell.value)) if cell.value is not None else 0 for cell in column_cells)
+        ws.column_dimensions[column_cells[0].column_letter].width = min(max(length + 2, 10), 40)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    filename = f"murojaatlar-{datetime.now(timezone.utc):%Y%m%d-%H%M}.xlsx"
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/complaints/{complaint_id}", response_model=ComplaintDetail)
@@ -613,6 +733,52 @@ def stats_heatmap(date_from: date | None = None, date_to: date | None = None, db
     return [HeatmapPoint(lat=lat, lng=lng, weight=weight) for (lat, lng), weight in buckets.items()]
 
 
+_MAP_POINTS_LIMIT = 2000
+
+
+@router.get("/stats/map-points", response_model=list[MapPoint], dependencies=[Depends(get_current_operator_up)])
+def stats_map_points(
+    category: str | None = None,
+    status: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    db: Session = Depends(get_db),
+):
+    """F4.1 — heatmap nuqtalari (yuqorida) koordinataga qarab birlashtirilgani
+    uchun alohida murojaatni bilmaydi (popup uchun ticket/status kerak
+    bo'lgan marker-cluster rejimi uchun yaramaydi) — shu sabab bu alohida,
+    filtrlangan bo'lsa-da yaxlitlanmagan nuqtalar ro'yxati bor. Eng so'nggi
+    2000 tasi bilan cheklangan (xarita, cheksiz marker bilan foydali emas)."""
+    query = (
+        db.query(Complaint)
+        .join(Category, Complaint.category_id == Category.id)
+        .options(joinedload(Complaint.category))
+        .filter(Complaint.latitude.isnot(None), Complaint.longitude.isnot(None))
+    )
+    if category:
+        query = query.filter(Category.code == category)
+    if status:
+        query = query.filter(Complaint.status == status)
+    if date_from:
+        query = query.filter(Complaint.created_at >= date_from)
+    if date_to:
+        query = query.filter(Complaint.created_at < date_to + timedelta(days=1))
+
+    rows = query.order_by(Complaint.created_at.desc()).limit(_MAP_POINTS_LIMIT).all()
+    return [
+        MapPoint(
+            id=c.id,
+            ticket_number=c.ticket_number,
+            lat=c.latitude,
+            lng=c.longitude,
+            status=c.status,
+            priority=c.priority,
+            category_name=c.category.name("uz"),
+        )
+        for c in rows
+    ]
+
+
 _KPI_GROUP_ATTRS = {
     "department": "assigned_department_id",
     "user": "assigned_user_id",
@@ -839,3 +1005,41 @@ def create_qr_code(payload: QrCodeIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(qr)
     return _qr_to_out(qr)
+
+
+@router.get("/stats/ai-trend", response_model=list[AiTrendPoint], dependencies=[Depends(get_current_operator_up)])
+def stats_ai_trend(days: int = Query(30, ge=1, le=180), db: Session = Depends(get_db)):
+    """F4.2 — 'aniqlik trendi, LLM ulushi kamayishi grafigi'. Kunlik
+    kesimda: accuracy = ai_category_id==category_id ulushi (ai_processed
+    murojaatlar orasida), llm_share = shu kunda LLM'ga murojaat qilingan
+    ai_analyses ulushi (keyword lug'ati boyigan sari kamayishi kutiladi,
+    B2.5 o'rganish sikli tufayli)."""
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    accuracy_by_day: dict[str, list[bool]] = defaultdict(list)
+    for created_at, ai_cat, cat in (
+        db.query(Complaint.created_at, Complaint.ai_category_id, Complaint.category_id)
+        .filter(Complaint.created_at >= since, Complaint.ai_category_id.isnot(None))
+        .all()
+    ):
+        accuracy_by_day[created_at.date().isoformat()].append(ai_cat == cat)
+
+    engine_by_day: dict[str, list[str]] = defaultdict(list)
+    for created_at, engine in (
+        db.query(AiAnalysis.created_at, AiAnalysis.engine).filter(AiAnalysis.created_at >= since).all()
+    ):
+        engine_by_day[created_at.date().isoformat()].append(engine)
+
+    points = []
+    for i in range(days + 1):
+        day = (since + timedelta(days=i)).date().isoformat()
+        acc_list = accuracy_by_day.get(day)
+        eng_list = engine_by_day.get(day)
+        points.append(
+            AiTrendPoint(
+                date=day,
+                accuracy=round(sum(acc_list) / len(acc_list), 2) if acc_list else None,
+                llm_share=round(sum(1 for e in eng_list if e == "llm") / len(eng_list), 2) if eng_list else None,
+            )
+        )
+    return points

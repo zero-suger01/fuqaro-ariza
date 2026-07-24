@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FilterX, ClipboardList, AlertTriangle } from "lucide-react";
+import { FilterX, ClipboardList, AlertTriangle, FileSpreadsheet } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiGetBlob } from "@/lib/api";
 import type { CategoryAdmin, ComplaintListItem, ComplaintStatus, DepartmentAdmin, Page, Priority } from "@/lib/types";
 import { PRIORITY_COLORS, PRIORITY_LABELS, STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
 
@@ -51,27 +51,51 @@ export default function AdminComplaintsPage() {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<CategoryAdmin[]>([]);
   const [departments, setDepartments] = useState<DepartmentAdmin[]>([]);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     apiGet<CategoryAdmin[]>("/api/admin/categories").then(setCategories).catch(() => setCategories([]));
     apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => setDepartments([]));
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading flag for the fetch below
-    setLoading(true);
-    const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) });
+  function filterParams(): URLSearchParams {
+    const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value) params.set(key, String(value));
     });
+    return params;
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading flag for the fetch below
+    setLoading(true);
+    const params = filterParams();
+    params.set("page", String(page));
+    params.set("page_size", String(PAGE_SIZE));
     apiGet<Page<ComplaintListItem>>(`/api/admin/complaints?${params.toString()}`)
       .then(setResult)
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filterParams reads `filters`, already a dep
   }, [filters, page]);
 
   function update<K extends keyof Filters>(key: K, value: Filters[K]) {
     setFilters((prev) => ({ ...prev, [key]: value }));
     setPage(1);
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const blob = await apiGetBlob(`/api/admin/complaints/export.xlsx?${filterParams().toString()}`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "murojaatlar.xlsx";
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
   }
 
   const items = result?.items ?? [];
@@ -167,9 +191,14 @@ export default function AdminComplaintsPage() {
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-text-primary">Murojaatlar ro&apos;yxati</h2>
-          <span className="text-sm text-text-muted">
-            Jami <strong className="text-text-primary">{total}</strong> ta
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-text-muted">
+              Jami <strong className="text-text-primary">{total}</strong> ta
+            </span>
+            <Button type="button" variant="secondary" disabled={exporting} onClick={handleExport}>
+              <FileSpreadsheet className="h-4 w-4" /> {exporting ? "Tayyorlanmoqda..." : "Excel eksport"}
+            </Button>
+          </div>
         </div>
 
         {loading ? (

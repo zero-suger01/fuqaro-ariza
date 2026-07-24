@@ -10,6 +10,8 @@ import {
   Tags,
   Lightbulb,
   QrCode,
+  Map,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Sidebar, type NavItem } from "@/components/layout/Sidebar";
@@ -18,6 +20,8 @@ import { Topbar } from "@/components/layout/Topbar";
 const ADMIN_NAV: (NavItem & { roles?: string[] })[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/murojaatlar", label: "Murojaatlar", icon: ClipboardList },
+  { href: "/admin/xarita", label: "Xarita", icon: Map },
+  { href: "/admin/kpi", label: "KPI", icon: BarChart3, roles: ["manager", "admin"] },
   { href: "/admin/bolimlar", label: "Bo'limlar", icon: Building2, roles: ["admin"] },
   { href: "/admin/xodimlar", label: "Xodimlar", icon: Users, roles: ["admin"] },
   { href: "/admin/kategoriyalar", label: "Kategoriyalar", icon: Tags, roles: ["admin"] },

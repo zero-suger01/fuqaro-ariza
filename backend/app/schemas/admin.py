@@ -360,6 +360,16 @@ class HeatmapPoint(BaseModel):
     weight: int
 
 
+class MapPoint(BaseModel):
+    id: uuid.UUID
+    ticket_number: str
+    lat: float
+    lng: float
+    status: str
+    priority: str
+    category_name: str
+
+
 class KpiRow(BaseModel):
     key: str | None
     label: str
@@ -368,3 +378,9 @@ class KpiRow(BaseModel):
     avg_first_response_hours: float | None
     avg_resolution_hours: float | None
     sla_percent: float | None
+
+
+class AiTrendPoint(BaseModel):
+    date: str
+    accuracy: float | None
+    llm_share: float | None

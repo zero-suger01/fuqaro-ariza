@@ -81,6 +81,28 @@ export async function apiDelete<T>(path: string): Promise<T> {
   return handleResponse<T>(res);
 }
 
+/** For endpoints that return a file (e.g. Excel export) instead of JSON —
+ * needs the auth header, so a plain `<a href>` download link won't work. */
+export async function apiGetBlob(path: string): Promise<Blob> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    let detail = res.statusText;
+    let code: string | undefined;
+    try {
+      const body = await res.json();
+      detail = body.detail || detail;
+      code = body.code;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, detail, code);
+  }
+  return res.blob();
+}
+
 export async function apiPostForm<T>(path: string, formData: FormData): Promise<T> {
   const token = getToken();
   const res = await fetch(`${API_URL}${path}`, {

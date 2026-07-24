@@ -19,6 +19,10 @@ cd frontend && npm install && npm run dev     # :3000
 
 `.env` namunalari: `backend/.env.example` (yangi kalitlar [03-kontraktlar.md](03-kontraktlar.md) §9 bo'yicha to'ldirib boriladi), `frontend/.env.local` → `NEXT_PUBLIC_API_URL=http://localhost:8000`.
 
+**Lokal port to'qnashuvlari (bu mashinada aniqlangan, boshqa devlarda ham uchrashi mumkin):**
+- `localhost:8000` — muallif dev mashinasida `xavfsiz-backend` nomli aloqasiz Docker konteyner ham shu portni tinglaydi (IPv6 orqali). Har doim `127.0.0.1:8000` (aniq IPv4) ishlatilsin, `localhost:8000` emas.
+- `localhost:6379` — Homebrew orqali o'rnatilgan **native `redis-server`** (`/usr/local/opt/redis`) `docker-compose`dagi Redis konteyneridan mustaqil ravishda ham shu portni band qilishi mumkin (ikkalasi ham `127.0.0.1:6379`da). Ilova host mashinada (Docker'siz, `uvicorn ... --reload`) ishga tushirilsa, qaysi biriga ulanishi aniq emas — agar noto'g'risiga ulansa, rate limit (`app/core/ratelimit.py`) va ARQ navbat (`enqueue()`) sukut bo'yicha ishlagandek ko'rinadi-yu, aslida boshqa (bo'sh yoki eskirgan) Redis'ga yozib, hech kim iste'mol qilmaydi. Belgisi: `docker compose exec redis redis-cli KEYS "rl:*"` bo'sh qaytadi, lekin `redis-cli -h localhost -p 6379 KEYS "rl:*"` (Docker tashqarisidan) ma'lumot ko'rsatadi. Hal qilish: `brew services stop redis` (agar kerak bo'lmasa) yoki `docker-compose.yml`da Redis portini masalan `6380:6379`ga o'zgartirib, `REDIS_URL`ni mos ravishda yangilash.
+
 ## 2. D-tasklar
 
 - [x] **D1 (S)** compose'ga `redis` qo'shildi (B1.7 bilan birga), `redis:7-alpine`, healthcheck bilan.

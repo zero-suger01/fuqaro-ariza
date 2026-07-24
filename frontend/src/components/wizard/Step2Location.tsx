@@ -10,7 +10,10 @@ import type { PublicNeighborhood } from "@/lib/types";
 
 const MapPicker = dynamic(() => import("@/components/MapPicker"), { ssr: false });
 
-const UYCHI_CENTER: [number, number] = [40.9856, 71.1533];
+// Uychi shahri (tuman markazi), Namangan viloyati — 41.0294°N 71.8483°E
+// (https://en.wikipedia.org/wiki/Uychi). Oldingi qiymat (40.9856, 71.1533)
+// noto'g'ri edi — Chust tumaniga to'g'ri kelardi, ~70km g'arbda.
+const UYCHI_CENTER: [number, number] = [41.0294, 71.8483];
 
 export function Step2Location({
   neighborhoods,

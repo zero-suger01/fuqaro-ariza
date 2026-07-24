@@ -45,9 +45,11 @@ Mavjud admin sahifalar saqlanadi, yangi sxema/endpointlarga moslanadi:
 
 ## F4 — Analitika UI (P3)
 
-- [ ] **F4.1 (M)** Xarita dashboard: barcha murojaatlar Leaflet'da (marker cluster) + heatmap layer (leaflet.heat), filtrlar (sana, kategoriya, status).
-- [ ] **F4.2 (M)** KPI sahifalari: bo'lim/xodim/mahalla jadvallari (SLA %, o'rtacha vaqtlar), AI KPI bloki (aniqlik trendi, LLM ulushi kamayishi grafigi).
-- [ ] **F4.3 (S)** Excel eksport tugmasi (filtrlangan ro'yxat).
+- [x] **F4.1 (M)** `src/app/admin/xarita/page.tsx` + `components/admin/ComplaintsMap.tsx`: Leaflet, `react-leaflet-cluster` (marker cluster, popup'da ticket/holat/kategoriya) va `leaflet.heat` (issiqlik xaritasi) o'rtasida almashtiriladigan 2 rejim, filtrlar (sana, kategoriya, holat). Yangi npm paketlar: `leaflet.heat`, `react-leaflet-cluster`, `leaflet.markercluster` (+ `@types/*`). Sidebar'da barcha xodimlarga ko'rinadi (backend operator+ — eng past rol darajasi).
+- [x] **F4.2 (M)** `src/app/admin/kpi/page.tsx` (`requireRoles={["manager","admin"]}` — backend `manager+`ga mos): bo'lim/xodim/mahalla/kategoriya tablari, jadval (jami/hal qilingan/o'rtacha birinchi javob/o'rtacha hal vaqti/SLA%), pastda Recharts bilan AI aniqlik+LLM ulushi trendi (30 kun). Dashboard sahifasiga ham `by_neighborhood` (B5.1) uchun "Mahalla kesimi" kartasi qo'shildi.
+- [x] **F4.3 (S)** `murojaatlar/page.tsx`ga "Excel eksport" tugmasi — joriy filtrlar bilan `export.xlsx`ni yuklab oladi. `lib/api.ts`ga `apiGetBlob()` qo'shildi (JWT header bilan fayl yuklab olish — oddiy `<a href>` ishlamaydi, chunki Authorization header kerak; `Blob`+`URL.createObjectURL`+dasturiy `<a>.click()` orqali).
+
+**Muhim topilma (F4.1 paytida aniqlandi, F1.4'dan beri bor edi):** wizard (`Step2Location.tsx`) va yangi xarita komponentining "Uychi markazi" standart koordinatasi (`40.9856, 71.1533`) **noto'g'ri edi** — bu aslida Chust tumaniga to'g'ri kelardi (~70km g'arbda), Uychi tumaniga emas. To'g'irlandi: `41.0294, 71.8483` (Uychi shahri, tuman markazi — [Wikipedia](https://en.wikipedia.org/wiki/Uychi)). Ikkala joyda ham tuzatildi va izoh qoldirildi. Bu wizard xaritasining boshlang'ich markazigagina ta'sir qiladi (fuqaro xaritada bosib to'g'ri joyni tanlagan bo'lsa muammo yo'q edi) — lekin default markazning o'zi noto'g'ri bo'lgani birinchi ochilishda chalkashlik keltirib chiqarishi mumkin edi.
 
 ## F5 — Sayqal (P3)
 

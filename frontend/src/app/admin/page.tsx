@@ -126,6 +126,32 @@ export default function AdminDashboardPage() {
         </Card>
       </div>
 
+      {stats && stats.by_neighborhood.length > 0 && (
+        <Card>
+          <h2 className="text-base font-semibold text-text-primary mb-1">Mahalla kesimi</h2>
+          <p className="text-sm text-text-muted mb-4">Eng ko&apos;p murojaat kelgan 5 ta mahalla</p>
+          <div className="flex flex-col gap-3">
+            {stats.by_neighborhood.slice(0, 5).map((n) => {
+              const max = stats.by_neighborhood[0]?.count ?? 1;
+              return (
+                <div key={n.neighborhood_id}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-text-primary font-medium">{n.neighborhood_name}</span>
+                    <span className="text-text-muted font-mono">{n.count}</span>
+                  </div>
+                  <div className="h-2 rounded-pill bg-bg-subtle overflow-hidden">
+                    <div
+                      className="h-full rounded-pill bg-accent"
+                      style={{ width: `${(n.count / max) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-text-primary">So&apos;nggi faollik</h2>

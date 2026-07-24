@@ -132,6 +132,12 @@ export interface Page<T> {
   page_size: number;
 }
 
+export interface NeighborhoodStat {
+  neighborhood_id: string | null;
+  neighborhood_name: string | null;
+  count: number;
+}
+
 export interface DashboardStats {
   today: number;
   this_week: number;
@@ -142,6 +148,41 @@ export interface DashboardStats {
   needs_review: number;
   by_priority: Record<string, number>;
   ai_accuracy_7d: number | null;
+  by_neighborhood: NeighborhoodStat[];
+}
+
+export interface HeatmapPoint {
+  lat: number;
+  lng: number;
+  weight: number;
+}
+
+export interface MapPoint {
+  id: string;
+  ticket_number: string;
+  lat: number;
+  lng: number;
+  status: ComplaintStatus;
+  priority: Priority;
+  category_name: string;
+}
+
+export type KpiGroupBy = "department" | "user" | "neighborhood" | "category";
+
+export interface KpiRow {
+  key: string | null;
+  label: string;
+  total: number;
+  resolved: number;
+  avg_first_response_hours: number | null;
+  avg_resolution_hours: number | null;
+  sla_percent: number | null;
+}
+
+export interface AiTrendPoint {
+  date: string;
+  accuracy: number | null;
+  llm_share: number | null;
 }
 
 export interface DepartmentAdmin {
