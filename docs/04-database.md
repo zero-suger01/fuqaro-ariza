@@ -30,7 +30,7 @@ Guest submit: telefon bo'yicha upsert (ism yangilanadi, mavjud bo'lsa qayta yara
 
 ### users — FAQAT xodimlar
 
-Mavjud jadval o'zgaradi: `role` → `operator|employee|manager|admin`; qo'shiladi: `department_id uuid NULL FK`, `is_active bool default true`. Fuqaro-akkauntlar bu jadvaldan `citizens` ga ko'chiriladi (§4).
+Mavjud jadval o'zgaradi: `role` → `department_staff|admin` (B6, `alembic/versions/m6_role_model_v2.py`; dastlab `operator|employee|manager|admin` edi, `operator/employee/manager` birlashtirildi); qo'shiladi: `department_id uuid NULL FK`, `is_active bool default true`. Fuqaro-akkauntlar bu jadvaldan `citizens` ga ko'chiriladi (§4).
 
 ### departments — ichki bo'limlar va tashqi tashkilotlar (mavjud `organizations` o'rniga)
 
@@ -81,7 +81,7 @@ Qo'shiladi:
 | neighborhood_id | uuid FK NULL | matnli `neighborhood` ustuni o'chadi |
 | assigned_department_id / assigned_user_id | uuid FK NULL | |
 | deadline_at | timestamptz NULL | created_at + SLA (kategoriya, priority) |
-| needs_review | bool default false | AI ishonchsiz bo'lsa operator diqqatiga |
+| needs_review | bool default false | AI ishonchsiz bo'lsa `true` — avto-routing ishlamaydi (B6), admin diqqatiga qoladi |
 | ai_category_id | uuid FK NULL, ai_confidence float NULL | denormalizatsiya (oxirgi tahlil) |
 | rejected_reason | text NULL | |
 
@@ -105,7 +105,7 @@ Deadline formulasi: `critical → min(sla_hours, 2h)`, `high → sla_hours/2`, `
 
 `id, complaint_id FK idx, engine varchar(10) [keyword|llm], suggested_category_id FK, confidence float, priority varchar(10), sentiment varchar(10), summary text, suggested_reply text, tags jsonb, model varchar(60) NULL, latency_ms int, created_at`.
 
-AI aniqlik KPI: `ai_analyses.suggested_category_id` vs murojaatning yakuniy `category_id` (operator to'g'rilagani).
+AI aniqlik KPI: `ai_analyses.suggested_category_id` vs murojaatning yakuniy `category_id` (admin to'g'rilagani).
 
 ### keyword_suggestions — o'rganish sikli navbati
 

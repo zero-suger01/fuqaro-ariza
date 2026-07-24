@@ -60,7 +60,7 @@ Fuqaroga HECH QACHON 10 status ko'rsatilmaydi. Backend `status_simple` ni hisobl
 - **Sentiment:** `negative` | `neutral` | `positive`
 - **Source:** `web` | `telegram` | `qr` | `operator` (operator — telefon orqali kelganini qo'lda kiritsa)
 - **FileKind:** `image` | `video` | `audio` | `document`
-- **StaffRole:** `operator` | `employee` | `manager` | `admin`
+- **StaffRole:** `department_staff` | `admin` (B6 — dastlab `operator`|`employee`|`manager`|`admin` edi, birinchi uchtasi birlashtirildi)
 - **AiEngine:** `keyword` | `llm`
 - **NotificationChannel:** `in_app` | `sms` | `telegram` | `email`
 - **KeywordSource:** `seed` | `admin` | `auto`
@@ -134,7 +134,7 @@ Javob `202`: `{"job_id": "..."}`. Keyin `GET /api/public/stt/{job_id}` → `{"st
 
 ## 4. Auth API (xodimlar + ixtiyoriy fuqaro kabineti)
 
-Mavjud `/api/auth/register|login|me` saqlanadi. `register` endi **fuqaro kabineti** uchun (telefon+parol; xodimni faqat admin yaratadi). `me` javobiga `kind: "citizen"|"staff"` va staff uchun `role`, `department_id` qo'shiladi. Kabinet P2'da — P1'da FE login sahifasini faqat xodimlar uchun ko'rsatadi.
+Mavjud `/api/auth/register|login|me` saqlanadi. `register` endi **fuqaro kabineti** uchun (telefon+parol; xodimni faqat admin yaratadi). `me` javobiga `kind: "citizen"|"staff"` va staff uchun `role`, `department_id`, `department_name` (B6, bor bo'lsa — UI'da bo'lim nomini ko'rsatish uchun) qo'shiladi. Kabinet P2'da — P1'da FE login sahifasini faqat xodimlar uchun ko'rsatadi.
 
 ## 5. Admin API (`/api/admin/*`, JWT + StaffRole tekshiruvi)
 
@@ -142,23 +142,23 @@ Mavjud endpointlar saqlanadi, quyidagilar o'zgaradi/qo'shiladi (— bilan belgil
 
 | Metod va yo'l | Nima | Kim | Faza |
 |---|---|---|---|
-| `GET /api/admin/complaints` — **pagination envelope'ga o'tadi** + yangi filtrlar: `priority`, `department_id`, `assigned_user_id`, `source`, `overdue=true`, `needs_review=true`, `q` (ticket/telefon/matn) | ro'yxat | operator+ | P1 |
-| `GET /api/admin/complaints/{id}` — javobga `ticket_number`, `citizen`, `priority`, `deadline_at`, `ai` (oxirgi tahlil), `files`, `events`, `replies`, `department`, `assigned_user` qo'shiladi | tafsilot | operator+ | P1 |
+| `GET /api/admin/complaints` — **pagination envelope'ga o'tadi** + yangi filtrlar: `priority`, `department_id`, `assigned_user_id`, `source`, `overdue=true`, `needs_review=true`, `q` (ticket/telefon/matn); har bir qatorda `department` (B6, biriktirilgan bo'lim) | ro'yxat | department_staff+ | P1 |
+| `GET /api/admin/complaints/{id}` — javobga `ticket_number`, `citizen`, `priority`, `deadline_at`, `ai` (oxirgi tahlil), `files`, `events`, `replies`, `department`, `assigned_user` qo'shiladi | tafsilot | department_staff+ | P1 |
 | `PATCH /api/admin/complaints/{id}/status` body: `{"status": "...", "note": "...?"}` — o'tish qoidalari tekshiriladi; `rejected` uchun `note` majburiy | status | roliga qarab | P1 |
-| `POST /api/admin/complaints/{id}/assign` body: `{"department_id": "...", "assigned_user_id": "...?"}` | biriktirish | operator+ | P1 |
-| `POST /api/admin/complaints/{id}/replies` body: `{"text": "..."}` → SMS/telegram/status sahifaga chiqadi; javob eventga yoziladi | rasmiy javob | employee+ | P2 |
-| `GET/POST/PATCH /api/admin/departments` | bo'limlar CRUD | admin | P1 |
-| `GET/POST/PATCH /api/admin/categories` (+ `sla_hours`, `department_id`, `names`, `is_active`) | kategoriya CRUD | admin | P2 |
-| `GET/POST/DELETE /api/admin/categories/{id}/keywords` | keyword boshqarish | admin | P2 |
+| `POST /api/admin/complaints/{id}/assign` body: `{"department_id": "...", "assigned_user_id": "...?"}` — B6: AI ishonchli bo'lganda (`needs_review=false`) `classify_complaint` worker shu mantiqni o'zi (`actor_type=ai`) chaqiradi; bu endpoint endi faqat admin uchun — ishonchsiz/yo'naltirilmagan murojaatlarni qo'lda yo'naltirish yoki AI xato yo'naltirsa qayta yo'naltirish (tuzatish) uchun | biriktirish/qayta yo'naltirish | admin | P1 |
+| `POST /api/admin/complaints/{id}/replies` body: `{"text": "..."}` → SMS/telegram/status sahifaga chiqadi; javob eventga yoziladi | rasmiy javob | department_staff+ | P2 |
+| `GET/POST/PATCH /api/admin/departments` | bo'limlar CRUD | admin (GET — department_staff+) | P1 |
+| `GET/POST/PATCH /api/admin/categories` (+ `sla_hours`, `department_id`, `names`, `is_active`) | kategoriya CRUD | admin (GET — department_staff+) | P2 |
+| `GET/POST/DELETE /api/admin/categories/{id}/keywords` | keyword boshqarish | admin (GET — department_staff+) | P2 |
 | `GET /api/admin/keyword-suggestions` / `POST .../{id}/approve` / `POST .../{id}/reject` | o'rganish sikli | admin | P2 |
 | `GET/POST/PATCH /api/admin/users` (staff CRUD, rol, bo'lim) | xodimlar | admin | P2 |
-| `GET /api/admin/stats/dashboard` — javobga `overdue`, `needs_review`, `by_priority`, `ai_accuracy_7d`, `by_neighborhood: [{neighborhood_id,neighborhood_name,count}]` qo'shiladi | dashboard | operator+ | P2 |
-| `GET /api/admin/stats/heatmap?date_from=&date_to=` → `[{lat, lng, weight}]` (koordinatalar ~11m aniqlikda guruhlanadi) | xarita | operator+ | P3 |
-| `GET /api/admin/stats/kpi?group_by=department\|user\|neighborhood\|category&date_from=&date_to=` → `[{key,label,total,resolved,avg_first_response_hours,avg_resolution_hours,sla_percent}]` | KPI | manager+ | P3 |
+| `GET /api/admin/stats/dashboard` — javobga `overdue`, `needs_review`, `by_priority`, `ai_accuracy_7d`, `by_neighborhood: [{neighborhood_id,neighborhood_name,count}]`, `ai_auto_routed_7d`, `ai_routing_corrected_7d` (B6, AI qancha avtomatik yo'naltirdi va admin qanchasini to'g'irladi) qo'shiladi | dashboard | admin | P2 |
+| `GET /api/admin/stats/heatmap?date_from=&date_to=` → `[{lat, lng, weight}]` (koordinatalar ~11m aniqlikda guruhlanadi) | xarita | admin | P3 |
+| `GET /api/admin/stats/kpi?group_by=department\|user\|neighborhood\|category&date_from=&date_to=` → `[{key,label,total,resolved,avg_first_response_hours,avg_resolution_hours,sla_percent}]` | KPI | admin | P3 |
 | `GET /api/admin/audit-logs` | audit | admin | P3 |
 | `GET /api/admin/qr-codes` / `POST /api/admin/qr-codes` (mahallaga QR yaratish, PNG/PDF url qaytadi) | QR | admin | P3 |
 
-RBAC matritsasi: `operator` — ko'rish/status(assign gacha)/biriktirish; `employee` — faqat o'z bo'limi, status in_progress/need_info/resolved, javob yozish; `manager` — o'z bo'limi to'liq + KPI; `admin` — hammasi. Buzilsa 403 `forbidden`.
+RBAC matritsasi (B6, 2 rol): `department_staff` — bitta `department_id`ga bog'langan, faqat o'z bo'limiga tushgan (AI avtomatik yoki admin qo'lda biriktirgan) murojaatlarni ko'radi, status o'zgartiradi (in_progress/need_info/resolved/rejected/closed), javob yozadi, ichki izoh qoldiradi; boshqa bo'limga qayta yo'naltira olmaydi. `admin` — hammasi: tizim boshqaruvi (bo'lim/kategoriya/keyword/xodim CRUD), barcha murojaatlarni ko'rish/statusini o'zgartirish, bo'limga biriktirish/qayta yo'naltirish, dashboard/heatmap/KPI/AI-trend/Excel eksport (workflow va AI yo'naltirish monitoringi). Buzilsa 403 `forbidden`.
 
 ## 6. Bot API (`/api/bot/*`, header `X-Bot-Token: <BOT_API_TOKEN>`)
 
@@ -189,3 +189,4 @@ Frontend: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` (F3.1, bo's
 ## Changelog
 
 - **v1.0** (2026-07-24) — dastlabki kontrakt. Eski `ComplaintStatus`/kategoriya enum'laridan migratsiya xaritasi: [04-database.md](04-database.md) §4.
+- **v1.1** (2026-07-24, B6) — **breaking:** `StaffRole` 4 tadan 2 taga tushirildi (`operator`+`employee`+`manager` → `department_staff`, `admin` saqlanadi). `POST /api/admin/complaints/{id}/assign` endi admin-only (AI ishonchli bo'lganda avtomatik biriktiradi). `stats/dashboard`, `stats/heatmap`, `stats/kpi` endi admin-only (avval operator/manager ham kira olardi). `/api/auth/me` javobiga `department_name` qo'shildi. `stats/dashboard`ga `ai_auto_routed_7d`/`ai_routing_corrected_7d` qo'shildi. Migratsiya: `alembic/versions/m6_role_model_v2.py`.
