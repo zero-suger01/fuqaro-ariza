@@ -1,6 +1,6 @@
 # 01 — Hozirgi holat (codebase auditi)
 
-Audit sanasi: 2026-07-24, `main` (B1+B2+B3 backend, F1+F2 frontend — tugallangan, AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan.
+Audit sanasi: 2026-07-24, `main` (B1+B2+B3 backend to'liq, B4 qisman — SMS/rate-limit/captcha; F1+F2 frontend to'liq — AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan.
 
 ## 1. Nima bor (ishlaydi)
 
@@ -14,6 +14,7 @@ Audit sanasi: 2026-07-24, `main` (B1+B2+B3 backend, F1+F2 frontend — tugallang
 - **Admin API:** complaints (pagination+filtrlar+detail+status+assign+replies+comments), departments/categories/keywords/users CRUD, keyword-suggestions, dashboard. RBAC bo'lim cheklovi (employee/manager) va rol asosidagi status ruxsatlari ishlaydi.
 - **Fuqaro kabineti:** `GET /api/citizen/complaints`.
 - **Auth:** `/api/auth/register|login|me` (staff YOKI citizen, JWT `kind` claim).
+- **Bildirishnoma va xavfsizlik (B4, qisman):** Eskiz SMS (`app/services/sms.py`, token Redis'da keshlanadi) — 4 tilli shablonlar (`app/i18n/messages.py`) qabul/status/javob uchun, `notifications` jadvaliga `sent`/`failed` yozadi, `ESKIZ_EMAIL/PASSWORD` sozlanmasa jimgina o'tkazib yuboradi. Rate limit (`app/core/ratelimit.py`, Redis fixed-window): submit 5/soat/telefon+20/kun/IP, STT 10/soat/IP, track 30/soat/IP (kontraktdan tashqari, enumeration himoyasi uchun qo'shildi) → 429 `rate_limited`. CAPTCHA (`app/services/captcha.py`, Cloudflare Turnstile) — `TURNSTILE_SECRET_KEY` bo'lmasa o'chirilgan (hozirgi holat). **Docker'da real sinovdan o'tkazildi:** 6-submit/soat → 429, SMS urinishlari `failed` sifatida to'g'ri yozilmoqda.
 - **Xato formati:** global handler — hamma xato `{"detail","code"}`.
 - **Testlar:** `pytest -m smoke` — 4/4 yashil.
 - **Infra:** `docker-compose.yml` — Postgres + MinIO + Redis.
@@ -32,7 +33,9 @@ Audit sanasi: 2026-07-24, `main` (B1+B2+B3 backend, F1+F2 frontend — tugallang
 
 K1 (majburiy ro'yxatdan o'tish), K2 (mobil nav — fuqaro sahifalarida endi to'liq mobile-first), K3 (ticket raqami), K4 (login'siz holat tekshirish), K5 (pagination), K6 (fayl validatsiyasi), K9 (keyword'lar DB'da), K10 (AI async), K12 (email uniqueness) — hal qilindi.
 
-**Hali ochiq:** K7 (rate limit/captcha — B4.3/B4.7), K8 (statistika UTC — B5.6), K11 (JWT localStorage), admin mobil drawer menyu (F1.8, hali qilinmagan).
+K7 (rate limit/captcha) — hal qilindi (B4.3/B4.7).
+
+**Hali ochiq:** K8 (statistika UTC — B5.6), K11 (JWT localStorage), admin mobil drawer menyu (F1.8, hali qilinmagan).
 
 ## 3. TZ va yangi talablar bo'yicha YO'Q narsalar (yangilangan gap-jadval)
 
@@ -43,9 +46,9 @@ K1 (majburiy ro'yxatdan o'tish), K2 (mobil nav — fuqaro sahifalarida endi to'l
 | i18n | Backend + fuqaro FE tayyor (F1). Admin hali faqat uz (rejalashtirilganidek) | — |
 | AI | Asosiy pipeline tayyor. Qolgan: rasm tahlili/OCR (V2, backlog), mohir.ai provider (stub) | [07-ai-layer.md](07-ai-layer.md) §7 |
 | Workflow | Eskalatsiya (deadline o'tganlarni manager'ga yuborish) yo'q | [05](05-backend-tasklar.md) B4.5 |
-| Bildirishnoma | SMS (Eskiz), Telegram — hali stub (faqat in-app) | [05](05-backend-tasklar.md) B4.1-B4.2 |
+| Bildirishnoma | **SMS (Eskiz) tayyor** (real kalitlar kelganda ishlaydi). Telegram hali stub | [05](05-backend-tasklar.md) B4.2 |
 | Analitika | Heatmap, KPI (group_by), Excel eksport — na backend, na FE | [05](05-backend-tasklar.md) B5, [06](06-frontend-tasklar.md) F4 |
-| Xavfsizlik | Rate limit, captcha, audit log yozish | B4.3-B4.7 |
+| Xavfsizlik | **Rate limit va captcha tayyor.** Fayl xavfsizligi yakuni (EXIF strip) va audit log yozish qolgan | B4.4, B4.6 |
 | Kanallar | Telegram bot, QR generatsiya (PNG/PDF), mobil ilova | [08](08-telegram-bot.md), B5.4, [09](09-mobile.md) |
 | DevOps | App dockerfile'lari, nginx, CI, backup | D2-D8 |
 | Mahalla ma'lumoti | `neighborhoods` jadvalida faqat 8 ta NAMUNA (test) yozuv bor — real Uychi tumani MFY ro'yxati hali hokimlikdan olinmagan | `python -m app.tools.import_neighborhoods <csv>` (real CSV kelganda NAMUNA yozuvlarni tozalab qayta import qilish) |
@@ -55,7 +58,7 @@ K1 (majburiy ro'yxatdan o'tish), K2 (mobil nav — fuqaro sahifalarida endi to'l
 Guest oqim VA admin panel (backend+frontend) endi **to'liq ishlaydi va sinovdan o'tgan** — loyihaning yadrosi (checkpoint C1) tayyor. Qolgan eng yuqori qiymatli yo'nalishlar:
 
 1. ~~**Mahalla CSV import**~~ — mexanizm sinovdan o'tkazildi (8 ta NAMUNA yozuv bilan, `backend/data/uychi_mfy_SAMPLE.csv`). Hokimlikdan real 62 ta MFY ro'yxati kelganda: yangi CSV → `python -m app.tools.import_neighborhoods <csv>` → NAMUNA yozuvlarni o'chirish.
-2. **B4.\*** — SMS (Eskiz), rate limit, captcha, eskalatsiya — pilotdan oldin xavfsizlik/ishonchlilik uchun muhim.
+2. ~~**B4.1/B4.3/B4.7**~~ — SMS (Eskiz), rate limit, captcha tayyor va sinovdan o'tkazildi. Qolgan B4: Telegram (B4.2), fayl xavfsizligi yakuni (B4.4), eskalatsiya croni (B4.5), audit log (B4.6) — keyingi navbatda shular.
 3. **F3** — QR landing (`/go`), fuqaro kabineti (`/kabinet`) — Telegram bot (T-fazalar) bilan birga qilinsa mantiqan to'g'ri keladi.
 4. **Jonli UX testi** — checkpoint C1/C3 talabi: kamida bitta 60+ yoshli odam yordamisiz murojaat yubora olishi kerak. Wizard tayyor, endi real sinov mumkin.
 5. **F4/B5** — analitika (heatmap/KPI/eksport) — pilot ma'lumot to'planganidan keyin qiymatliroq.

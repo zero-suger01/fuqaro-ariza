@@ -48,6 +48,10 @@ class Settings(BaseSettings):
 
     public_base_url: str = "http://localhost:3000"
 
+    # B4.7 — CAPTCHA. Unset secret = disabled (no Cloudflare keys yet, no
+    # frontend widget wired up either — see docs/05-backend-tasklar.md B4.7).
+    turnstile_secret_key: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

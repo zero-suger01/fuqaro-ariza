@@ -41,13 +41,13 @@ O'lchamlar: S ≤ 2 soat, M ≤ 1 kun, L = 2–3 kun (AI coder bilan odatda tezr
 
 ## B4 — Bildirishnoma va xavfsizlik (P2–P3)
 
-- [ ] **B4.1 (M)** Eskiz SMS provayderi (`app/services/sms.py`): token olish/kesh, yuborish, `notifications` yozuvi (status sent/failed). Shablonlar 4 tilda: qabul (ticket), status o'zgarishi, javob, need_info.
+- [x] **B4.1 (M)** Eskiz SMS provayderi (`app/services/sms.py`): token Redis'da keshlanadi (~25 kun TTL, 401'da bir marta yangilab qayta urinadi), `send_sms` hech qachon exception ko'tarmaydi (xato bo'lsa `False`). Shablonlar 4 tilda (`app/i18n/messages.py`): qabul (ticket raqami bilan), status o'zgarishi (har bir status uchun alohida matn, shu jumladan need_info), rasmiy javob. `notify_citizen` (`app/services/notifications.py`) endi `sms_text` qabul qiladi — in-app yozuv + SMS urinishi (`notifications.channel=sms`, `status=sent/failed`) + `complaint_events.sms_sent` bitta joyda. Ulangan nuqtalar: ariza yuborilganda (public.py), har status o'tishida (workflow.py), biriktirilganda (workflow.py assign), javob yozilganda (admin.py). **Docker'da real sinovdan o'tkazildi:** `ESKIZ_EMAIL`/`ESKIZ_PASSWORD` sozlanmagani uchun `notifications.status=failed` to'g'ri yoziladi, matn shablonlari ticket raqami bilan to'g'ri render bo'ladi (production kalitlari kelganda xatti-harakat avtomatik `sent`ga o'tadi — kod o'zgarishi kerak emas).
 - [ ] **B4.2 (S)** Telegram xabar yuborish (Bot API http chaqiruv, `telegram_chat_id` bo'lsa).
-- [ ] **B4.3 (M)** Rate limit (slowapi yoki Redis'da qo'lda): public endpointlar limiti ([03](03-kontraktlar.md) §3), 429 + `code=rate_limited`.
+- [x] **B4.3 (M)** Rate limit — Redis'da qo'lda (`app/core/ratelimit.py`, fixed-window `INCR`+`EXPIRE`): submit 5/soat/telefon + 20/kun/IP, STT 10/soat/IP ([03](03-kontraktlar.md) §3 aynan). `track` uchun kontraktda raqam yo'q, lekin enumeration xavfi borligi uchun 30/soat/IP qo'shildi (izoh koddagi docstringda). Hammasi 429 `rate_limited`. **Docker'da real sinovdan o'tkazildi:** bitta telefon bilan 6-marta submit qilinganda 5-tasi 201, 6-tasi 429 qaytardi; `pytest -m smoke` ta'sirlanmadi (bitta submit/test).
 - [ ] **B4.4 (S)** Fayl xavfsizligi yakuni: MIME+magic tekshiruv hamma yuklashlarda, EXIF strip (rasm), nom sanitizatsiya.
 - [ ] **B4.5 (M)** Eskalatsiya cron: deadline o'tgan (`overdue`) murojaatlar → manager'ga notification + `escalated` event; 24h javobsiz bo'lsa admin'ga.
 - [ ] **B4.6 (S)** Audit log middleware (admin mutatsiyalari), `GET /api/admin/audit-logs`.
-- [ ] **B4.7 (S)** CAPTCHA (Cloudflare Turnstile) public submit uchun — env bilan yoqiladi/o'chadi (bot endpointlariga taalluqli emas).
+- [x] **B4.7 (S)** CAPTCHA (`app/services/captcha.py`, Cloudflare Turnstile `siteverify`): `TURNSTILE_SECRET_KEY` sozlanmasa butunlay o'chirilgan (hozirgi holat — frontendda widget hali ulanmagan, real site key yo'q), sozlansa `POST /api/public/complaints`ning yangi ixtiyoriy `captcha_token` maydoni tekshiriladi, muvaffaqiyatsiz bo'lsa 422 `captcha_failed`. Cloudflare o'zi ishlamay qolsa fuqaro bloklanmaydi (log qilib o'tkazib yuboriladi). Birlik test bilan sinovdan o'tkazildi (soxta secret → `captcha_failed` ko'tariladi). **Qolgan ish:** frontendga Turnstile widget ulash — real site key kelganda, alohida F-task.
 
 ## B5 — Analitika, qidiruv, QR (P3)
 

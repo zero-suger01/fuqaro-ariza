@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.core.constants import LANGUAGES, SOURCES, STATUS_NEW, STATUS_REJECTED, STATUS_SIMPLE_MAP, STATUS_SIMPLE_STEPS
 from app.core.errors import AppError
+from app.core.ratelimit import enforce_stt_limit, enforce_submit_limits, enforce_track_limit
 from app.database import get_db
+from app.i18n.messages import qabul_text
 from app.models.category import Category
 from app.models.citizen import Citizen
 from app.models.complaint import Complaint
@@ -29,6 +31,8 @@ from app.schemas.public import (
     TrackOut,
 )
 from app.services.ai.classifier import classify
+from app.services.captcha import verify_captcha
+from app.services.notifications import notify_citizen
 from app.services.queue import enqueue
 from app.services.storage import upload_file, validate_file
 from app.services.tickets import next_ticket_number
@@ -38,6 +42,7 @@ router = APIRouter(prefix="/api/public", tags=["public"])
 
 @router.post("/complaints", response_model=ComplaintSubmitOut, status_code=201)
 def submit_complaint(
+    request: Request,
     description: str = Form(..., min_length=10, max_length=5000),
     first_name: str = Form(..., min_length=1, max_length=100),
     last_name: str = Form("", max_length=100),
@@ -50,6 +55,7 @@ def submit_complaint(
     address: str | None = Form(None),
     neighborhood_id: uuid.UUID | None = Form(None),
     qr_code: str | None = Form(None),
+    captcha_token: str | None = Form(None),
     images: list[UploadFile] = File(default=[]),
     video: UploadFile | None = File(None),
     audio: UploadFile | None = File(None),
@@ -62,6 +68,9 @@ def submit_complaint(
     real_images = [img for img in images if img.filename]
     if len(real_images) > 5:
         raise AppError(422, "invalid_file", "Ko'pi bilan 5 ta rasm yuklash mumkin")
+
+    verify_captcha(captcha_token, request.client.host if request.client else None)
+    enforce_submit_limits(request, phone)
 
     category = None
     if category_code:
@@ -136,6 +145,10 @@ def submit_complaint(
     db.commit()
     db.refresh(complaint)
 
+    sms = qabul_text(citizen.language or "uz", complaint.ticket_number)
+    notify_citizen(db, citizen, f"Arizangiz qabul qilindi: {complaint.ticket_number}", complaint_id=complaint.id, sms_text=sms)
+    db.commit()
+
     enqueue("classify_complaint", str(complaint.id))
 
     return ComplaintSubmitOut(
@@ -167,7 +180,8 @@ def _build_timeline(complaint: Complaint) -> list[TimelineStep]:
 
 
 @router.get("/complaints/track", response_model=TrackOut)
-def track_complaint(ticket: str, phone: str, db: Session = Depends(get_db)):
+def track_complaint(request: Request, ticket: str, phone: str, db: Session = Depends(get_db)):
+    enforce_track_limit(request)
     complaint = db.execute(select(Complaint).where(Complaint.ticket_number == ticket)).scalar_one_or_none()
     if complaint is None or complaint.citizen.phone != phone:
         # Enumeration protection: never reveal whether the ticket exists.
@@ -223,6 +237,7 @@ def create_stt_job(
 ):
     if language not in LANGUAGES:
         raise AppError(422, "validation_error", "Noto'g'ri til kodi")
+    enforce_stt_limit(request)
     data, mime = validate_file(audio, "audio")
     url = upload_file(data, mime, "audio")
 

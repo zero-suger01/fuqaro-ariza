@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.constants import STATUS_ASSIGNED, STATUS_REJECTED, STATUS_RESOLVED, STATUS_TRANSITIONS
 from app.core.errors import AppError
+from app.i18n.messages import status_text as sms_status_text
 from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
 from app.services.notifications import notify_citizen
@@ -61,7 +62,8 @@ def change_status(
 
     message = _STATUS_MESSAGE.get(new_status)
     if message:
-        notify_citizen(db, complaint.citizen, message, complaint_id=complaint.id)
+        sms = sms_status_text(new_status, complaint.citizen.language or "uz", complaint.ticket_number)
+        notify_citizen(db, complaint.citizen, message, complaint_id=complaint.id, sms_text=sms)
 
     return complaint
 
@@ -79,7 +81,8 @@ def assign(
 
     if STATUS_ASSIGNED in STATUS_TRANSITIONS.get(complaint.status, set()):
         complaint.status = STATUS_ASSIGNED
-        notify_citizen(db, complaint.citizen, _STATUS_MESSAGE["assigned"], complaint_id=complaint.id)
+        sms = sms_status_text(STATUS_ASSIGNED, complaint.citizen.language or "uz", complaint.ticket_number)
+        notify_citizen(db, complaint.citizen, _STATUS_MESSAGE["assigned"], complaint_id=complaint.id, sms_text=sms)
     elif complaint.status not in (STATUS_ASSIGNED,):
         raise AppError(422, "invalid_transition", f"'{complaint.status}' holatida biriktirish mumkin emas")
 

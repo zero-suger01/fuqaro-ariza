@@ -10,6 +10,7 @@ from app.core.deps import get_current_admin, get_current_employee_up, get_curren
 from app.core.errors import AppError
 from app.core.security import hash_password
 from app.database import get_db
+from app.i18n.messages import reply_text as sms_reply_text
 from app.models.category import Category
 from app.models.citizen import Citizen
 from app.models.complaint import Complaint
@@ -282,7 +283,8 @@ def create_reply(
             payload={"reply_id": str(reply.id)},
         )
     )
-    notify_citizen(db, complaint.citizen, "Murojaatingizga rasmiy javob keldi", complaint_id=complaint.id)
+    sms = sms_reply_text(complaint.citizen.language or "uz", complaint.ticket_number)
+    notify_citizen(db, complaint.citizen, "Murojaatingizga rasmiy javob keldi", complaint_id=complaint.id, sms_text=sms)
     db.commit()
     db.refresh(complaint)
     return _complaint_to_detail(complaint)
