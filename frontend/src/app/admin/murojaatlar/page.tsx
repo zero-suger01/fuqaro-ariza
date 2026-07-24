@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { apiGet, apiGetBlob } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import type { CategoryAdmin, ComplaintListItem, ComplaintStatus, DepartmentAdmin, Page, Priority } from "@/lib/types";
 import { PRIORITY_COLORS, PRIORITY_LABELS, STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
 
@@ -45,6 +46,7 @@ function isOverdue(deadline: string | null, status: ComplaintStatus): boolean {
 }
 
 export default function AdminComplaintsPage() {
+  const { user } = useAuth();
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<Page<ComplaintListItem> | null>(null);
@@ -195,9 +197,11 @@ export default function AdminComplaintsPage() {
             <span className="text-sm text-text-muted">
               Jami <strong className="text-text-primary">{total}</strong> ta
             </span>
-            <Button type="button" variant="secondary" disabled={exporting} onClick={handleExport}>
-              <FileSpreadsheet className="h-4 w-4" /> {exporting ? "Tayyorlanmoqda..." : "Excel eksport"}
-            </Button>
+            {user?.role === "admin" && (
+              <Button type="button" variant="secondary" disabled={exporting} onClick={handleExport}>
+                <FileSpreadsheet className="h-4 w-4" /> {exporting ? "Tayyorlanmoqda..." : "Excel eksport"}
+              </Button>
+            )}
           </div>
         </div>
 
