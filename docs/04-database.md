@@ -103,7 +103,7 @@ Deadline formulasi: `critical → min(sla_hours, 2h)`, `high → sla_hours/2`, `
 
 ### ai_analyses — har AI yugurishi (tarix)
 
-`id, complaint_id FK idx, engine varchar(10) [keyword|llm], suggested_category_id FK, confidence float, priority varchar(10), sentiment varchar(10), summary text, suggested_reply text, tags jsonb, model varchar(60) NULL, latency_ms int, created_at`.
+`id, complaint_id FK idx, engine varchar(10) [keyword|llm], suggested_category_id FK, confidence float, confident boolean NULL (R0/M7 — faqat engine=keyword yozuvlarida: threshold+margin qarori; llm yozuvlarida NULL), priority varchar(10), sentiment varchar(10), summary text, suggested_reply text, tags jsonb, model varchar(60) NULL, latency_ms int, created_at`.
 
 AI aniqlik KPI: `ai_analyses.suggested_category_id` vs murojaatning yakuniy `category_id` (admin to'g'rilagani).
 
@@ -141,7 +141,7 @@ Qo'shiladi: `citizen_id uuid FK NULL` (user_id NULL bo'lishi mumkin bo'ladi), `c
 
 ## 4. Mavjud sxemadan migratsiya (Alembic, tartib bilan)
 
-Bitta katta migratsiya EMAS — 5 ta kichik, har biri alohida tekshiriladi:
+Bitta katta migratsiya EMAS — kichik bosqichlar, har biri alohida tekshiriladi (M1–M5 boshlang'ich; keyin `m6_role_model_v2` — B6, `m7_llm_always` — R0):
 
 1. **M1 — yangi jadvallar:** citizens, departments, categories, category_keywords, neighborhoods, complaint_files, complaint_events, replies, ai_analyses, keyword_suggestions, stt_jobs, ticket_counters, qr_codes, settings, audit_logs. Seed data migratsiya ichida EMAS — `python -m app.seed` yangilanadi.
 2. **M2 — data ko'chirish (data migration):**
@@ -155,6 +155,7 @@ Bitta katta migratsiya EMAS — 5 ta kichik, har biri alohida tekshiriladi:
    `yangi→new, korib_chiqilmoqda→ai_processed, masul_tashkilotga_yuborildi→assigned, jarayonda→in_progress, hal_qilindi→resolved, rad_etildi→rejected`.
 4. **M4 — eski ustun/jadvallarni o'chirish:** complaints.user_id/organization_id/district/category(enum)/ai_category(enum); jadvallar: organizations, images. Eski enum tiplar DROP.
 5. **M5 — indekslar + CHECK'lar.**
+6. **M7 — LLM-always (R0):** `ai_analyses.confident boolean NULL` qo'shiladi. Backfill YO'Q — eski keyword yozuvlarida margin ma'lumoti saqlanmagan, ular NULL qoladi (o'rganish sikli NULL'ni tanlamaydi, [07](07-ai-layer.md) §5.2). Fayl: `alembic/versions/m7_llm_always.py` (`m6_role_model_v2`dan keyingi tartib).
 
 > Dev bazalar odatda bo'sh — lekin migratsiya baribir data-safe yoziladi (server pilotida kerak bo'ladi). Har migratsiyadan keyin: `alembic upgrade head && python -m app.seed && pytest -k smoke`.
 
