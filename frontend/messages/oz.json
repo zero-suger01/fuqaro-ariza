@@ -5,7 +5,8 @@
     "backToHome": "Бош саҳифа",
     "loading": "Юкланмоқда...",
     "back": "Орқага",
-    "continue": "Давом этиш"
+    "continue": "Давом этиш",
+    "myComplaints": "Менинг мурожаатларим"
   },
   "landing": {
     "greeting": "Ҳурматли фуқаро!",
@@ -100,5 +101,30 @@
     "needInfoTitle": "Қўшимча маълумот керак",
     "needInfoText": "Сиздан қўшимча маълумот кутилмоқда — телефонингизга қўнғироқ қилинади ёки СМС келади",
     "deadlineLabel": "Муддат"
+  },
+  "go": {
+    "orgName": "Уйчи тумани ҳокимлиги",
+    "neighborhoodSuffix": "маҳалласи",
+    "question": "Мурожаатни қаердан юборасиз?",
+    "webButton": "Шу ерда (сайтда)",
+    "telegramButton": "Телеграм орқали",
+    "telegramComingSoon": "Телеграм бот тез орада ишга тушади"
+  },
+  "kabinet": {
+    "title": "Менинг мурожаатларим",
+    "loginTitle": "Кириш",
+    "registerTitle": "Рўйхатдан ўтиш",
+    "phoneLabel": "Телефон рақамингиз",
+    "passwordLabel": "Парол",
+    "firstNameLabel": "Исмингиз",
+    "loginButton": "Кириш",
+    "registerButton": "Рўйхатдан ўтиш",
+    "switchToRegister": "Ҳисобингиз йўқми? Рўйхатдан ўтинг",
+    "switchToLogin": "Ҳисобингиз борми? Киринг",
+    "loggingIn": "Кирилмоқда...",
+    "error": "Телефон ёки парол нотўғри",
+    "empty": "Ҳали мурожаат юбормагансиз",
+    "logout": "Чиқиш",
+    "newComplaint": "Янги мурожаат юбориш"
   }
 }

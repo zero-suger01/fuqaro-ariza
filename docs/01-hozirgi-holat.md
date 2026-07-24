@@ -1,6 +1,6 @@
 # 01 — Hozirgi holat (codebase auditi)
 
-Audit sanasi: 2026-07-24, `main` (B1+B2+B3 backend to'liq, B4 deyarli to'liq — faqat Telegram/B4.2 qolgan; F1+F2 frontend to'liq — AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan.
+Audit sanasi: 2026-07-24, `main` (B1+B2+B3 backend to'liq, B4 deyarli to'liq — faqat Telegram/B4.2 qolgan; F1+F2+F3(qisman) frontend — AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan.
 
 ## 1. Nima bor (ishlaydi)
 
@@ -23,6 +23,7 @@ Audit sanasi: 2026-07-24, `main` (B1+B2+B3 backend to'liq, B4 deyarli to'liq —
 
 - **Fuqaro qismi (F1) — TO'LIQ ISHLAYDI, real backend bilan sinovdan o'tkazilgan:** next-intl (`uz|oz|ru|en`, `localePrefix: as-needed`, `src/proxy.ts` — Next.js 16'da `middleware`→`proxy` nomlanishi o'zgargani hisobga olingan), `src/app/[locale]/` ostida landing (`/`), 3-qadamli murojaat wizard'i (`/yangi`: matn+ovoz(STT)+rasm→mahalla+manzil+xarita→ism+telefon), muvaffaqiyat ekrani, holat sahifasi (`/holat`, vertikal 4-qadamli timeline). `GuestShell`/`GuestHeader`/`GuestButton`/`GuestLinkButton` — qayta ishlatiluvchi fuqaro UI kiti. Draft `localStorage`'da saqlanadi. **Docker'dagi real backend bilan uchdan-uchga sinovdan o'tkazilgan:** murojaat yuborildi → `UY-2026-000006` qaytdi → holat sahifasida to'g'ri ko'rindi, 4 tilda va 375px/desktop'da tekshirilgan. `npm run build`, `npm run lint`, `npm run i18n:check` — barchasi toza.
 - **Admin qismi (F2) — TO'LIQ QAYTA QURILDI, real backend bilan sinovdan o'tkazilgan:** `lib/types.ts`/`lib/auth.tsx`/`lib/status.ts` yangi kontraktga to'liq almashtirildi (F1'dagi qo'shimcha emas, o'rnini bosuvchi — chunki F2 bu fayllarni butunlay egallaydi). Murojaatlar ro'yxati (pagination, filtrlar, priority/status badge, overdue/needs_review belgisi), tafsilot sahifasi (media, AI paneli, rol+state-machine asosidagi status tugmalari, biriktirish, javob editori, ichki izohlar, voqealar tarixi), bo'limlar CRUD, xodimlar CRUD, kategoriya/keyword boshqaruvi, keyword-suggestions inbox, yangilangan dashboard (overdue/needs_review/ai_accuracy_7d). RBAC: sidebar va sahifalar `role`ga qarab cheklangan (admin-only bo'limlar operator/employee/manager'ga ko'rinmaydi). Eski `/admin/statistika` va `/admin/tashkilotlar` (backend'da endi yo'q eski endpointlarga tayangan edi) olib tashlandi. **Docker'dagi real backend bilan to'liq oqim sinovdan o'tkazildi:** login → dashboard → ro'yxat → tafsilot → status o'zgartirish (voqealar tarixida yangi yozuv bilan tasdiqlangan) → bo'limlar → xodimlar.
+- **F3 — qisman (F3.1+F3.3 tayyor, F3.2 bloklangan):** `/go` (QR landing, mahalla nomi + "Shu yerda"/"Telegram" tugmalari, Telegram env sozlanmasa "tez orada"), `/kabinet` (telefon+parol login/ro'yxat, `GET /api/citizen/complaints` ro'yxati). `lib/formatDate.ts` umumiy sana formatlagichga chiqarildi (`GuestTimeline`+`kabinet` ikkalasi ishlatadi). F3.2 (admin QR yaratish/PDF) B5.4 backend kutmoqda. **Docker'da real sinovdan o'tkazildi** (tafsilot: [06](06-frontend-tasklar.md) F3.1/F3.3).
 - Saqlanadigan narsalar: dizayn tokenlari (navy+gold), `MapPicker`, `Button`/`Card`/`Badge`/`Input` UI kiti (F2 shular ustiga qurildi, `GuestButton` esa F1'da shu naqshga mos alohida yozildi).
 
 ### Infra
@@ -41,24 +42,25 @@ K7 (rate limit/captcha) — hal qilindi (B4.3/B4.7).
 
 | Soha | Yo'q narsa | Qayerda hal qilinadi |
 |---|---|---|
-| Fuqaro UX | **Tayyor** (F1) — wizard, holat, i18n, ovoz. Qolgan: QR landing `/go` (F3.1), fuqaro kabineti UI `/kabinet` (F3.3), admin mobil drawer (F1.8) | [06](06-frontend-tasklar.md) F3 |
-| Admin panel | **Tayyor** (F2) — ro'yxat, tafsilot, status/biriktirish/javob, bo'lim/xodim/kategoriya/keyword CRUD, dashboard, RBAC. Qolgan: heatmap/KPI (F4), QR sahifasi (F3.2) | [06](06-frontend-tasklar.md) F4 |
+| Fuqaro UX | **Tayyor** (F1+F3.1+F3.3) — wizard, holat, i18n, ovoz, QR landing, kabinet. Qolgan: admin mobil drawer (F1.8) | [06](06-frontend-tasklar.md) F1.8 |
+| Admin panel | **Tayyor** (F2) — ro'yxat, tafsilot, status/biriktirish/javob, bo'lim/xodim/kategoriya/keyword CRUD, dashboard, RBAC. Qolgan: heatmap/KPI (F4), QR sahifasi (F3.2, B5.4 kutmoqda) | [06](06-frontend-tasklar.md) F4 |
 | i18n | Backend + fuqaro FE tayyor (F1). Admin hali faqat uz (rejalashtirilganidek) | — |
 | AI | Asosiy pipeline tayyor. Qolgan: rasm tahlili/OCR (V2, backlog), mohir.ai provider (stub) | [07-ai-layer.md](07-ai-layer.md) §7 |
 | Workflow | **Eskalatsiya croni tayyor** (deadline o'tgan → manager, 24h javobsiz → admin) | — |
 | Bildirishnoma | **SMS (Eskiz) tayyor** (real kalitlar kelganda ishlaydi). Telegram hali stub | [05](05-backend-tasklar.md) B4.2 |
 | Analitika | Heatmap, KPI (group_by), Excel eksport — na backend, na FE | [05](05-backend-tasklar.md) B5, [06](06-frontend-tasklar.md) F4 |
 | Xavfsizlik | **Rate limit, captcha, fayl xavfsizligi (EXIF strip) va audit log — barchasi tayyor.** | — |
-| Kanallar | Telegram bot, QR generatsiya (PNG/PDF), mobil ilova | [08](08-telegram-bot.md), B5.4, [09](09-mobile.md) |
+| Kanallar | Telegram bot, QR generatsiya (PNG/PDF, admin sahifasi F3.2), mobil ilova | [08](08-telegram-bot.md), B5.4, [09](09-mobile.md) |
 | DevOps | App dockerfile'lari, nginx, CI, backup | D2-D8 |
 | Mahalla ma'lumoti | `neighborhoods` jadvalida faqat 8 ta NAMUNA (test) yozuv bor — real Uychi tumani MFY ro'yxati hali hokimlikdan olinmagan | `python -m app.tools.import_neighborhoods <csv>` (real CSV kelganda NAMUNA yozuvlarni tozalab qayta import qilish) |
 
 ## 4. Keyingi qadam (tavsiya)
 
-Guest oqim VA admin panel (backend+frontend) endi **to'liq ishlaydi va sinovdan o'tgan** — loyihaning yadrosi (checkpoint C1) tayyor. Qolgan eng yuqori qiymatli yo'nalishlar:
+Guest oqim, admin panel VA QR/kabinet (backend+frontend) endi **to'liq ishlaydi va sinovdan o'tgan** — loyihaning yadrosi (checkpoint C1) tayyor. Qolgan eng yuqori qiymatli yo'nalishlar:
 
 1. ~~**Mahalla CSV import**~~ — mexanizm sinovdan o'tkazildi (8 ta NAMUNA yozuv bilan, `backend/data/uychi_mfy_SAMPLE.csv`). Hokimlikdan real 62 ta MFY ro'yxati kelganda: yangi CSV → `python -m app.tools.import_neighborhoods <csv>` → NAMUNA yozuvlarni o'chirish.
 2. ~~**B4.1/B4.3/B4.4/B4.5/B4.6/B4.7**~~ — SMS (Eskiz), rate limit, EXIF strip, eskalatsiya croni, audit log, captcha — barchasi tayyor va sinovdan o'tkazildi. Qolgan yagona B4 tasklari: Telegram (B4.2, `telegram_chat_id` bilan avval bot ulanishi kerak — [08-telegram-bot.md](08-telegram-bot.md) bilan birga qilinsa mantiqan to'g'ri).
-3. **F3** — QR landing (`/go`), fuqaro kabineti (`/kabinet`) — Telegram bot (T-fazalar) bilan birga qilinsa mantiqan to'g'ri keladi.
+3. ~~**F3.1/F3.3**~~ — QR landing (`/go`) va fuqaro kabineti (`/kabinet`) tayyor va sinovdan o'tkazildi. F3.2 (admin QR yaratish/PDF) B5.4 (backend QR CRUD) kutmoqda — shu ikkisi birga qilinishi kerak.
 4. **Jonli UX testi** — checkpoint C1/C3 talabi: kamida bitta 60+ yoshli odam yordamisiz murojaat yubora olishi kerak. Wizard tayyor, endi real sinov mumkin.
-5. **F4/B5** — analitika (heatmap/KPI/eksport) — pilot ma'lumot to'planganidan keyin qiymatliroq.
+5. **B5/F3.2/F4** — QR CRUD+PDF (B5.4), analitika (heatmap/KPI/eksport, B5.1-B5.3+F4) — pilot ma'lumot to'planganidan keyin qiymatliroq.
+6. **T-fazalar (Telegram bot)** — B4.2 (SMS-ga o'xshash status/javob push) va F3.1'dagi "Telegram orqali" tugmasi shu bot tayyor bo'lgach to'liq ishga tushadi.

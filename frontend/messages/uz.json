@@ -5,7 +5,8 @@
     "backToHome": "Bosh sahifa",
     "loading": "Yuklanmoqda...",
     "back": "Orqaga",
-    "continue": "Davom etish"
+    "continue": "Davom etish",
+    "myComplaints": "Mening murojaatlarim"
   },
   "landing": {
     "greeting": "Hurmatli fuqaro!",
@@ -100,5 +101,30 @@
     "needInfoTitle": "Qo'shimcha ma'lumot kerak",
     "needInfoText": "Sizdan qo'shimcha ma'lumot kutilmoqda — telefoningizga qo'ng'iroq qilinadi yoki SMS keladi",
     "deadlineLabel": "Muddat"
+  },
+  "go": {
+    "orgName": "Uychi tumani hokimligi",
+    "neighborhoodSuffix": "mahallasi",
+    "question": "Murojaatni qayerdan yuborasiz?",
+    "webButton": "Shu yerda (saytda)",
+    "telegramButton": "Telegram orqali",
+    "telegramComingSoon": "Telegram bot tez orada ishga tushadi"
+  },
+  "kabinet": {
+    "title": "Mening murojaatlarim",
+    "loginTitle": "Kirish",
+    "registerTitle": "Ro'yxatdan o'tish",
+    "phoneLabel": "Telefon raqamingiz",
+    "passwordLabel": "Parol",
+    "firstNameLabel": "Ismingiz",
+    "loginButton": "Kirish",
+    "registerButton": "Ro'yxatdan o'tish",
+    "switchToRegister": "Hisobingiz yo'qmi? Ro'yxatdan o'ting",
+    "switchToLogin": "Hisobingiz bormi? Kiring",
+    "loggingIn": "Kirilmoqda...",
+    "error": "Telefon yoki parol noto'g'ri",
+    "empty": "Hali murojaat yubormagansiz",
+    "logout": "Chiqish",
+    "newComplaint": "Yangi murojaat yuborish"
   }
 }

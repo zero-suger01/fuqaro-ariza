@@ -5,7 +5,8 @@
     "backToHome": "Home",
     "loading": "Loading...",
     "back": "Back",
-    "continue": "Continue"
+    "continue": "Continue",
+    "myComplaints": "My complaints"
   },
   "landing": {
     "greeting": "Dear citizen!",
@@ -100,5 +101,30 @@
     "needInfoTitle": "More information needed",
     "needInfoText": "We're waiting for more information from you — you'll get a call or SMS",
     "deadlineLabel": "Deadline"
+  },
+  "go": {
+    "orgName": "Uychi District Administration",
+    "neighborhoodSuffix": "neighborhood",
+    "question": "Where would you like to send your complaint from?",
+    "webButton": "Here (on the website)",
+    "telegramButton": "Via Telegram",
+    "telegramComingSoon": "The Telegram bot is launching soon"
+  },
+  "kabinet": {
+    "title": "My complaints",
+    "loginTitle": "Log in",
+    "registerTitle": "Sign up",
+    "phoneLabel": "Your phone number",
+    "passwordLabel": "Password",
+    "firstNameLabel": "Your name",
+    "loginButton": "Log in",
+    "registerButton": "Sign up",
+    "switchToRegister": "No account? Sign up",
+    "switchToLogin": "Already have an account? Log in",
+    "loggingIn": "Logging in...",
+    "error": "Incorrect phone or password",
+    "empty": "You haven't submitted any complaints yet",
+    "logout": "Log out",
+    "newComplaint": "Submit a new complaint"
   }
 }

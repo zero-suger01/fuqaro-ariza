@@ -184,7 +184,7 @@ Bildirishnomalar: backend worker statusi o'zgarganda `citizens.telegram_chat_id`
 ## 9. Muhit o'zgaruvchilari (kontraktga kiruvchi nomlar)
 
 Backend: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `TICKET_PREFIX=UY`, `S3_*` (mavjud), `OLLAMA_URL=http://localhost:11434`, `OLLAMA_MODEL=gemma3:12b`, `AI_CONFIDENCE_THRESHOLD=0.75`, `STT_PROVIDER=whisper|mohirai`, `STT_WHISPER_MODEL=medium`, `MOHIRAI_API_KEY`, `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `BOT_API_TOKEN`, `PUBLIC_BASE_URL`, `TURNSTILE_SECRET_KEY` (B4.7, bo'sh = captcha o'chirilgan).
-Frontend: `NEXT_PUBLIC_API_URL`. Bot: `TELEGRAM_BOT_TOKEN`, `BACKEND_URL`, `BOT_API_TOKEN`.
+Frontend: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` (F3.1, bo'sh = `/go`dagi Telegram tugmasi "tez orada" holatida). Bot: `TELEGRAM_BOT_TOKEN`, `BACKEND_URL`, `BOT_API_TOKEN`.
 
 ## Changelog
 

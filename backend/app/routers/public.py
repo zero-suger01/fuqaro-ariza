@@ -131,11 +131,6 @@ def submit_complaint(
         url = upload_file(data, mime, "audio")
         db.add(ComplaintFile(complaint_id=complaint.id, kind="audio", url=url, mime=mime, size_bytes=len(data)))
 
-    if qr_code:
-        qr = db.execute(select(QrCode).where(QrCode.code == qr_code)).scalar_one_or_none()
-        if qr is not None:
-            qr.scans += 1
-
     db.add(
         ComplaintEvent(
             complaint_id=complaint.id, event_type="created", actor_type="citizen", actor_id=citizen.id, payload=None
@@ -223,9 +218,18 @@ def list_neighborhoods(db: Session = Depends(get_db)):
 @router.get("/qr/{code}", response_model=QrLandingOut)
 def qr_landing(code: str, db: Session = Depends(get_db)):
     qr = db.execute(select(QrCode).where(QrCode.code == code)).scalar_one_or_none()
-    if qr is None or qr.neighborhood_id is None:
+    if qr is None:
         raise AppError(404, "not_found", "QR topilmadi")
-    return QrLandingOut(neighborhood_id=qr.neighborhood_id, neighborhood_name=qr.neighborhood.name)
+    # docs/03-kontraktlar.md §7: scan hisoblagichi shu yerda oshadi (sahifa
+    # ochilganda), oldin submit_complaint()dagi qr_code maydonida edi — bu
+    # faqat ariza yuborilgan hollarni sanardi, ko'pchilik skan qilib ko'rib
+    # yubormaydiganlarni yo'qotardi.
+    qr.scans += 1
+    db.commit()
+    return QrLandingOut(
+        neighborhood_id=qr.neighborhood_id,
+        neighborhood_name=qr.neighborhood.name if qr.neighborhood_id else None,
+    )
 
 
 @router.post("/stt", response_model=SttJobCreatedOut, status_code=202)

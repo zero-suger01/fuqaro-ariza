@@ -245,3 +245,19 @@ export interface SttJobStatus {
   text: string | null;
   code: string | null;
 }
+
+export interface QrLanding {
+  neighborhood_id: string | null;
+  neighborhood_name: string | null;
+}
+
+// --- Citizen kabinet (docs/03-kontraktlar.md §4, F3.3) ---
+
+export interface CitizenComplaint {
+  id: string;
+  ticket_number: string;
+  status_simple: "qabul_qilindi" | "korilmoqda" | "ijroda" | "yakunlandi" | "rad_etildi";
+  category: { code: string; name: string };
+  created_at: string;
+  deadline_at: string | null;
+}

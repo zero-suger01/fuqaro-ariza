@@ -5,7 +5,8 @@
     "backToHome": "Главная страница",
     "loading": "Загрузка...",
     "back": "Назад",
-    "continue": "Продолжить"
+    "continue": "Продолжить",
+    "myComplaints": "Мои обращения"
   },
   "landing": {
     "greeting": "Уважаемый гражданин!",
@@ -100,5 +101,30 @@
     "needInfoTitle": "Требуется дополнительная информация",
     "needInfoText": "Ожидаем от вас дополнительную информацию — вам позвонят или пришлют SMS",
     "deadlineLabel": "Срок"
+  },
+  "go": {
+    "orgName": "Хокимият Уйчинского района",
+    "neighborhoodSuffix": "махалля",
+    "question": "Откуда вы хотите отправить обращение?",
+    "webButton": "Здесь (на сайте)",
+    "telegramButton": "Через Telegram",
+    "telegramComingSoon": "Telegram-бот скоро заработает"
+  },
+  "kabinet": {
+    "title": "Мои обращения",
+    "loginTitle": "Вход",
+    "registerTitle": "Регистрация",
+    "phoneLabel": "Ваш номер телефона",
+    "passwordLabel": "Пароль",
+    "firstNameLabel": "Ваше имя",
+    "loginButton": "Войти",
+    "registerButton": "Зарегистрироваться",
+    "switchToRegister": "Нет аккаунта? Зарегистрируйтесь",
+    "switchToLogin": "Уже есть аккаунт? Войдите",
+    "loggingIn": "Вход...",
+    "error": "Неверный телефон или пароль",
+    "empty": "Вы ещё не отправляли обращений",
+    "logout": "Выйти",
+    "newComplaint": "Отправить новое обращение"
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { GuestShell } from "@/components/guest/GuestShell";
 import { WizardProgress } from "@/components/wizard/WizardProgress";
@@ -12,12 +13,14 @@ import { SuccessScreen } from "@/components/wizard/SuccessScreen";
 import { apiGet, apiPostForm } from "@/lib/api";
 import { toE164 } from "@/lib/phone";
 import { EMPTY_DRAFT, clearDraft, loadDraft, saveDraft, type WizardDraft } from "@/lib/wizardDraft";
-import type { ComplaintSubmitResponse, PublicCategory, PublicNeighborhood } from "@/lib/types";
+import type { ComplaintSubmitResponse, PublicCategory, PublicNeighborhood, QrLanding } from "@/lib/types";
 import { ApiError } from "@/lib/api";
 
-export default function WizardPage() {
+function WizardContent() {
   const t = useTranslations("wizard");
   const locale = useLocale();
+  const searchParams = useSearchParams();
+  const qrCode = searchParams.get("qr");
 
   const [categories, setCategories] = useState<PublicCategory[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<PublicNeighborhood[]>([]);
@@ -39,6 +42,21 @@ export default function WizardPage() {
       .then(setNeighborhoods)
       .catch(() => setNeighborhoods([]));
   }, [locale]);
+
+  useEffect(() => {
+    // QR plakat orqali kelingan bo'lsa (docs/06-frontend-tasklar.md F3.1)
+    // mahallani oldindan tanlab qo'yamiz — fuqaro Step2'da qayta qidirmaydi.
+    if (!qrCode) return;
+    apiGet<QrLanding>(`/api/public/qr/${encodeURIComponent(qrCode)}`)
+      .then((res) => {
+        if (res.neighborhood_id) {
+          setDraft((prev) => ({ ...prev, neighborhoodId: res.neighborhood_id! }));
+        }
+      })
+      .catch(() => {
+        // Noto'g'ri/eskirgan QR kod — wizard oddiy holatda davom etadi.
+      });
+  }, [qrCode]);
 
   useEffect(() => {
     // localStorage is client-only; this must run post-mount (not during the
@@ -68,7 +86,8 @@ export default function WizardPage() {
       formData.append("first_name", draft.firstName);
       formData.append("phone", toE164(draft.phoneDigits));
       formData.append("language", locale);
-      formData.append("source", "web");
+      formData.append("source", qrCode ? "qr" : "web");
+      if (qrCode) formData.append("qr_code", qrCode);
       if (draft.categoryCode) formData.append("category_code", draft.categoryCode);
       if (draft.address) formData.append("address", draft.address);
       if (draft.neighborhoodId) formData.append("neighborhood_id", draft.neighborhoodId);
@@ -164,5 +183,13 @@ export default function WizardPage() {
         </>
       )}
     </GuestShell>
+  );
+}
+
+export default function WizardPage() {
+  return (
+    <Suspense fallback={null}>
+      <WizardContent />
+    </Suspense>
   );
 }

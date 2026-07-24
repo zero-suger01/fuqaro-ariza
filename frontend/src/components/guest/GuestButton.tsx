@@ -4,7 +4,7 @@ import { Link } from "@/i18n/navigation";
 
 type Variant = "primary" | "secondary";
 
-function guestButtonClasses(variant: Variant, className?: string) {
+export function guestButtonClasses(variant: Variant, className?: string) {
   return clsx(
     "flex w-full items-center justify-center gap-3 rounded-card px-6 py-4 text-lg font-semibold transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed",
     "min-h-[56px]",
