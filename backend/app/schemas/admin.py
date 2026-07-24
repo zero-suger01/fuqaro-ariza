@@ -328,3 +328,20 @@ class AuditLogOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class QrCodeIn(BaseModel):
+    neighborhood_id: uuid.UUID | None = None
+    note: str | None = Field(None, max_length=200)
+
+
+class QrCodeOut(BaseModel):
+    id: uuid.UUID
+    code: str
+    neighborhood_id: uuid.UUID | None
+    neighborhood_name: str | None
+    note: str | None
+    scans: int
+    created_at: datetime
+    png_url: str
+    pdf_url: str

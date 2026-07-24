@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
@@ -5,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.core.constants import STATUS_ASSIGNED, STATUS_IN_PROGRESS, STATUS_RESOLVED, TERMINAL_STATUSES
 from app.core.deps import get_current_admin, get_current_employee_up, get_current_operator_up
 from app.core.errors import AppError
@@ -19,6 +21,8 @@ from app.models.complaint_event import ComplaintEvent
 from app.models.department import Department
 from app.models.keyword import CategoryKeyword
 from app.models.keyword_suggestion import KeywordSuggestion
+from app.models.neighborhood import Neighborhood
+from app.models.qr_code import QrCode
 from app.models.reply import Reply
 from app.models.user import User
 from app.schemas.admin import (
@@ -41,6 +45,8 @@ from app.schemas.admin import (
     FileOut,
     KeywordIn,
     KeywordOut,
+    QrCodeIn,
+    QrCodeOut,
     ReplyIn,
     ReplyOut,
     StatusUpdateRequest,
@@ -54,7 +60,10 @@ from app.schemas.public import CategoryBrief
 from app.services import workflow
 from app.services.ai.normalize import normalize
 from app.services.notifications import notify_citizen
+from app.services.qr import generate_poster_pdf, generate_qr_png
+from app.services.storage import upload_object
 
+settings = get_settings()
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 # RBAC matrix (docs/03-kontraktlar.md §5). None = no restriction beyond role gate.
@@ -648,3 +657,59 @@ def list_audit_logs(
         for row in rows
     ]
     return Page(items=items, total=total, page=page, page_size=page_size)
+
+
+def _qr_urls(code: str) -> tuple[str, str]:
+    """PNG/PDF joylanadigan kalit `code`dan hosil qilinadi (deterministik) —
+    shu sabab URL'ni saqlash uchun alohida DB ustuni kerak emas."""
+    base = f"{settings.s3_public_base_url}/qr-posters/{code}"
+    return f"{base}.png", f"{base}.pdf"
+
+
+def _qr_to_out(qr: QrCode) -> QrCodeOut:
+    png_url, pdf_url = _qr_urls(qr.code)
+    return QrCodeOut(
+        id=qr.id,
+        code=qr.code,
+        neighborhood_id=qr.neighborhood_id,
+        neighborhood_name=qr.neighborhood.name if qr.neighborhood_id else None,
+        note=qr.note,
+        scans=qr.scans,
+        created_at=qr.created_at,
+        png_url=png_url,
+        pdf_url=pdf_url,
+    )
+
+
+@router.get("/qr-codes", response_model=list[QrCodeOut], dependencies=[Depends(get_current_admin)])
+def list_qr_codes(db: Session = Depends(get_db)):
+    rows = db.execute(select(QrCode).order_by(QrCode.created_at.desc())).scalars().all()
+    return [_qr_to_out(qr) for qr in rows]
+
+
+@router.post("/qr-codes", response_model=QrCodeOut, status_code=201, dependencies=[Depends(get_current_admin)])
+def create_qr_code(payload: QrCodeIn, db: Session = Depends(get_db)):
+    if payload.neighborhood_id and db.get(Neighborhood, payload.neighborhood_id) is None:
+        raise AppError(404, "not_found", "Mahalla topilmadi")
+
+    for _ in range(5):
+        code = secrets.token_hex(4)
+        if not db.execute(select(QrCode).where(QrCode.code == code)).scalar_one_or_none():
+            break
+    else:
+        raise AppError(500, "server_error", "QR kod generatsiya qilib bo'lmadi, qayta urining")
+
+    qr = QrCode(code=code, neighborhood_id=payload.neighborhood_id, note=payload.note)
+    db.add(qr)
+    db.flush()
+
+    neighborhood_name = qr.neighborhood.name if qr.neighborhood_id else None
+    landing_url = f"{settings.public_base_url}/go?m={code}"
+    png_bytes = generate_qr_png(landing_url)
+    pdf_bytes = generate_poster_pdf(landing_url, neighborhood_name)
+    upload_object(png_bytes, "image/png", f"qr-posters/{code}.png")
+    upload_object(pdf_bytes, "application/pdf", f"qr-posters/{code}.pdf")
+
+    db.commit()
+    db.refresh(qr)
+    return _qr_to_out(qr)

@@ -9,6 +9,7 @@ import {
   Users,
   Tags,
   Lightbulb,
+  QrCode,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Sidebar, type NavItem } from "@/components/layout/Sidebar";
@@ -21,6 +22,7 @@ const ADMIN_NAV: (NavItem & { roles?: string[] })[] = [
   { href: "/admin/xodimlar", label: "Xodimlar", icon: Users, roles: ["admin"] },
   { href: "/admin/kategoriyalar", label: "Kategoriyalar", icon: Tags, roles: ["admin"] },
   { href: "/admin/takliflar", label: "Keyword takliflari", icon: Lightbulb, roles: ["admin"] },
+  { href: "/admin/qr", label: "QR kodlar", icon: QrCode, roles: ["admin"] },
 ];
 
 export function AppShell({

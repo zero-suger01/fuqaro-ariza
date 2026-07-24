@@ -80,6 +80,14 @@ def upload_file(data: bytes, mime: str, kind: str) -> str:
     return f"{settings.s3_public_base_url}/{key}"
 
 
+def upload_object(data: bytes, mime: str, key: str) -> str:
+    """Uploads to an explicit (deterministic) key instead of a random one —
+    used by QR posters (B5.4), where the key is derived from `code` so the
+    same code always resolves to the same PNG/PDF url without a DB column."""
+    _client.put_object(Bucket=settings.s3_bucket, Key=key, Body=data, ContentType=mime)
+    return f"{settings.s3_public_base_url}/{key}"
+
+
 def download_to_temp(url: str) -> str:
     """Fetches an object this module previously uploaded back to a local
     temp file (used by the STT worker, which needs a real path for ffmpeg)."""

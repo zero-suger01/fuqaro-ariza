@@ -165,6 +165,18 @@ export interface CategoryAdmin {
   is_active: boolean;
 }
 
+export interface QrCodeAdmin {
+  id: string;
+  code: string;
+  neighborhood_id: string | null;
+  neighborhood_name: string | null;
+  note: string | null;
+  scans: number;
+  created_at: string;
+  png_url: string;
+  pdf_url: string;
+}
+
 export interface KeywordItem {
   id: string;
   keyword_norm: string;
