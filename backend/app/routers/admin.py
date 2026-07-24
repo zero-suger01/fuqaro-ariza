@@ -6,15 +6,18 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.constants import STATUS_ASSIGNED, STATUS_IN_PROGRESS, STATUS_RESOLVED
-from app.core.deps import get_current_admin, get_current_operator_up
+from app.core.deps import get_current_admin, get_current_employee_up, get_current_operator_up
 from app.core.errors import AppError
+from app.core.security import hash_password
 from app.database import get_db
 from app.models.category import Category
 from app.models.citizen import Citizen
 from app.models.complaint import Complaint
+from app.models.complaint_event import ComplaintEvent
 from app.models.department import Department
 from app.models.keyword import CategoryKeyword
 from app.models.keyword_suggestion import KeywordSuggestion
+from app.models.reply import Reply
 from app.models.user import User
 from app.schemas.admin import (
     AiAnalysisOut,
@@ -23,6 +26,7 @@ from app.schemas.admin import (
     CategoryIn,
     CategoryPatch,
     CitizenBrief,
+    CommentIn,
     ComplaintDetail,
     ComplaintListItem,
     DashboardStats,
@@ -34,17 +38,42 @@ from app.schemas.admin import (
     FileOut,
     KeywordIn,
     KeywordOut,
+    ReplyIn,
     ReplyOut,
     StatusUpdateRequest,
     SuggestionOut,
+    UserAdminOut,
+    UserIn,
+    UserPatch,
 )
 from app.schemas.common import Page
 from app.schemas.public import CategoryBrief
 from app.services import workflow
 from app.services.ai.normalize import normalize
+from app.services.notifications import notify_citizen
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 TERMINAL_STATUSES = ["resolved", "closed", "rejected", "archived"]
+
+# RBAC matrix (docs/03-kontraktlar.md §5). None = no restriction beyond role gate.
+ROLE_ALLOWED_STATUSES = {
+    "operator": {"assigned", "rejected"},
+    "employee": {"in_progress", "need_info", "resolved"},
+    "manager": {"in_progress", "need_info", "resolved", "rejected", "closed"},
+    "admin": None,
+}
+DEPARTMENT_SCOPED_ROLES = ("employee", "manager")
+
+
+def _check_status_permission(staff: User, new_status: str) -> None:
+    allowed = ROLE_ALLOWED_STATUSES.get(staff.role)
+    if allowed is not None and new_status not in allowed:
+        raise AppError(403, "forbidden", "Bu holatga o'tkazish uchun huquqingiz yetarli emas")
+
+
+def _check_department_access(complaint: Complaint, staff: User) -> None:
+    if staff.role in DEPARTMENT_SCOPED_ROLES and complaint.assigned_department_id != staff.department_id:
+        raise AppError(403, "forbidden", "Bu murojaat sizning bo'limingizga tegishli emas")
 
 
 def _category_brief(category: Category) -> CategoryBrief:
@@ -100,7 +129,7 @@ def _complaint_to_detail(complaint: Complaint) -> ComplaintDetail:
     )
 
 
-@router.get("/complaints", response_model=Page[ComplaintListItem], dependencies=[Depends(get_current_operator_up)])
+@router.get("/complaints", response_model=Page[ComplaintListItem])
 def list_complaints(
     status: str | None = None,
     category: str | None = None,
@@ -116,10 +145,13 @@ def list_complaints(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    staff: User = Depends(get_current_operator_up),
 ):
     query = db.query(Complaint).join(Citizen, Complaint.citizen_id == Citizen.id).join(
         Category, Complaint.category_id == Category.id
     )
+    if staff.role in DEPARTMENT_SCOPED_ROLES:
+        query = query.filter(Complaint.assigned_department_id == staff.department_id)
     if status:
         query = query.filter(Complaint.status == status)
     if category:
@@ -172,11 +204,12 @@ def list_complaints(
     return Page(items=items, total=total, page=page, page_size=page_size)
 
 
-@router.get("/complaints/{complaint_id}", response_model=ComplaintDetail, dependencies=[Depends(get_current_operator_up)])
-def get_complaint(complaint_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.get("/complaints/{complaint_id}", response_model=ComplaintDetail)
+def get_complaint(complaint_id: uuid.UUID, db: Session = Depends(get_db), staff: User = Depends(get_current_operator_up)):
     complaint = db.get(Complaint, complaint_id)
     if complaint is None:
         raise AppError(404, "not_found", "Murojaat topilmadi")
+    _check_department_access(complaint, staff)
     return _complaint_to_detail(complaint)
 
 
@@ -190,6 +223,8 @@ def update_status(
     complaint = db.get(Complaint, complaint_id)
     if complaint is None:
         raise AppError(404, "not_found", "Murojaat topilmadi")
+    _check_department_access(complaint, staff)
+    _check_status_permission(staff, payload.status)
     workflow.change_status(db, complaint, payload.status, actor_type="staff", actor_id=staff.id, note=payload.note)
     db.commit()
     db.refresh(complaint)
@@ -206,10 +241,75 @@ def assign_complaint(
     complaint = db.get(Complaint, complaint_id)
     if complaint is None:
         raise AppError(404, "not_found", "Murojaat topilmadi")
+    _check_department_access(complaint, staff)
     if db.get(Department, payload.department_id) is None:
         raise AppError(404, "not_found", "Bo'lim topilmadi")
 
     workflow.assign(db, complaint, payload.department_id, payload.assigned_user_id, actor_id=staff.id)
+    db.commit()
+    db.refresh(complaint)
+    return _complaint_to_detail(complaint)
+
+
+@router.post("/complaints/{complaint_id}/replies", response_model=ComplaintDetail, status_code=201)
+def create_reply(
+    complaint_id: uuid.UUID,
+    payload: ReplyIn,
+    db: Session = Depends(get_db),
+    staff: User = Depends(get_current_employee_up),
+):
+    complaint = db.get(Complaint, complaint_id)
+    if complaint is None:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+    _check_department_access(complaint, staff)
+
+    latest_ai = complaint.ai_analyses[-1] if complaint.ai_analyses else None
+    reply = Reply(
+        complaint_id=complaint.id,
+        ai_draft=latest_ai.suggested_reply if latest_ai else None,
+        text=payload.text,
+        sent_by=staff.id,
+        channels=["track"],
+    )
+    db.add(reply)
+    db.flush()
+    db.add(
+        ComplaintEvent(
+            complaint_id=complaint.id,
+            event_type="reply_sent",
+            actor_type="staff",
+            actor_id=staff.id,
+            payload={"reply_id": str(reply.id)},
+        )
+    )
+    notify_citizen(db, complaint.citizen, "Murojaatingizga rasmiy javob keldi", complaint_id=complaint.id)
+    db.commit()
+    db.refresh(complaint)
+    return _complaint_to_detail(complaint)
+
+
+@router.post("/complaints/{complaint_id}/comments", response_model=ComplaintDetail, status_code=201)
+def create_comment(
+    complaint_id: uuid.UUID,
+    payload: CommentIn,
+    db: Session = Depends(get_db),
+    staff: User = Depends(get_current_operator_up),
+):
+    """Internal note — not visible to the citizen (unlike replies)."""
+    complaint = db.get(Complaint, complaint_id)
+    if complaint is None:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+    _check_department_access(complaint, staff)
+
+    db.add(
+        ComplaintEvent(
+            complaint_id=complaint.id,
+            event_type="comment_added",
+            actor_type="staff",
+            actor_id=staff.id,
+            payload={"text": payload.text},
+        )
+    )
     db.commit()
     db.refresh(complaint)
     return _complaint_to_detail(complaint)
@@ -463,3 +563,42 @@ def dashboard_stats(db: Session = Depends(get_db)):
         by_priority={priority: count for priority, count in priority_rows},
         ai_accuracy_7d=ai_accuracy_7d,
     )
+
+
+@router.get("/users", response_model=list[UserAdminOut], dependencies=[Depends(get_current_admin)])
+def list_users(db: Session = Depends(get_db)):
+    return db.execute(select(User).order_by(User.first_name)).scalars().all()
+
+
+@router.post("/users", response_model=UserAdminOut, status_code=201, dependencies=[Depends(get_current_admin)])
+def create_user(payload: UserIn, db: Session = Depends(get_db)):
+    if db.execute(select(User).where(User.phone == payload.phone)).scalar_one_or_none():
+        raise AppError(400, "already_exists", "Bu telefon raqami band")
+    if payload.department_id and db.get(Department, payload.department_id) is None:
+        raise AppError(404, "not_found", "Bo'lim topilmadi")
+
+    data = payload.model_dump(exclude={"password"})
+    user = User(**data, password_hash=hash_password(payload.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.patch("/users/{user_id}", response_model=UserAdminOut, dependencies=[Depends(get_current_admin)])
+def update_user(user_id: uuid.UUID, payload: UserPatch, db: Session = Depends(get_db)):
+    user = db.get(User, user_id)
+    if user is None:
+        raise AppError(404, "not_found", "Xodim topilmadi")
+    if payload.department_id and db.get(Department, payload.department_id) is None:
+        raise AppError(404, "not_found", "Bo'lim topilmadi")
+
+    updates = payload.model_dump(exclude_unset=True, exclude={"password"})
+    for field, value in updates.items():
+        setattr(user, field, value)
+    if payload.password:
+        user.password_hash = hash_password(payload.password)
+
+    db.commit()
+    db.refresh(user)
+    return user

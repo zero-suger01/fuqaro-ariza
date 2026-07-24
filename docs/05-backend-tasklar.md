@@ -34,10 +34,10 @@ O'lchamlar: S ≤ 2 soat, M ≤ 1 kun, L = 2–3 kun (AI coder bilan odatda tezr
 
 ## B3 — Javoblar, kabinet, xodimlar (P2)
 
-- [ ] **B3.1 (M)** `POST /api/admin/complaints/{id}/replies`: reply saqlash, event, fuqaroga yetkazish (SMS/telegram/track). AI draft `ai_analyses.suggested_reply` dan olinadi.
-- [ ] **B3.2 (M)** Staff CRUD (`/api/admin/users`), RBAC dependency'lar (operator/employee/manager/admin, bo'lim cheklovi). `auth/me` ga `kind`, `role`, `department_id`.
-- [ ] **B3.3 (S)** Ichki izohlar (mavjud comments) eventga ulash; employee faqat o'z bo'limini ko'rishi testlari.
-- [ ] **B3.4 (M)** Fuqaro kabineti (ixtiyoriy): telefon+parol register (citizens.password_hash), login, `GET /api/citizen/complaints` — faqat o'z murojaatlari. (SMS OTP P3'gacha yo'q — shu sabab kabinetda faqat shu akkaunt bilan yuborilganlar ko'rinadi; hujjat: [03](03-kontraktlar.md) §4.)
+- [x] **B3.1 (M)** `POST /api/admin/complaints/{id}/replies` (employee+): reply saqlanadi, `reply_sent` event, fuqaroga in-app notify (SMS/Telegram — B4.1/B4.2 kelganda `channels` maydoniga qo'shiladi). AI draft `ai_analyses.suggested_reply` dan olinadi (LLM ishlagan bo'lsa). curl bilan sinovdan o'tkazildi.
+- [x] **B3.2 (M)** `GET/POST/PATCH /api/admin/users` (admin-only), parol bcrypt bilan hash. `auth/me`ga `kind`/`role`/`department_id` B1'dan beri bor edi.
+- [x] **B3.3 (S)** `POST /api/admin/complaints/{id}/comments` (`comment_added` event, fuqaroga ko'rinmaydi). RBAC bo'lim cheklovi: `_check_department_access` — employee/manager faqat `assigned_department_id`i o'ziniki bo'lgan murojaatlarni ko'radi/yozadi (list ham filtrlanadi, detail/status/assign/reply/comment'da 403 `forbidden`). Status o'tishlari rolga qarab cheklandi (`ROLE_ALLOWED_STATUSES`): operator→assigned/rejected, employee→in_progress/need_info/resolved, manager→+rejected/closed, admin→cheklovsiz. **Docker'da real sinovdan o'tkazildi:** boshqa bo'lim xodimi begona murojaatga kirsa 403, o'z bo'limida to'liq ishlaydi (status+reply).
+- [x] **B3.4 (M)** `GET /api/citizen/complaints` (`app/routers/citizen.py`) — faqat login qilgan fuqaroning o'z murojaatlari (status_simple+category). `/api/auth/register` va `/login` B1'da tayyor edi. curl bilan sinovdan o'tkazildi (guest sifatida yuborilgan murojaat keyin register qilingach kabinetda ko'rindi — telefon bo'yicha bog'lanish ishladi).
 
 ## B4 — Bildirishnoma va xavfsizlik (P2–P3)
 

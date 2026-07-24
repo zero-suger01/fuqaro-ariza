@@ -1,6 +1,6 @@
 # 01 — Hozirgi holat (codebase auditi)
 
-Audit sanasi: 2026-07-24, `main` (B1 + B2 — backend poydevor, guest oqimi va AI qatlami tugallangan, AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan.
+Audit sanasi: 2026-07-24, `main` (B1 + B2 + B3 — backend poydevor, guest oqimi, AI qatlami, javoblar/xodimlar/kabinet tugallangan, AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan.
 
 ## 1. Nima bor (ishlaydi)
 
@@ -12,7 +12,8 @@ Audit sanasi: 2026-07-24, `main` (B1 + B2 — backend poydevor, guest oqimi va A
 - **Guest oqim (auth YO'Q):** `POST /api/public/complaints` (citizen upsert, fayl validatsiya magic-byte bilan, MinIO, ticket generatsiya, `created` event, ARQ'ga classify enqueue), `GET /api/public/complaints/track` (4 qadamli timeline, enumeration himoya), `GET /api/public/categories|neighborhoods|qr/{code}`, `POST/GET /api/public/stt[/{id}]` (ovoz→matn).
 - **AI (to'liq gibrid pipeline):** `app/services/ai/normalize.py` (kirill→lotin), `classifier.py` (DB keyword, margin+threshold scoring, xavfli-so'z priority), `llm.py` (Ollama fallback, JSON validatsiya, 2x retry, graceful fail), `learning.py` (kunlik keyword-mining), `stt.py` (faster-whisper/mohir.ai provider interfeysi). `app/worker.py` (ARQ): `classify_complaint`, `transcribe_audio`, kunlik `suggest_keywords_job` (02:00 cron). **Real sinovlar:** "svet yo'q, chiroq o'chgan"→elektr (0.99); Ollama o'chirilganda submit/worker baribir ishladi (needs_review=true, checkpoint C2); audio yuklab STT orqali transkripsiya qilindi (whisper modeli avtomatik yuklandi); suggestions inbox approve→keyword bazaga tushdi.
 - **Workflow:** `app/services/workflow.py` — `STATUS_TRANSITIONS` xaritasi, event+notification; `rejected` uchun note majburiy.
-- **Admin API** (JWT, RBAC `operator/employee/manager/admin`): complaints (pagination+filtrlar+detail+status+assign), departments CRUD, categories CRUD, category keywords CRUD, keyword-suggestions (list/approve/reject), dashboard (overdue/needs_review/by_priority/ai_accuracy_7d).
+- **Admin API** (JWT, RBAC `operator/employee/manager/admin`): complaints (pagination+filtrlar+detail+status+assign+replies+comments), departments CRUD, categories CRUD, category keywords CRUD, keyword-suggestions (list/approve/reject), users CRUD (admin-only), dashboard (overdue/needs_review/by_priority/ai_accuracy_7d). **Bo'lim cheklovi ishlaydi:** employee/manager faqat `assigned_department_id`i o'ziniki bo'lgan murojaatlarni ko'radi/boshqaradi (list filtrlanadi, boshqacha bo'lsa 403); status o'tishlari ham rolga qarab cheklangan (`ROLE_ALLOWED_STATUSES`). Docker'da real ikki xodim bilan sinovdan o'tkazildi.
+- **Fuqaro kabineti:** `GET /api/citizen/complaints` — faqat o'z murojaatlari (guest sifatida yuborilgan murojaat keyin `register` qilingach kabinetda ko'rinishi tekshirilgan).
 - **Auth:** `/api/auth/register` (fuqaro kabineti), `/login` (staff YOKI citizen, JWT `kind` claim), `/me`.
 - **Xato formati:** global exception handler — hamma xato `{"detail","code"}` shaklida.
 - **Testlar:** `tests/test_smoke.py`, `pytest -m smoke` — 4/4 yashil (toza bazadan).
@@ -39,8 +40,8 @@ K1 (majburiy ro'yxatdan o'tish), K3 (ticket raqami), K4 (login'siz holat tekshir
 | Fuqaro UX | Guest wizard UI, sodda 4-bosqichli holat ko'rinishi, katta shrift/tugmalar, public landing (backend tayyor, **frontend yo'q**) | [06](06-frontend-tasklar.md) F1.*, [10](10-ui-ux.md) |
 | i18n | Backend `?lang=` qabul qiladi, lekin FE next-intl hali yo'q | [06](06-frontend-tasklar.md) |
 | AI | Asosiy pipeline (keyword+LLM+STT+o'rganish sikli) tayyor. Qolgan: rasm tahlili/OCR (V2, backlog), mohir.ai provider (stub, API kaliti kelganda) | [07-ai-layer.md](07-ai-layer.md) §7 |
-| Workflow | Eskalatsiya (B4.5), javoblar yozish endpoint yo'q (backend `replies` jadval tayyor, `POST .../replies` yo'q — B3.1) | [05](05-backend-tasklar.md) B3-B4 |
-| Tashkiliy | Xodimlar CRUD endpoint yo'q (B3.2), RBAC dependency'lar tayyor | [05](05-backend-tasklar.md) B3.2 |
+| Workflow | Eskalatsiya (deadline o'tganlarni manager'ga yuborish) yo'q | [05](05-backend-tasklar.md) B4.5 |
+| Tashkiliy | Xodimlar CRUD, RBAC bo'lim cheklovi, javoblar, ichki izohlar — hammasi tayyor (B3) | — |
 | Bildirishnoma | SMS (Eskiz), Telegram — hali stub (faqat in-app) | [05](05-backend-tasklar.md) B4.1-B4.2 |
 | Analitika | Heatmap, KPI (group_by), Excel eksport | [05](05-backend-tasklar.md) B5 |
 | Qidiruv | Global search `q` bor (ILIKE), pg_trgm optimizatsiya yo'q | B5.3 |
@@ -51,10 +52,10 @@ K1 (majburiy ro'yxatdan o'tish), K3 (ticket raqami), K4 (login'siz holat tekshir
 
 ## 4. Keyingi qadam (tavsiya)
 
-Backend endi guest oqim + AI + admin core bo'yicha ishlaydigan holatda (B1+B2 tugallandi). Eng yuqori qiymat endi ikkita yo'nalishdan biri:
+Backend endi B1+B2+B3 tugallangan holda — guest oqim, AI (keyword+LLM+STT+o'rganish sikli), admin core (complaints/departments/categories/users/replies/comments), RBAC bo'lim cheklovi va fuqaro kabineti ishlaydi. Eng katta bo'shliq endi **frontend**:
 
-1. **F1.\*** (tavsiya) — fuqaro guest wizard'ini yangi `/api/public/*` kontraktiga yozish. Backend uzoq vaqtdan beri frontend'siz — real UX tekshiruvi (checkpoint C1/C2) faqat FE bilan mumkin.
-2. **B3.\*** — javoblar (`replies` endpoint), xodimlar CRUD, fuqaro kabineti. Admin panelni to'liq funksional qiladi.
-3. **B4.\*** — SMS/Telegram bildirishnoma, rate limit, captcha — pilotdan oldin xavfsizlik uchun muhim.
+1. **F1.\*** (kuchli tavsiya) — fuqaro guest wizard'ini yangi `/api/public/*` kontraktiga yozish. Backend uzoq vaqtdan beri frontend'siz — real UX tekshiruvi (checkpoint C1/C2, jumladan "60+ yoshli odam yordamsiz murojaat yubora oladi" talabi) faqat FE bilan mumkin.
+2. **B4.\*** — SMS/Telegram bildirishnoma, rate limit, captcha, eskalatsiya, audit log — pilotdan oldin xavfsizlik/ishonchlilik uchun muhim.
+3. **B5.\*** — analitika (heatmap/KPI/eksport), QR generatsiya.
 
-B3/B4/B5 ham mustaqil bo'laklar — istalgan tartibda davom ettirish mumkin, lekin frontend yo'qligi endi eng katta bo'shliq.
+B4/B5 mustaqil bo'laklar — istalgan tartibda davom ettirish mumkin, lekin frontend yo'qligi endi loyihaning eng katta xavfi (backend ko'r-ko'rona qurilmoqda, real foydalanuvchi hech narsa ko'rmaydi).
