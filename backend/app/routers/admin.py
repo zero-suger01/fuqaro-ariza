@@ -79,8 +79,10 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 # RBAC matrix (docs/03-kontraktlar.md §5). None = no restriction beyond role gate.
 # "assigned" endi bu yerda yo'q — bo'limga biriktirish/qayta yo'naltirish B6'dan
 # beri faqat admin ishi (AI avtomatik yo'naltiradi, admin xato bo'lsa to'g'irlaydi).
+# "accepted" — docs/03-kontraktlar.md §2.1 aynan "bo'lim xodimi" deb belgilagan
+# (bo'lim murojaatni qabul qilib, ish boshlashini tasdiqlaydi).
 ROLE_ALLOWED_STATUSES = {
-    "department_staff": {"in_progress", "need_info", "resolved", "rejected", "closed"},
+    "department_staff": {"accepted", "in_progress", "need_info", "resolved", "rejected", "closed"},
     "admin": None,
 }
 DEPARTMENT_SCOPED_ROLES = ("department_staff",)

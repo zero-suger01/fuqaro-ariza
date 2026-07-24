@@ -62,7 +62,7 @@ export const ROLE_LABELS: Record<string, string> = {
 // Per-role allowed status targets (docs/03-kontraktlar.md §5 RBAC matrix,
 // mirrored from backend/app/routers/admin.py ROLE_ALLOWED_STATUSES).
 export const ROLE_ALLOWED_STATUSES: Record<string, ComplaintStatus[] | null> = {
-  department_staff: ["in_progress", "need_info", "resolved", "rejected", "closed"],
+  department_staff: ["accepted", "in_progress", "need_info", "resolved", "rejected", "closed"],
   admin: null,
 };
 
