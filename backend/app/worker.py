@@ -26,6 +26,7 @@ from app.services.ai.learning import mine_keyword_suggestions
 from app.services.ai.llm import LlmError, classify_with_llm
 from app.services.ai.stt import SttError, transcribe
 from app.services.deadline import compute_deadline
+from app.services.escalation import escalate_overdue
 from app.services.storage import download_to_temp
 
 settings = get_settings()
@@ -127,6 +128,14 @@ async def suggest_keywords_job(ctx) -> None:
         db.close()
 
 
+async def escalate_overdue_job(ctx) -> None:
+    db = SessionLocal()
+    try:
+        escalate_overdue(db)
+    finally:
+        db.close()
+
+
 async def transcribe_audio(ctx, job_id: str) -> None:
     db = SessionLocal()
     local_path = None
@@ -154,5 +163,8 @@ async def transcribe_audio(ctx, job_id: str) -> None:
 
 class WorkerSettings:
     functions = [classify_complaint, transcribe_audio]
-    cron_jobs = [cron(suggest_keywords_job, hour=2, minute=0)]
+    cron_jobs = [
+        cron(suggest_keywords_job, hour=2, minute=0),
+        cron(escalate_overdue_job, minute={0, 30}),
+    ]
     redis_settings = RedisSettings.from_dsn(settings.redis_url)

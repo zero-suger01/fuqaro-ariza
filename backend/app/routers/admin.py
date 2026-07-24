@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.core.constants import STATUS_ASSIGNED, STATUS_IN_PROGRESS, STATUS_RESOLVED
+from app.core.constants import STATUS_ASSIGNED, STATUS_IN_PROGRESS, STATUS_RESOLVED, TERMINAL_STATUSES
 from app.core.deps import get_current_admin, get_current_employee_up, get_current_operator_up
 from app.core.errors import AppError
 from app.core.security import hash_password
@@ -54,7 +54,6 @@ from app.services.ai.normalize import normalize
 from app.services.notifications import notify_citizen
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
-TERMINAL_STATUSES = ["resolved", "closed", "rejected", "archived"]
 
 # RBAC matrix (docs/03-kontraktlar.md §5). None = no restriction beyond role gate.
 ROLE_ALLOWED_STATUSES = {

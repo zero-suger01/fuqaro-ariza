@@ -45,7 +45,7 @@ K7 (rate limit/captcha) — hal qilindi (B4.3/B4.7).
 | Admin panel | **Tayyor** (F2) — ro'yxat, tafsilot, status/biriktirish/javob, bo'lim/xodim/kategoriya/keyword CRUD, dashboard, RBAC. Qolgan: heatmap/KPI (F4), QR sahifasi (F3.2) | [06](06-frontend-tasklar.md) F4 |
 | i18n | Backend + fuqaro FE tayyor (F1). Admin hali faqat uz (rejalashtirilganidek) | — |
 | AI | Asosiy pipeline tayyor. Qolgan: rasm tahlili/OCR (V2, backlog), mohir.ai provider (stub) | [07-ai-layer.md](07-ai-layer.md) §7 |
-| Workflow | Eskalatsiya (deadline o'tganlarni manager'ga yuborish) yo'q | [05](05-backend-tasklar.md) B4.5 |
+| Workflow | **Eskalatsiya croni tayyor** (deadline o'tgan → manager, 24h javobsiz → admin) | — |
 | Bildirishnoma | **SMS (Eskiz) tayyor** (real kalitlar kelganda ishlaydi). Telegram hali stub | [05](05-backend-tasklar.md) B4.2 |
 | Analitika | Heatmap, KPI (group_by), Excel eksport — na backend, na FE | [05](05-backend-tasklar.md) B5, [06](06-frontend-tasklar.md) F4 |
 | Xavfsizlik | **Rate limit va captcha tayyor.** Fayl xavfsizligi yakuni (EXIF strip) va audit log yozish qolgan | B4.4, B4.6 |
@@ -58,7 +58,7 @@ K7 (rate limit/captcha) — hal qilindi (B4.3/B4.7).
 Guest oqim VA admin panel (backend+frontend) endi **to'liq ishlaydi va sinovdan o'tgan** — loyihaning yadrosi (checkpoint C1) tayyor. Qolgan eng yuqori qiymatli yo'nalishlar:
 
 1. ~~**Mahalla CSV import**~~ — mexanizm sinovdan o'tkazildi (8 ta NAMUNA yozuv bilan, `backend/data/uychi_mfy_SAMPLE.csv`). Hokimlikdan real 62 ta MFY ro'yxati kelganda: yangi CSV → `python -m app.tools.import_neighborhoods <csv>` → NAMUNA yozuvlarni o'chirish.
-2. ~~**B4.1/B4.3/B4.7**~~ — SMS (Eskiz), rate limit, captcha tayyor va sinovdan o'tkazildi. Qolgan B4: Telegram (B4.2), fayl xavfsizligi yakuni (B4.4), eskalatsiya croni (B4.5), audit log (B4.6) — keyingi navbatda shular.
+2. ~~**B4.1/B4.3/B4.5/B4.7**~~ — SMS (Eskiz), rate limit, eskalatsiya croni, captcha tayyor va sinovdan o'tkazildi. Qolgan B4: Telegram (B4.2), fayl xavfsizligi yakuni (B4.4), audit log (B4.6) — keyingi navbatda shular.
 3. **F3** — QR landing (`/go`), fuqaro kabineti (`/kabinet`) — Telegram bot (T-fazalar) bilan birga qilinsa mantiqan to'g'ri keladi.
 4. **Jonli UX testi** — checkpoint C1/C3 talabi: kamida bitta 60+ yoshli odam yordamisiz murojaat yubora olishi kerak. Wizard tayyor, endi real sinov mumkin.
 5. **F4/B5** — analitika (heatmap/KPI/eksport) — pilot ma'lumot to'planganidan keyin qiymatliroq.

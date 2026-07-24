@@ -45,6 +45,10 @@ STATUS_TRANSITIONS: dict[str, set[str]] = {
     STATUS_ARCHIVED: set(),
 }
 
+# Holatlar bu yerga yetgach murojaat endi "overdue"/eskalatsiya kandidati
+# emas (docs/05-backend-tasklar.md B4.5, dashboard overdue hisobi).
+TERMINAL_STATUSES = [STATUS_RESOLVED, STATUS_CLOSED, STATUS_REJECTED, STATUS_ARCHIVED]
+
 # 2.2 status_simple
 STATUS_SIMPLE_MAP: dict[str, str] = {
     STATUS_NEW: "qabul_qilindi",
