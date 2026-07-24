@@ -22,13 +22,15 @@ O'lchamlar: S ≤ 2 soat, M ≤ 1 kun, L = 2–3 kun (AI coder bilan odatda tezr
 
 ## B2 — AI qatlam integratsiyasi (P2) — spec: [07-ai-layer.md](07-ai-layer.md)
 
-- [ ] **B2.1 (M)** Klassifikator v2: normalizatsiya (kirill→lotin, apostrof, stopword), DB keywordlar, weight + margin scoring ([07](07-ai-layer.md) §3).
-- [ ] **B2.2 (M)** Ollama klienti (`app/services/ai/llm.py`): prompt, `format=json`, timeout/retry, `ai_analyses` ga yozish.
-- [ ] **B2.3 (S)** `classify_complaint` worker ishi to'liq: keyword → (threshold ostida) LLM → complaint yangilash (`ai_processed`, priority, deadline, needs_review) → event.
-- [ ] **B2.4 (M)** STT: `app/services/ai/stt.py` (provider interfeys: whisper lokal / mohirai), `stt_jobs` + public endpointlar ([03](03-kontraktlar.md) §3.3), ffmpeg konvert.
-- [ ] **B2.5 (M)** O'rganish sikli: kunlik cron (ARQ cron 02:00) `suggest_keywords` ([07](07-ai-layer.md) §4), admin endpointlar (suggestions list/approve/reject; approve → category_keywords `source=auto`).
-- [ ] **B2.6 (S)** Kategoriya/keyword CRUD endpointlari (admin).
-- [ ] **B2.7 (S)** AI aniqlik metrikasi: dashboard'ga `ai_accuracy_7d` (operator to'g'rilashlariga qarab), `needs_review` filtri.
+- [x] **B2.1 (M)** Klassifikator v2 (`app/services/ai/classifier.py`): `confidence = top1/(top1+top2+1)`, margin sharti (`top1-top2>=2`), `AI_CONFIDENCE_THRESHOLD` bilan qaror (`confident: bool` maydoni). Xavfli so'zlar (`settings.danger_keywords`, DB'dan) → priority `high`. Callerlar (worker) endi `confident=False` bo'lsa LLM'ga murojaat qiladi.
+- [x] **B2.2 (M)** `app/services/ai/llm.py`: Ollama `/api/chat` (`format=json`, `temperature=0`, `keep_alive=-1`), 2 marta retry, Pydantic (`LlmResult`) bilan priority/sentiment validatsiya (noto'g'ri qiymat → default), `LlmError` — hamma xato shu orqali propagatsiya qiladi.
+- [x] **B2.3 (S)** `app/worker.py` `classify_complaint` to'liq: keyword ishonchsiz bo'lsa LLM chaqiriladi, ikkala natija ham `ai_analyses`ga yoziladi (`engine=keyword`/`llm`), LLM'ning noma'lum `category_code`si `boshqa`+`needs_review=true`ga tushadi, Ollama umuman javob bermasa keyword natija saqlanadi + `needs_review=true`. Docker'da real sinovdan o'tkazildi: Ollama o'chirilgan holatda submit va worker muvaffaqiyatli ishladi (checkpoint C2 talabi).
+- [x] **B2.4 (M)** `app/services/ai/stt.py` (provider interfeys: `whisper` — `faster-whisper`, CPU int8; `mohirai` — stub, API kaliti bo'lmasa xato), ffmpeg orqali 16kHz mono wav konvert. `stt_jobs` + `POST/GET /api/public/stt[/{id}]`. `transcribe_audio` ARQ ishi. **Real sinovdan o'tkazildi**: audio yuklandi → worker `tiny` model'ni Hugging Face'dan avtomatik yukladi → transkripsiya bajarildi (`requests` kutubxonasi requirements'ga qo'shildi — faster-whisper'ning yashirin bog'liqligi edi).
+- [x] **B2.5 (M)** `app/services/ai/learning.py` (`mine_keyword_suggestions`) + `app/worker.py`da ARQ cron (02:00). Admin endpointlar: `GET /keyword-suggestions`, `POST .../approve` (→ `category_keywords` `source=auto`), `POST .../reject`. Sun'iy LLM-tahlil ma'lumoti bilan sinovdan o'tkazildi: 11 nomzod chiqdi, approve qilingani darhol keyword bazasiga tushdi, ikkinchi marta approve 400 `already_reviewed` qaytardi.
+- [x] **B2.6 (S)** `GET/POST/PATCH /api/admin/categories`, `GET/POST/DELETE /api/admin/categories/{id}/keywords` — admin-only (GET operator+). curl bilan sinovdan o'tkazildi (kirill matn ham to'g'ri normalizatsiya qilindi).
+- [x] **B2.7 (S)** `dashboard_stats`ga `overdue`, `needs_review`, `by_priority`, `ai_accuracy_7d` (oxirgi 7 kun, `ai_category_id` vs `category_id`) qo'shildi. `needs_review` filtri admin ro'yxatida B1.9'dan beri bor edi.
+
+**B2 Acceptance (checkpoint C2, qisman — SMS/javob sikli hali B3/B4):** Ollama o'chirilganda ham submit va AI pipeline ishlaydi ✅; keyword topolmagan matn → suggestions inbox → approve → xuddi shu matn endi keyword bilan topiladi ✅; ovozli murojaat → matn (STT) ✅. **Hali yo'q:** admin javob yozganda SMS/Telegram yuborish (B3.1/B4.1-2), rate limit (B4.3).
 
 ## B3 — Javoblar, kabinet, xodimlar (P2)
 

@@ -7,13 +7,14 @@ Egasi: backend sherik (D-tasklar), lekin ikkovlon ham lokal muhitni ko'tara olis
 ```bash
 docker compose up -d          # postgres:5433, minio:9000/9001, redis:6379
 cd backend && python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt   # macOS: python-magic uchun `brew install libmagic` ham kerak
+pip install -r requirements.txt   # macOS: `brew install libmagic ffmpeg` ham kerak (fayl validatsiya + STT)
 alembic upgrade head && python -m app.seed
 uvicorn app.main:app --reload --port 8000
-# alohida terminal — AI klassifikatsiya (B1.7 dan) shu worker orqali ishlaydi:
+# alohida terminal — AI klassifikatsiya (worker), STT va kunlik keyword-mining shu orqali ishlaydi:
 arq app.worker.WorkerSettings
 cd frontend && npm install && npm run dev     # :3000
-# ixtiyoriy lokal AI (B2+): ollama pull gemma3:4b && ollama serve
+# ixtiyoriy lokal AI: ollama pull gemma3:4b && ollama serve (bo'lmasa ham ishlaydi — graceful fallback)
+# STT: birinchi so'rovda faster-whisper modelini (STT_WHISPER_MODEL, standart "medium") Hugging Face'dan avtomatik yuklab oladi
 ```
 
 `.env` namunalari: `backend/.env.example` (yangi kalitlar [03-kontraktlar.md](03-kontraktlar.md) §9 bo'yicha to'ldirib boriladi), `frontend/.env.local` → `NEXT_PUBLIC_API_URL=http://localhost:8000`.

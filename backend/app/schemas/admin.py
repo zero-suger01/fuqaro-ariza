@@ -54,6 +54,64 @@ class DepartmentPatch(BaseModel):
     is_active: bool | None = None
 
 
+class CategoryAdminOut(BaseModel):
+    id: uuid.UUID
+    code: str
+    names: dict
+    icon: str | None
+    sla_hours: int
+    department_id: uuid.UUID | None
+    sort_order: int
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+class CategoryIn(BaseModel):
+    code: str = Field(min_length=1, max_length=50)
+    names: dict = Field(min_length=1)
+    icon: str | None = None
+    sla_hours: int = Field(default=72, ge=1)
+    department_id: uuid.UUID | None = None
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class CategoryPatch(BaseModel):
+    names: dict | None = None
+    icon: str | None = None
+    sla_hours: int | None = None
+    department_id: uuid.UUID | None = None
+    sort_order: int | None = None
+    is_active: bool | None = None
+
+
+class KeywordOut(BaseModel):
+    id: uuid.UUID
+    keyword_norm: str
+    weight: int
+    source: str
+
+    class Config:
+        from_attributes = True
+
+
+class KeywordIn(BaseModel):
+    phrase: str = Field(min_length=1, max_length=120)
+    weight: int = Field(default=1, ge=1, le=5)
+
+
+class SuggestionOut(BaseModel):
+    id: uuid.UUID
+    phrase_norm: str
+    suggested_category: CategoryBrief | None
+    occurrences: int
+    sample_complaint_ids: list
+    status: str
+    created_at: datetime
+
+
 class FileOut(BaseModel):
     id: uuid.UUID
     kind: str
@@ -166,6 +224,10 @@ class DashboardStats(BaseModel):
     this_month: int
     resolved: int
     in_progress: int
+    overdue: int
+    needs_review: int
+    by_priority: dict[str, int]
+    ai_accuracy_7d: float | None
 
 
 class MonthlyPoint(BaseModel):

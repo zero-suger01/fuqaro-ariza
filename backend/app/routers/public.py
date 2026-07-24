@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ from app.models.complaint_event import ComplaintEvent
 from app.models.complaint_file import ComplaintFile
 from app.models.neighborhood import Neighborhood
 from app.models.qr_code import QrCode
+from app.models.stt_job import SttJob
 from app.schemas.public import (
     PHONE_PATTERN,
     CategoryBrief,
@@ -22,6 +23,8 @@ from app.schemas.public import (
     ComplaintSubmitOut,
     NeighborhoodOut,
     QrLandingOut,
+    SttJobCreatedOut,
+    SttJobStatusOut,
     TimelineStep,
     TrackOut,
 )
@@ -209,3 +212,37 @@ def qr_landing(code: str, db: Session = Depends(get_db)):
     if qr is None or qr.neighborhood_id is None:
         raise AppError(404, "not_found", "QR topilmadi")
     return QrLandingOut(neighborhood_id=qr.neighborhood_id, neighborhood_name=qr.neighborhood.name)
+
+
+@router.post("/stt", response_model=SttJobCreatedOut, status_code=202)
+def create_stt_job(
+    request: Request,
+    audio: UploadFile = File(...),
+    language: str = Form("uz"),
+    db: Session = Depends(get_db),
+):
+    if language not in LANGUAGES:
+        raise AppError(422, "validation_error", "Noto'g'ri til kodi")
+    data, mime = validate_file(audio, "audio")
+    url = upload_file(data, mime, "audio")
+
+    job = SttJob(
+        status="pending",
+        audio_url=url,
+        language=language,
+        ip=request.client.host if request.client else "unknown",
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    enqueue("transcribe_audio", str(job.id))
+    return SttJobCreatedOut(job_id=job.id)
+
+
+@router.get("/stt/{job_id}", response_model=SttJobStatusOut)
+def get_stt_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
+    job = db.get(SttJob, job_id)
+    if job is None:
+        raise AppError(404, "not_found", "Ish topilmadi")
+    return SttJobStatusOut(status=job.status, text=job.text, code="stt_failed" if job.status == "failed" else None)

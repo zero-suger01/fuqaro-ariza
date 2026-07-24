@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.constants import STATUS_ASSIGNED, STATUS_IN_PROGRESS, STATUS_RESOLVED
@@ -13,10 +13,15 @@ from app.models.category import Category
 from app.models.citizen import Citizen
 from app.models.complaint import Complaint
 from app.models.department import Department
+from app.models.keyword import CategoryKeyword
+from app.models.keyword_suggestion import KeywordSuggestion
 from app.models.user import User
 from app.schemas.admin import (
     AiAnalysisOut,
     AssignRequest,
+    CategoryAdminOut,
+    CategoryIn,
+    CategoryPatch,
     CitizenBrief,
     ComplaintDetail,
     ComplaintListItem,
@@ -27,14 +32,19 @@ from app.schemas.admin import (
     DepartmentPatch,
     EventOut,
     FileOut,
+    KeywordIn,
+    KeywordOut,
     ReplyOut,
     StatusUpdateRequest,
+    SuggestionOut,
 )
 from app.schemas.common import Page
 from app.schemas.public import CategoryBrief
 from app.services import workflow
+from app.services.ai.normalize import normalize
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+TERMINAL_STATUSES = ["resolved", "closed", "rejected", "archived"]
 
 
 def _category_brief(category: Category) -> CategoryBrief:
@@ -125,7 +135,7 @@ def list_complaints(
     if overdue:
         query = query.filter(
             Complaint.deadline_at < datetime.now(timezone.utc),
-            Complaint.status.notin_(["resolved", "closed", "rejected", "archived"]),
+            Complaint.status.notin_(TERMINAL_STATUSES),
         )
     if needs_review:
         query = query.filter(Complaint.needs_review.is_(True))
@@ -233,12 +243,212 @@ def update_department(department_id: uuid.UUID, payload: DepartmentPatch, db: Se
     return department
 
 
+@router.get("/categories", response_model=list[CategoryAdminOut], dependencies=[Depends(get_current_operator_up)])
+def list_categories(db: Session = Depends(get_db)):
+    return db.execute(select(Category).order_by(Category.sort_order)).scalars().all()
+
+
+@router.post("/categories", response_model=CategoryAdminOut, status_code=201, dependencies=[Depends(get_current_admin)])
+def create_category(payload: CategoryIn, db: Session = Depends(get_db)):
+    if db.execute(select(Category).where(Category.code == payload.code)).scalar_one_or_none():
+        raise AppError(400, "already_exists", "Bu kategoriya kodi band")
+    if payload.department_id and db.get(Department, payload.department_id) is None:
+        raise AppError(404, "not_found", "Bo'lim topilmadi")
+    category = Category(**payload.model_dump())
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+@router.patch("/categories/{category_id}", response_model=CategoryAdminOut, dependencies=[Depends(get_current_admin)])
+def update_category(category_id: uuid.UUID, payload: CategoryPatch, db: Session = Depends(get_db)):
+    category = db.get(Category, category_id)
+    if category is None:
+        raise AppError(404, "not_found", "Kategoriya topilmadi")
+    if payload.department_id and db.get(Department, payload.department_id) is None:
+        raise AppError(404, "not_found", "Bo'lim topilmadi")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(category, field, value)
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+@router.get(
+    "/categories/{category_id}/keywords",
+    response_model=list[KeywordOut],
+    dependencies=[Depends(get_current_operator_up)],
+)
+def list_keywords(category_id: uuid.UUID, db: Session = Depends(get_db)):
+    if db.get(Category, category_id) is None:
+        raise AppError(404, "not_found", "Kategoriya topilmadi")
+    return (
+        db.execute(select(CategoryKeyword).where(CategoryKeyword.category_id == category_id).order_by(CategoryKeyword.keyword_norm))
+        .scalars()
+        .all()
+    )
+
+
+@router.post(
+    "/categories/{category_id}/keywords",
+    response_model=KeywordOut,
+    status_code=201,
+    dependencies=[Depends(get_current_admin)],
+)
+def add_keyword(category_id: uuid.UUID, payload: KeywordIn, db: Session = Depends(get_db)):
+    if db.get(Category, category_id) is None:
+        raise AppError(404, "not_found", "Kategoriya topilmadi")
+    keyword_norm = normalize(payload.phrase)
+    if not keyword_norm:
+        raise AppError(422, "validation_error", "Kalit so'z bo'sh bo'lishi mumkin emas")
+    exists = db.execute(
+        select(CategoryKeyword).where(
+            CategoryKeyword.category_id == category_id, CategoryKeyword.keyword_norm == keyword_norm
+        )
+    ).scalar_one_or_none()
+    if exists:
+        raise AppError(400, "already_exists", "Bu kalit so'z allaqachon qo'shilgan")
+    keyword = CategoryKeyword(category_id=category_id, keyword_norm=keyword_norm, weight=payload.weight, source="admin")
+    db.add(keyword)
+    db.commit()
+    db.refresh(keyword)
+    return keyword
+
+
+@router.delete(
+    "/categories/{category_id}/keywords/{keyword_id}", status_code=204, dependencies=[Depends(get_current_admin)]
+)
+def delete_keyword(category_id: uuid.UUID, keyword_id: uuid.UUID, db: Session = Depends(get_db)):
+    keyword = db.get(CategoryKeyword, keyword_id)
+    if keyword is None or keyword.category_id != category_id:
+        raise AppError(404, "not_found", "Kalit so'z topilmadi")
+    db.delete(keyword)
+    db.commit()
+
+
+@router.get(
+    "/keyword-suggestions", response_model=list[SuggestionOut], dependencies=[Depends(get_current_admin)]
+)
+def list_keyword_suggestions(status: str = "pending", db: Session = Depends(get_db)):
+    rows = (
+        db.execute(
+            select(KeywordSuggestion)
+            .where(KeywordSuggestion.status == status)
+            .order_by(KeywordSuggestion.occurrences.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        SuggestionOut(
+            id=s.id,
+            phrase_norm=s.phrase_norm,
+            suggested_category=_category_brief(s.suggested_category) if s.suggested_category else None,
+            occurrences=s.occurrences,
+            sample_complaint_ids=s.sample_complaint_ids,
+            status=s.status,
+            created_at=s.created_at,
+        )
+        for s in rows
+    ]
+
+
+@router.post(
+    "/keyword-suggestions/{suggestion_id}/approve", response_model=SuggestionOut, dependencies=[Depends(get_current_admin)]
+)
+def approve_keyword_suggestion(
+    suggestion_id: uuid.UUID, db: Session = Depends(get_db), staff: User = Depends(get_current_admin)
+):
+    suggestion = db.get(KeywordSuggestion, suggestion_id)
+    if suggestion is None:
+        raise AppError(404, "not_found", "Taklif topilmadi")
+    if suggestion.status != "pending":
+        raise AppError(400, "already_reviewed", "Bu taklif allaqachon ko'rib chiqilgan")
+    if suggestion.suggested_category_id is None:
+        raise AppError(422, "validation_error", "Taklifda kategoriya yo'q")
+
+    existing = db.execute(
+        select(CategoryKeyword).where(
+            CategoryKeyword.category_id == suggestion.suggested_category_id,
+            CategoryKeyword.keyword_norm == suggestion.phrase_norm,
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        weight = 2 if " " in suggestion.phrase_norm else 1
+        db.add(
+            CategoryKeyword(
+                category_id=suggestion.suggested_category_id,
+                keyword_norm=suggestion.phrase_norm,
+                weight=weight,
+                source="auto",
+            )
+        )
+
+    suggestion.status = "approved"
+    suggestion.reviewed_by = staff.id
+    suggestion.reviewed_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(suggestion)
+    return SuggestionOut(
+        id=suggestion.id,
+        phrase_norm=suggestion.phrase_norm,
+        suggested_category=_category_brief(suggestion.suggested_category) if suggestion.suggested_category else None,
+        occurrences=suggestion.occurrences,
+        sample_complaint_ids=suggestion.sample_complaint_ids,
+        status=suggestion.status,
+        created_at=suggestion.created_at,
+    )
+
+
+@router.post(
+    "/keyword-suggestions/{suggestion_id}/reject", response_model=SuggestionOut, dependencies=[Depends(get_current_admin)]
+)
+def reject_keyword_suggestion(
+    suggestion_id: uuid.UUID, db: Session = Depends(get_db), staff: User = Depends(get_current_admin)
+):
+    suggestion = db.get(KeywordSuggestion, suggestion_id)
+    if suggestion is None:
+        raise AppError(404, "not_found", "Taklif topilmadi")
+    if suggestion.status != "pending":
+        raise AppError(400, "already_reviewed", "Bu taklif allaqachon ko'rib chiqilgan")
+
+    suggestion.status = "rejected"
+    suggestion.reviewed_by = staff.id
+    suggestion.reviewed_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(suggestion)
+    return SuggestionOut(
+        id=suggestion.id,
+        phrase_norm=suggestion.phrase_norm,
+        suggested_category=_category_brief(suggestion.suggested_category) if suggestion.suggested_category else None,
+        occurrences=suggestion.occurrences,
+        sample_complaint_ids=suggestion.sample_complaint_ids,
+        status=suggestion.status,
+        created_at=suggestion.created_at,
+    )
+
+
 @router.get("/stats/dashboard", response_model=DashboardStats, dependencies=[Depends(get_current_operator_up)])
 def dashboard_stats(db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
     week_start = today_start - timedelta(days=today_start.weekday())
     month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+    seven_days_ago = now - timedelta(days=7)
+
+    priority_rows = db.query(Complaint.priority, func.count()).group_by(Complaint.priority).all()
+
+    ai_scored = (
+        db.query(Complaint)
+        .filter(Complaint.created_at >= seven_days_ago, Complaint.ai_category_id.isnot(None))
+        .all()
+    )
+    ai_accuracy_7d = (
+        round(sum(1 for c in ai_scored if c.ai_category_id == c.category_id) / len(ai_scored), 2)
+        if ai_scored
+        else None
+    )
 
     return DashboardStats(
         today=db.query(Complaint).filter(Complaint.created_at >= today_start).count(),
@@ -246,4 +456,10 @@ def dashboard_stats(db: Session = Depends(get_db)):
         this_month=db.query(Complaint).filter(Complaint.created_at >= month_start).count(),
         resolved=db.query(Complaint).filter(Complaint.status == STATUS_RESOLVED).count(),
         in_progress=db.query(Complaint).filter(Complaint.status.in_([STATUS_IN_PROGRESS, STATUS_ASSIGNED])).count(),
+        overdue=db.query(Complaint)
+        .filter(Complaint.deadline_at < now, Complaint.status.notin_(TERMINAL_STATUSES))
+        .count(),
+        needs_review=db.query(Complaint).filter(Complaint.needs_review.is_(True)).count(),
+        by_priority={priority: count for priority, count in priority_rows},
+        ai_accuracy_7d=ai_accuracy_7d,
     )

@@ -54,3 +54,13 @@ class NeighborhoodOut(BaseModel):
 class QrLandingOut(BaseModel):
     neighborhood_id: uuid.UUID
     neighborhood_name: str
+
+
+class SttJobCreatedOut(BaseModel):
+    job_id: uuid.UUID
+
+
+class SttJobStatusOut(BaseModel):
+    status: str
+    text: str | None
+    code: str | None

@@ -77,12 +77,15 @@ CATEGORY_CODES = [
     "daraxt", "ekologiya", "qurilish", "obodonlashtirish", "kadastr",
     "soliq", "ijtimoiy", "boshqa",
 ]
+DEFAULT_CATEGORY_CODE = "boshqa"
 
 # 2.4 fayl limitlari
 FILE_LIMITS = {
     "image": {"max_size_mb": 10, "max_count": 5, "mimes": ["image/jpeg", "image/png", "image/webp", "image/heic"]},
     "video": {"max_size_mb": 50, "max_count": 1, "mimes": ["video/mp4", "video/quicktime"]},
-    "audio": {"max_size_mb": 10, "max_duration_s": 120, "max_count": 1, "mimes": ["audio/ogg", "audio/webm", "audio/mpeg", "audio/mp4", "audio/wav"]},
+    # audio/x-wav: some libmagic builds report legacy WAV as x-wav rather than
+    # the contract's "audio/wav" — same format, kept as a compatibility alias.
+    "audio": {"max_size_mb": 10, "max_duration_s": 120, "max_count": 1, "mimes": ["audio/ogg", "audio/webm", "audio/mpeg", "audio/mp4", "audio/wav", "audio/x-wav"]},
 }
 
 # §8 complaint_events.event_type

@@ -1,5 +1,8 @@
 import json
+import os
+import tempfile
 import uuid
+from pathlib import Path
 
 import boto3
 import magic
@@ -69,3 +72,13 @@ def upload_file(data: bytes, mime: str, kind: str) -> str:
     key = f"complaints/{kind}/{uuid.uuid4()}.{ext}"
     _client.put_object(Bucket=settings.s3_bucket, Key=key, Body=data, ContentType=mime)
     return f"{settings.s3_public_base_url}/{key}"
+
+
+def download_to_temp(url: str) -> str:
+    """Fetches an object this module previously uploaded back to a local
+    temp file (used by the STT worker, which needs a real path for ffmpeg)."""
+    key = url.split(f"{settings.s3_bucket}/", 1)[-1]
+    fd, path = tempfile.mkstemp(suffix=Path(key).suffix or ".bin")
+    os.close(fd)
+    _client.download_file(settings.s3_bucket, key, path)
+    return path
