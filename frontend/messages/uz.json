@@ -1,0 +1,104 @@
+{
+  "common": {
+    "appName": "e-Murojaat",
+    "phoneSupport": "Qiynalsangiz qo'ng'iroq qiling: 71 000 00 00",
+    "backToHome": "Bosh sahifa",
+    "loading": "Yuklanmoqda...",
+    "back": "Orqaga",
+    "continue": "Davom etish"
+  },
+  "landing": {
+    "greeting": "Hurmatli fuqaro!",
+    "subtitle": "Muammoingizni bizga ayting — hal qilamiz.",
+    "submitButton": "Murojaat yuborish",
+    "checkStatusButton": "Holatini tekshirish",
+    "howItWorksTitle": "Qanday ishlaydi?",
+    "step1": "Muammoni yozing yoki ovoz bilan ayting",
+    "step2": "Telefon raqamingizni qoldiring",
+    "step3": "Raqam olasiz — SMS orqali xabardor qilamiz",
+    "footerOrg": "Uychi tumani hokimligi",
+    "footerBot": "Telegram bot orqali ham murojaat yuborishingiz mumkin"
+  },
+  "wizard": {
+    "progress": "{current}/{total}-qadam",
+    "back": "Orqaga",
+    "continueButton": "Davom etish",
+    "draftPrompt": {
+      "message": "Boshlagan murojaatingizni davom ettirasizmi?",
+      "resume": "Davom ettirish",
+      "discard": "Yangidan boshlash"
+    },
+    "step1": {
+      "title": "Muammoni ayting",
+      "placeholder": "Masalan: Ko'chamizda 3 kundan beri suv yo'q...",
+      "voiceButton": "Ovoz bilan aytish",
+      "photoButton": "Rasm qo'shish",
+      "recording": "Yozilmoqda...",
+      "stopRecording": "To'xtatish",
+      "transcribing": "Matnga aylantirilmoqda... (bir daqiqa kutib turing)",
+      "reviewNote": "Matnni tekshirib oling",
+      "moreOptions": "Qo'shimcha",
+      "categoryLabel": "Muammo turi",
+      "categoryAuto": "AI o'zi aniqlaydi",
+      "videoLabel": "Video qo'shish",
+      "removePhoto": "O'chirish",
+      "maxPhotosNote": "Ko'pi bilan 5 ta rasm",
+      "minLengthError": "Kamida 10 ta belgi yozing yoki ovoz bilan ayting",
+      "voiceNotSupported": "Bu qurilmada ovoz yozib bo'lmaydi"
+    },
+    "step2": {
+      "title": "Qayerda?",
+      "neighborhoodLabel": "Mahallangizni tanlang",
+      "neighborhoodPlaceholder": "Mahalla qidirish...",
+      "addressLabel": "Ko'cha, uy (bilsangiz)",
+      "addressPlaceholder": "Masalan: Mustaqillik ko'chasi, 12-uy",
+      "mapButton": "Xaritadan ko'rsatish",
+      "mapHide": "Xaritani yashirish"
+    },
+    "step3": {
+      "title": "Siz haqingizda",
+      "nameLabel": "Ismingiz",
+      "namePlaceholder": "Ismingizni yozing",
+      "phoneLabel": "Telefon raqamingiz",
+      "phoneNote": "Bu raqamga natijani SMS qilib yuboramiz",
+      "phoneInvalid": "Telefon raqamda xato bor. Namuna: +998 90 123 45 67",
+      "nameRequired": "Ismingizni kiriting",
+      "submitButton": "Yuborish",
+      "submitting": "Yuborilmoqda..."
+    },
+    "success": {
+      "title": "Murojaatingiz qabul qilindi!",
+      "ticketLabel": "Sizning raqamingiz:",
+      "copyButton": "Nusxalash",
+      "copied": "Nusxalandi!",
+      "screenshotNote": "Bu raqamni rasmga olib qo'ying.",
+      "smsNote": "SMS ham yubordik.",
+      "checkStatusButton": "Holatini tekshirish",
+      "homeButton": "Bosh sahifa"
+    },
+    "error": {
+      "generic": "Xatolik yuz berdi. Qaytadan urinib ko'ring.",
+      "network": "Internet aloqasi yo'q. Tekshirib qaytadan urining."
+    }
+  },
+  "status": {
+    "title": "Murojaat holatini tekshirish",
+    "ticketLabel": "Murojaat raqami",
+    "ticketPlaceholder": "UY-2026-000123",
+    "phoneLabel": "Telefon raqamingiz",
+    "checkButton": "Tekshirish",
+    "checking": "Tekshirilmoqda...",
+    "notFound": "Bunday murojaat topilmadi. Raqam va telefonni tekshirib qaytadan urining.",
+    "steps": {
+      "qabul_qilindi": "Qabul qilindi",
+      "korilmoqda": "Ko'rib chiqilmoqda",
+      "ijroda": "Ijroda",
+      "yakunlandi": "Yakunlandi"
+    },
+    "replyTitle": "Hokimlik javobi",
+    "rejectedTitle": "Rad etildi",
+    "needInfoTitle": "Qo'shimcha ma'lumot kerak",
+    "needInfoText": "Sizdan qo'shimcha ma'lumot kutilmoqda — telefoningizga qo'ng'iroq qilinadi yoki SMS keladi",
+    "deadlineLabel": "Muddat"
+  }
+}

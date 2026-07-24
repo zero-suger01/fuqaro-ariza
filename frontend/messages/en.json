@@ -1,0 +1,104 @@
+{
+  "common": {
+    "appName": "e-Murojaat",
+    "phoneSupport": "Need help? Call: 71 000 00 00",
+    "backToHome": "Home",
+    "loading": "Loading...",
+    "back": "Back",
+    "continue": "Continue"
+  },
+  "landing": {
+    "greeting": "Dear citizen!",
+    "subtitle": "Tell us about your problem — we'll solve it.",
+    "submitButton": "Submit a complaint",
+    "checkStatusButton": "Check status",
+    "howItWorksTitle": "How it works",
+    "step1": "Write or say your problem out loud",
+    "step2": "Leave your phone number",
+    "step3": "Get a tracking number — we'll notify you by SMS",
+    "footerOrg": "Uychi District Administration",
+    "footerBot": "You can also submit a complaint via our Telegram bot"
+  },
+  "wizard": {
+    "progress": "Step {current} of {total}",
+    "back": "Back",
+    "continueButton": "Continue",
+    "draftPrompt": {
+      "message": "Continue your unfinished complaint?",
+      "resume": "Continue",
+      "discard": "Start over"
+    },
+    "step1": {
+      "title": "Describe the problem",
+      "placeholder": "For example: There has been no water on our street for 3 days...",
+      "voiceButton": "Record a voice message",
+      "photoButton": "Add a photo",
+      "recording": "Recording...",
+      "stopRecording": "Stop",
+      "transcribing": "Converting to text... (please wait a minute)",
+      "reviewNote": "Please review the text",
+      "moreOptions": "More options",
+      "categoryLabel": "Problem type",
+      "categoryAuto": "AI will detect it",
+      "videoLabel": "Add a video",
+      "removePhoto": "Remove",
+      "maxPhotosNote": "Up to 5 photos",
+      "minLengthError": "Write at least 10 characters or record a voice message",
+      "voiceNotSupported": "Voice recording isn't supported on this device"
+    },
+    "step2": {
+      "title": "Where did it happen?",
+      "neighborhoodLabel": "Select your neighborhood",
+      "neighborhoodPlaceholder": "Search neighborhood...",
+      "addressLabel": "Street, house (if known)",
+      "addressPlaceholder": "For example: Mustaqillik street, house 12",
+      "mapButton": "Show on map",
+      "mapHide": "Hide map"
+    },
+    "step3": {
+      "title": "About you",
+      "nameLabel": "Your name",
+      "namePlaceholder": "Enter your name",
+      "phoneLabel": "Phone number",
+      "phoneNote": "We'll send the result to this number by SMS",
+      "phoneInvalid": "There's an error in the phone number. Example: +998 90 123 45 67",
+      "nameRequired": "Please enter your name",
+      "submitButton": "Submit",
+      "submitting": "Submitting..."
+    },
+    "success": {
+      "title": "Your complaint has been received!",
+      "ticketLabel": "Your tracking number:",
+      "copyButton": "Copy",
+      "copied": "Copied!",
+      "screenshotNote": "Please take a screenshot of this number.",
+      "smsNote": "We also sent it by SMS.",
+      "checkStatusButton": "Check status",
+      "homeButton": "Home"
+    },
+    "error": {
+      "generic": "Something went wrong. Please try again.",
+      "network": "No internet connection. Check and try again."
+    }
+  },
+  "status": {
+    "title": "Check complaint status",
+    "ticketLabel": "Tracking number",
+    "ticketPlaceholder": "UY-2026-000123",
+    "phoneLabel": "Phone number",
+    "checkButton": "Check",
+    "checking": "Checking...",
+    "notFound": "Complaint not found. Check the number and phone, then try again.",
+    "steps": {
+      "qabul_qilindi": "Received",
+      "korilmoqda": "Under review",
+      "ijroda": "In progress",
+      "yakunlandi": "Completed"
+    },
+    "replyTitle": "Official reply",
+    "rejectedTitle": "Rejected",
+    "needInfoTitle": "More information needed",
+    "needInfoText": "We're waiting for more information from you — you'll get a call or SMS",
+    "deadlineLabel": "Deadline"
+  }
+}

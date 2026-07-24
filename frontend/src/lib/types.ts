@@ -90,3 +90,55 @@ export interface StatsResponse {
   resolution_time: { average_hours: number | null; resolved_count: number };
   top_issues: { category: string; count: number }[];
 }
+
+// --- Guest/public API (docs/03-kontraktlar.md §3) — B1+ backend contract ---
+
+export type LocaleCode = "uz" | "oz" | "ru" | "en";
+
+export interface PublicCategory {
+  code: string;
+  name: string;
+  icon: string | null;
+}
+
+export interface PublicNeighborhood {
+  id: string;
+  name: string;
+}
+
+export interface ComplaintSubmitResponse {
+  id: string;
+  ticket_number: string;
+  status: string;
+  status_simple: "qabul_qilindi" | "korilmoqda" | "ijroda" | "yakunlandi" | "rad_etildi";
+  created_at: string;
+  track_url: string;
+}
+
+export interface TimelineStep {
+  step: "qabul_qilindi" | "korilmoqda" | "ijroda" | "yakunlandi";
+  at: string | null;
+  done: boolean;
+}
+
+export interface TrackResponse {
+  ticket_number: string;
+  status_simple: "qabul_qilindi" | "korilmoqda" | "ijroda" | "yakunlandi" | "rad_etildi";
+  need_info: boolean;
+  category: { code: string; name: string };
+  created_at: string;
+  deadline_at: string | null;
+  timeline: TimelineStep[];
+  reply_text: string | null;
+  rejected_reason: string | null;
+}
+
+export interface SttJobCreated {
+  job_id: string;
+}
+
+export interface SttJobStatus {
+  status: "pending" | "done" | "failed";
+  text: string | null;
+  code: string | null;
+}

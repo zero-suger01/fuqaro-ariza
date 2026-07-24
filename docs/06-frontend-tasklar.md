@@ -10,20 +10,18 @@ Backend tayyor bo'lmagan endpointlar uchun: [03](03-kontraktlar.md) dagi JSON na
 
 Sahifa spetsifikatsiyalari va matnlari: [10-ui-ux.md](10-ui-ux.md) §3–5. Fuqaro sahifalarida sidebar YO'Q — alohida engil `PublicLayout` (katta header: logo, til tanlagich, "Holatni tekshirish" havolasi).
 
-- [ ] **F1.1 (M)** i18n poydevori: next-intl o'rnatish, locale'lar `uz|oz|ru|en` (`localePrefix: 'as-needed'`), `messages/*.json` skeleti, til tanlagich (bayroqsiz, matnli: "O'z / Ўз / Ру / En"), cookie'da saqlash, `npm run i18n:check` skripti (4 faylda kalitlar tengligi).
-- [ ] **F1.2 (S)** `PublicLayout` + routing qayta qurish: `/` endi public landing; eski fuqaro dashboard `/kabinet` ga ko'chadi (P2'gacha yashirin); `/admin/*` o'z joyida qoladi.
-- [ ] **F1.3 (M)** Landing (`/`): hero ("Murojaatingizni bir necha daqiqada yuboring"), 2 ta ulkan tugma: "Murojaat yuborish", "Murojaat holatini tekshirish"; pastda 3 qadam rasmli tushuntirish; footer (telefon, manzil). [10](10-ui-ux.md) §3.
-- [ ] **F1.4 (L)** Murojaat wizard'i (`/yangi`) — 3 qadam, [10](10-ui-ux.md) §4 spec bo'yicha:
-  - 1-qadam "Nima muammo?": katta textarea + 🎤 ovoz tugmasi (F1.5) + 📷 rasm qo'shish; kategoriya so'ralmaydi ("Qo'shimcha" accordion ichida ixtiyoriy select + video).
-  - 2-qadam "Qayerda?": mahalla select (qidiruvli, katta), manzil matni, ixtiyoriy "Xaritadan belgilash" (MapPicker qayta ishlatiladi; markaz — Uychi).
-  - 3-qadam "Siz haqingizda": ism, telefon (avtoformat `+998 (__) ___-__-__`), "Yuborish".
-  - Har qadamda bitta ustun, katta tugmalar "Davom etish"/"Orqaga", progress nuqtalari. Draft localStorage'da (sahifa yopilsa yo'qolmasin).
-- [ ] **F1.5 (M)** Ovoz yozish komponenti: MediaRecorder (webm/opus), max 120 s, yozish animatsiyasi, STT poll oqimi ([03](03-kontraktlar.md) §3.3), natija textarea'ga qo'shiladi ("Tekshirib oling" eslatmasi bilan). Qurilma qo'llamasa tugma yashirinadi.
-- [ ] **F1.6 (M)** Muvaffaqiyat ekrani: ulkan ticket raqami, "Rasmga olib qo'ying" eslatmasi, SMS kelishi haqida matn, "Holatni tekshirish" tugmasi. + `POST /api/public/complaints` integratsiyasi (multipart, progress indikator).
-- [ ] **F1.7 (M)** Holat sahifasi (`/holat`): 2 input (ticket, telefon) → 4 qadamli katta vizual timeline ([03](03-kontraktlar.md) §3.2 javobidan), javob matni bloki, rad etilgan holat, need_info banneri. URL query orqali prefill (`/holat?ticket=...`).
-- [ ] **F1.8 (S)** Mobil navigatsiya tuzatish (K2): public sahifalar mobile-first; admin uchun mobil drawer menyu.
+- [x] **F1.1 (M)** next-intl 4.13 o'rnatildi, `src/i18n/{routing,navigation,request}.ts`, locale'lar `uz|oz|ru|en` (`localePrefix: 'as-needed'`), `messages/{uz,oz,ru,en}.json` (80 kalit), til tanlagich (matnli "O'z · Ўз · Ру · En", `GuestHeader`), `npm run i18n:check` (`scripts/i18n-check.mjs`). **Diqqat:** Next.js 16'da `middleware.ts`→`proxy.ts`, `middleware()`→`proxy()` nomlanishi o'zgargan (`node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md`) — `src/proxy.ts` shunga mos yozildi.
+- [x] **F1.2 (S)** `src/app/[locale]/` segmenti qo'shildi (`GuestShell`/`GuestHeader`/`GuestFooter`, sidebar'siz, max-width 640px). Eski `app/page.tsx` (fuqaro dashboard), `app/ariza/yangi`, `app/murojaatlarim`, `app/bildirishnomalar` o'chirildi (yangi backend bilan ishlamas edi, `/kabinet` F3.3'da qayta quriladi). `app/admin/*`, `/login`, `/register` — tegilmadi, `[locale]` tashqarisida qoladi (`proxy.ts` matcher orqali).
+- [x] **F1.3 (M)** Landing (`src/app/[locale]/page.tsx`) — hero, 2 ulkan tugma, 3 qadam, footer. Docker'dagi real backend bilan brauzerda (uz/oz/ru/en, 375px+desktop) sinovdan o'tkazildi.
+- [x] **F1.4 (L)** Wizard (`src/app/[locale]/yangi/page.tsx` + `components/wizard/*`) — 3 qadam to'liq: Step1 (textarea+ovoz+rasm+qo'shimcha accordion:kategoriya/video), Step2 (mahalla qidiruv ro'yxati+manzil+MapPicker), Step3 (ism+telefon avtoformat). Draft `lib/wizardDraft.ts` orqali localStorage'da (faqat matn maydonlari — fayllar serializatsiya qilinmaydi), `DraftPrompt` resume/discard. **To'liq end-to-end sinovdan o'tkazildi**: real backendga submit → ticket `UY-2026-000006` qaytdi → track sahifada to'g'ri ko'rindi.
+- [x] **F1.5 (M)** `components/wizard/VoiceRecorder.tsx`: MediaRecorder (webm/opus), 120s limit+sekundlar, `/api/public/stt` + poll, natija matnga qo'shiladi. `isRecordingSupported()` bilan qurilma qo'llamasa yashiriladi.
+- [x] **F1.6 (M)** `components/wizard/SuccessScreen.tsx`: ulkan ticket, nusxalash tugmasi, eslatmalar, "Holatini tekshirish"/"Bosh sahifa". Real submit bilan sinovdan o'tkazildi.
+- [x] **F1.7 (M)** `src/app/[locale]/holat/page.tsx` + `components/guest/GuestTimeline.tsx`: vertikal 4 qadam, javob/rad/need_info kartalar, `?ticket=` prefill. Real backend bilan sinovdan o'tkazildi (sana formati `24-iyul, 16:54` — Intl'ning uz-UZ oy nomlari to'liq qo'llamagani uchun qo'lda formatlandi).
+- [ ] **F1.8 (S)** Admin uchun mobil drawer menyu — F2 doirasida (bu sessiyada admin'ga tegilmadi).
 
-**F1 Acceptance (C1):** telefonda (375px) ro'yxatdan o'tmasdan murojaat yuboriladi (rasm bilan), ticket ko'rinadi, holat tekshiriladi — hammasi 4 tilda, `npm run build` xatosiz.
+**F1 Acceptance (C1):** ✅ 375px va desktop'da, uz/oz/ru/en tillarida, real backend bilan (Docker) ro'yxatdan o'tmasdan murojaat yuborildi, ticket qaytdi, `/holat` orqali holat tekshirildi. `npm run build` va `npm run lint` xatosiz. Faqat ochiq qism: F1.8 (admin mobil menyu, F2 bilan birga qilinadi) va jonli 60+ yoshli foydalanuvchi sinovi (checkpoint C1/C3 talabi, real odam bilan).
+
+**Muhim topilma (keyingi ishlar uchun):** `GuestButton`ni `<Link>` ichiga o'rash `<button>`ni `<a>` ichiga joylab, navigatsiyani buzadi (noto'g'ri HTML, brauzerda click ishlamaydi). Yechim: `GuestLinkButton` (bir xil ko'rinish, lekin yagona `<a>` elementi) qo'shildi — navigatsiya uchun doim shundan foydalanilsin, `GuestButton`+`Link` kombinatsiyasi emas.
 
 ## F2 — Admin panel v2 (P2)
 

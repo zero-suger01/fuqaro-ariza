@@ -6,13 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "i18n:check": "node scripts/i18n-check.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.26.0",
     "next": "16.2.11",
+    "next-intl": "^4.13.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-leaflet": "^5.0.0",
