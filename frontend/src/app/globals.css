@@ -1,0 +1,112 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  /* Surfaces */
+  --bg-app: #edf0f5;
+  --bg-subtle: #f6f8fb;
+  --bg-surface: #ffffff;
+  --border: #e3e9f0;
+  --border-strong: #cbd5e1;
+
+  /* Text */
+  --text-primary: #0f2033;
+  --text-secondary: #51637a;
+  --text-muted: #8595ab;
+  --text-inverse: #ffffff;
+
+  /* Navy (sidebar) */
+  --navy-900: #0a1e3c;
+  --navy-800: #12294a;
+  --navy-700: #1b3a66;
+  --navy-600: #2b4e8a;
+
+  /* Accent */
+  --accent: #c9a227;
+  --accent-hover: #b3901f;
+  --accent-soft: rgba(201, 162, 39, 0.12);
+
+  /* Semantic */
+  --success: #2e9e6b;
+  --warning: #d9a441;
+  --danger: #c0392b;
+  --info: #3d6fb4;
+  --purple: #8e44ad;
+
+  /* Status colors (murojaat holatlari) */
+  --st-yangi: #3d6fb4;
+  --st-korib-chiqilmoqda: #8e44ad;
+  --st-yuborildi: #2b4e8a;
+  --st-jarayonda: #d9a441;
+  --st-hal-qilindi: #2e9e6b;
+  --st-rad-etildi: #c0392b;
+
+  /* Radius */
+  --radius-inner: 12px;
+  --radius-control: 10px;
+  --radius-card: 20px;
+  --radius-pill: 999px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(10, 30, 60, 0.05);
+  --shadow-card: 0 4px 20px rgba(10, 30, 60, 0.07);
+  --shadow-lift: 0 8px 30px rgba(10, 30, 60, 0.12);
+
+  /* Layout */
+  --sidebar-w-collapsed: 76px;
+  --sidebar-w-expanded: 248px;
+}
+
+@theme inline {
+  --color-bg-app: var(--bg-app);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-surface: var(--bg-surface);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-navy-600: var(--navy-600);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-purple: var(--purple);
+
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains);
+
+  --radius-inner: var(--radius-inner);
+  --radius-control: var(--radius-control);
+  --radius-card: var(--radius-card);
+  --radius-pill: var(--radius-pill);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-card: var(--shadow-card);
+  --shadow-lift: var(--shadow-lift);
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+* {
+  border-color: var(--border);
+}
+
+.leaflet-container {
+  border-radius: var(--radius-inner);
+}
