@@ -8,7 +8,7 @@ Audit sanasi: 2026-07-24, `main` (B1+B2+B3 backend, F1+F2 frontend — tugallang
 
 - **Stack:** FastAPI 0.115, SQLAlchemy 2, Alembic, PostgreSQL (5433), Redis (6379) + ARQ worker (jobs + kunlik cron), MinIO (boto3, `python-magic` fayl validatsiyasi), JWT (python-jose), bcrypt, `faster-whisper` (STT), `httpx` (Ollama).
 - **DB sxemasi to'liq [04-database.md](04-database.md) ga mos:** citizens, users(staff), departments, categories, category_keywords, neighborhoods, complaints(+barcha yangi ustunlar), complaint_files, complaint_events, replies, ai_analyses, keyword_suggestions, stt_jobs, ticket_counters, qr_codes, settings, audit_logs. Alembic 5 ta migratsiya — bo'sh bazadan `alembic upgrade head` toza o'tadi.
-- **Seed** (`app/seed.py`, idempotent): 14 bo'lim + 15 kategoriya (4 tilda), 106 keyword, admin (`+998900000000`/`admin123`), 3 ta settings. `app/tools/import_neighborhoods.py` — CSV import (hali hech qanday CSV import qilinmagan — `neighborhoods` jadvali bo'sh, shuning uchun FE'da mahalla ro'yxati hozircha ko'rinmaydi, bu kutilgan holat).
+- **Seed** (`app/seed.py`, idempotent): 14 bo'lim + 15 kategoriya (4 tilda), 106 keyword, admin (`+998900000000`/`admin123`), 3 ta settings. `app/tools/import_neighborhoods.py` — CSV import ishlaydi va sinovdan o'tgan: `backend/data/uychi_mfy_SAMPLE.csv` (8 ta "NAMUNA —" belgili o'ylab topilgan nom) import qilindi, `/api/public/neighborhoods` va wizard Step2'da to'g'ri ko'rinmoqda. **Bu haqiqiy ma'lumot emas** — internetdan Uychi tumani rasmiy 62 ta MFY ro'yxatini ishonchli topib bo'lmadi, hokimlikdan real ro'yxat kutilmoqda (tafsilot: [04-database.md](04-database.md) §neighborhoods).
 - **Guest oqim (auth YO'Q):** `POST /api/public/complaints`, `GET /api/public/complaints/track`, `GET /api/public/categories|neighborhoods|qr/{code}`, `POST/GET /api/public/stt[/{id}]`.
 - **AI (to'liq gibrid pipeline):** normalize→keyword(margin+threshold)→LLM fallback(Ollama, graceful)→STT(faster-whisper)→kunlik o'rganish sikli. Real sinovlar: klassifikatsiya, Ollama fallback, STT transkripsiya, suggestions approve — barchasi ishlagani tasdiqlangan.
 - **Admin API:** complaints (pagination+filtrlar+detail+status+assign+replies+comments), departments/categories/keywords/users CRUD, keyword-suggestions, dashboard. RBAC bo'lim cheklovi (employee/manager) va rol asosidagi status ruxsatlari ishlaydi.
@@ -48,13 +48,13 @@ K1 (majburiy ro'yxatdan o'tish), K2 (mobil nav — fuqaro sahifalarida endi to'l
 | Xavfsizlik | Rate limit, captcha, audit log yozish | B4.3-B4.7 |
 | Kanallar | Telegram bot, QR generatsiya (PNG/PDF), mobil ilova | [08](08-telegram-bot.md), B5.4, [09](09-mobile.md) |
 | DevOps | App dockerfile'lari, nginx, CI, backup | D2-D8 |
-| Mahalla ma'lumoti | `neighborhoods` jadvali bo'sh — Uychi tumani MFY ro'yxati CSV import qilinishi kerak | `python -m app.tools.import_neighborhoods <csv>` |
+| Mahalla ma'lumoti | `neighborhoods` jadvalida faqat 8 ta NAMUNA (test) yozuv bor — real Uychi tumani MFY ro'yxati hali hokimlikdan olinmagan | `python -m app.tools.import_neighborhoods <csv>` (real CSV kelganda NAMUNA yozuvlarni tozalab qayta import qilish) |
 
 ## 4. Keyingi qadam (tavsiya)
 
 Guest oqim VA admin panel (backend+frontend) endi **to'liq ishlaydi va sinovdan o'tgan** — loyihaning yadrosi (checkpoint C1) tayyor. Qolgan eng yuqori qiymatli yo'nalishlar:
 
-1. **Mahalla CSV import** — bir qatorlik amal (`python -m app.tools.import_neighborhoods data/uychi_mfy.csv`), lekin wizard'ning 2-qadamini to'liq foydali qiladi. Hokimlikdan ro'yxat kerak.
+1. ~~**Mahalla CSV import**~~ — mexanizm sinovdan o'tkazildi (8 ta NAMUNA yozuv bilan, `backend/data/uychi_mfy_SAMPLE.csv`). Hokimlikdan real 62 ta MFY ro'yxati kelganda: yangi CSV → `python -m app.tools.import_neighborhoods <csv>` → NAMUNA yozuvlarni o'chirish.
 2. **B4.\*** — SMS (Eskiz), rate limit, captcha, eskalatsiya — pilotdan oldin xavfsizlik/ishonchlilik uchun muhim.
 3. **F3** — QR landing (`/go`), fuqaro kabineti (`/kabinet`) — Telegram bot (T-fazalar) bilan birga qilinsa mantiqan to'g'ri keladi.
 4. **Jonli UX testi** — checkpoint C1/C3 talabi: kamida bitta 60+ yoshli odam yordamisiz murojaat yubora olishi kerak. Wizard tayyor, endi real sinov mumkin.

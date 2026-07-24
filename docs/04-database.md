@@ -64,7 +64,7 @@ UNIQUE (category_id, keyword_norm).
 
 ### neighborhoods — mahallalar
 
-`id, name varchar(150), is_active bool`. Seed: Uychi tumani MFY ro'yxati (hokimlikdan olinadi; boshlanishiga CSV import buyrug'i).
+`id, name varchar(150), is_active bool`. Seed: Uychi tumani MFY ro'yxati (hokimlikdan olinadi; boshlanishiga CSV import buyrug'i). **Hozircha `backend/data/uychi_mfy_SAMPLE.csv` (8 ta "NAMUNA —" prefiksli o'ylab topilgan nom) import qilingan — faqat wizard/UI mexanizmini tekshirish uchun, real ma'lumot EMAS.** Internetdan tumanning to'liq rasmiy 62 ta MFY ro'yxatini ishonchli topib bo'lmadi (qisman/ziddiyatli manbalar chiqdi). Hokimlikdan haqiqiy ro'yxat kelganda: yangi CSV yaratib `python -m app.tools.import_neighborhoods <csv>` ishga tushirish, so'ng namuna yozuvlarni `DELETE FROM neighborhoods WHERE name LIKE 'NAMUNA %'` bilan tozalash kerak.
 
 ### complaints — asosiy jadval (mavjudi kengayadi)
 
