@@ -72,6 +72,62 @@ def test_guest_submit_track_admin_flow(client):
 
 
 @pytest.mark.smoke
+def test_resolved_requires_reply_and_review_flow(client):
+    """R0/Q2-Q3: resolved javobsiz 422 reply_required; reply_text bilan bitta
+    so'rovda javob+status; review endpointi needs_review'ni yopadi."""
+    phone = f"+99891{uuid.uuid4().int % 10**7:07d}"
+    submit = client.post(
+        "/api/public/complaints",
+        data={
+            "description": "Ko'chamizda suv quvuri yorilib ketdi, hovlilarni suv bosmoqda",
+            "first_name": "Test",
+            "phone": phone,
+        },
+    )
+    assert submit.status_code == 201, submit.text
+    ticket = submit.json()["ticket_number"]
+
+    login = client.post("/api/auth/login", json={"login": "+998900000000", "password": "admin123"})
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    listing = client.get("/api/admin/complaints", params={"q": ticket}, headers=headers)
+    complaint_id = next(i["id"] for i in listing.json()["items"] if i["ticket_number"] == ticket)
+
+    # new -> ai_processed, keyin review (AI taklifi yo'q — kategoriya joyida
+    # qoladi, bo'limga biriktiriladi, needs_review=False)
+    client.patch(f"/api/admin/complaints/{complaint_id}/status", json={"status": "ai_processed"}, headers=headers)
+    review = client.post(f"/api/admin/complaints/{complaint_id}/review", json={}, headers=headers)
+    assert review.status_code == 200, review.text
+    assert review.json()["status"] == "assigned"
+    assert review.json()["needs_review"] is False
+    assert review.json()["department"] is not None
+
+    # Track endi bo'limni ko'rsatadi (R0/Q5)
+    track = client.get("/api/public/complaints/track", params={"ticket": ticket, "phone": phone})
+    assert track.status_code == 200
+    assert track.json()["department"] is not None
+
+    client.patch(f"/api/admin/complaints/{complaint_id}/status", json={"status": "in_progress"}, headers=headers)
+
+    # resolved javobsiz -> 422 reply_required
+    bare = client.patch(f"/api/admin/complaints/{complaint_id}/status", json={"status": "resolved"}, headers=headers)
+    assert bare.status_code == 422, bare.text
+    assert bare.json()["code"] == "reply_required"
+
+    # reply_text bilan -> javob + resolved bitta so'rovda
+    resolved = client.patch(
+        f"/api/admin/complaints/{complaint_id}/status",
+        json={"status": "resolved", "reply_text": "Hurmatli fuqaro, quvur ta'mirlandi."},
+        headers=headers,
+    )
+    assert resolved.status_code == 200, resolved.text
+    assert resolved.json()["status"] == "resolved"
+    assert len(resolved.json()["replies"]) == 1
+
+    track_after = client.get("/api/public/complaints/track", params={"ticket": ticket, "phone": phone})
+    assert track_after.json()["reply_text"] == "Hurmatli fuqaro, quvur ta'mirlandi."
+
+
+@pytest.mark.smoke
 def test_categories_and_neighborhoods(client):
     categories = client.get("/api/public/categories")
     assert categories.status_code == 200

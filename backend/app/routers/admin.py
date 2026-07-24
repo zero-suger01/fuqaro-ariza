@@ -3,7 +3,9 @@ import secrets
 import uuid
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
+from difflib import SequenceMatcher
 
+import httpx
 from fastapi import APIRouter, Depends, Query, Response
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -11,7 +13,15 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
-from app.core.constants import STATUS_ASSIGNED, STATUS_IN_PROGRESS, STATUS_RESOLVED, TERMINAL_STATUSES
+from app.core.constants import (
+    STATUS_AI_PROCESSED,
+    STATUS_ASSIGNED,
+    STATUS_IN_PROGRESS,
+    STATUS_NEW,
+    STATUS_RESOLVED,
+    TERMINAL_STATUSES,
+)
+from app.core.redisdb import redis_client
 from app.core.deps import get_current_admin, get_current_staff_up
 from app.core.errors import AppError
 from app.core.security import hash_password
@@ -32,6 +42,8 @@ from app.models.reply import Reply
 from app.models.user import User
 from app.schemas.admin import (
     AiAnalysisOut,
+    AiHealthOut,
+    AiListBrief,
     AssignRequest,
     AuditLogOut,
     CategoryAdminOut,
@@ -59,6 +71,7 @@ from app.schemas.admin import (
     QrCodeOut,
     ReplyIn,
     ReplyOut,
+    ReviewRequest,
     StatusUpdateRequest,
     SuggestionOut,
     UserAdminOut,
@@ -69,6 +82,7 @@ from app.schemas.common import Page
 from app.schemas.public import CategoryBrief
 from app.services import workflow
 from app.services.ai.normalize import normalize
+from app.services.deadline import compute_deadline
 from app.services.notifications import notify_citizen
 from app.services.qr import generate_poster_pdf, generate_qr_png
 from app.services.storage import upload_object
@@ -105,6 +119,20 @@ def _category_brief(category: Category) -> CategoryBrief:
 
 def _department_brief(department: Department) -> DepartmentBrief:
     return DepartmentBrief(id=department.id, code=department.code, name=department.name("uz"))
+
+
+def _ai_list_brief(complaint: Complaint) -> AiListBrief | None:
+    """R2: ro'yxat qatori uchun qisqa AI ma'lumoti — Navbatim'dagi xulosa
+    qatori va Tasdiqlash navbatidagi taklif. Oxirgi tahlil (LLM-always'da
+    odatda engine=llm) olinadi; taklif kategoriyasi bo'lmasa keyword yozuvi."""
+    if not complaint.ai_analyses:
+        return None
+    latest = complaint.ai_analyses[-1]
+    return AiListBrief(
+        summary=latest.summary,
+        suggested_category=_category_brief(latest.suggested_category) if latest.suggested_category else None,
+        confidence=latest.confidence,
+    )
 
 
 def _complaint_to_detail(complaint: Complaint) -> ComplaintDetail:
@@ -258,6 +286,7 @@ def list_complaints(
             created_at=c.created_at,
             deadline_at=c.deadline_at,
             needs_review=c.needs_review,
+            ai=_ai_list_brief(c),
         )
         for c in rows
     ]
@@ -352,6 +381,35 @@ def get_complaint(complaint_id: uuid.UUID, db: Session = Depends(get_db), staff:
     return _complaint_to_detail(complaint)
 
 
+def _record_reply(db: Session, complaint: Complaint, text: str, staff: User) -> Reply:
+    """Rasmiy javob yaratishning yagona yo'li (POST /replies va PATCH status
+    resolved+reply_text ikkalasi shu yerdan o'tadi — yon effektlar drift
+    qilmasin). R0: o'sha paytdagi AI drafti `ai_draft`ga snapshot qilinadi —
+    draft-qabul KPI shu ustundan hisoblanadi."""
+    latest_ai = complaint.ai_analyses[-1] if complaint.ai_analyses else None
+    reply = Reply(
+        complaint_id=complaint.id,
+        ai_draft=latest_ai.suggested_reply if latest_ai else None,
+        text=text,
+        sent_by=staff.id,
+        channels=["track"],
+    )
+    db.add(reply)
+    db.flush()
+    db.add(
+        ComplaintEvent(
+            complaint_id=complaint.id,
+            event_type="reply_sent",
+            actor_type="staff",
+            actor_id=staff.id,
+            payload={"reply_id": str(reply.id)},
+        )
+    )
+    sms = sms_reply_text(complaint.citizen.language or "uz", complaint.ticket_number)
+    notify_citizen(db, complaint.citizen, "Murojaatingizga rasmiy javob keldi", complaint_id=complaint.id, sms_text=sms)
+    return reply
+
+
 @router.patch("/complaints/{complaint_id}/status", response_model=ComplaintDetail)
 def update_status(
     complaint_id: uuid.UUID,
@@ -364,6 +422,22 @@ def update_status(
         raise AppError(404, "not_found", "Murojaat topilmadi")
     _check_department_access(complaint, staff)
     _check_status_permission(staff, payload.status)
+
+    # R0/Q2 (docs/03 §5): resolved javobsiz o'tmaydi — fuqaro izohsiz
+    # "Yakunlandi" ko'rmasin (premortem X4). reply_text faqat resolved bilan.
+    if payload.reply_text and payload.status != STATUS_RESOLVED:
+        raise AppError(422, "validation_error", "reply_text faqat status=resolved bilan qabul qilinadi")
+    if payload.status == STATUS_RESOLVED:
+        if payload.reply_text:
+            _record_reply(db, complaint, payload.reply_text, staff)
+        elif not complaint.replies:
+            raise AppError(
+                422,
+                "reply_required",
+                "«Hal qilindi» uchun fuqaroga javob matni majburiy — reply_text yuboring "
+                "(telefonda hal bo'lgan bo'lsa ham 1-2 jumlalik yakun yozing)",
+            )
+
     workflow.change_status(db, complaint, payload.status, actor_type="staff", actor_id=staff.id, note=payload.note)
     db.commit()
     db.refresh(complaint)
@@ -392,6 +466,64 @@ def assign_complaint(
     return _complaint_to_detail(complaint)
 
 
+@router.post("/complaints/{complaint_id}/review", response_model=ComplaintDetail)
+def review_complaint(
+    complaint_id: uuid.UUID,
+    payload: ReviewRequest,
+    db: Session = Depends(get_db),
+    staff: User = Depends(get_current_admin),
+):
+    """R0/Q3 (docs/03 §5): needs_review navbatini BIR bosishda yopish.
+    Bo'sh body = AI taklifini qabul qilish; body bilan = to'g'irlab qabul.
+    `assign` o'z o'rnida qoladi — bu uning «AI taklifiga rozilik» o'rami."""
+    complaint = db.get(Complaint, complaint_id)
+    if complaint is None:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+
+    if payload.category_code:
+        category = db.execute(
+            select(Category).where(Category.code == payload.category_code)
+        ).scalar_one_or_none()
+        if category is None:
+            raise AppError(404, "not_found", "Kategoriya topilmadi")
+    else:
+        latest_ai = complaint.ai_analyses[-1] if complaint.ai_analyses else None
+        category = (
+            latest_ai.suggested_category
+            if latest_ai is not None and latest_ai.suggested_category is not None
+            else complaint.category
+        )
+
+    complaint.category_id = category.id
+    complaint.deadline_at = compute_deadline(complaint.created_at, category.sla_hours, complaint.priority)
+
+    department_id = payload.department_id or category.department_id
+    if department_id is None:
+        raise AppError(422, "validation_error", "Kategoriya bo'limga bog'lanmagan — department_id ham yuboring")
+    if db.get(Department, department_id) is None:
+        raise AppError(404, "not_found", "Bo'lim topilmadi")
+
+    # Hali yo'naltirilmagan yoki boshqa bo'limda bo'lsa — biriktiramiz (state
+    # machine tekshiruvi workflow.assign ichida). Aynan shu bo'limda bo'lsa
+    # qayta assign shart emas.
+    if complaint.assigned_department_id != department_id or complaint.status in (STATUS_NEW, STATUS_AI_PROCESSED):
+        workflow.assign(db, complaint, department_id, None, actor_id=staff.id)
+
+    complaint.needs_review = False
+    db.add(
+        ComplaintEvent(
+            complaint_id=complaint.id,
+            event_type="reviewed",
+            actor_type="staff",
+            actor_id=staff.id,
+            payload={"category_code": category.code, "department_id": str(department_id)},
+        )
+    )
+    db.commit()
+    db.refresh(complaint)
+    return _complaint_to_detail(complaint)
+
+
 @router.post("/complaints/{complaint_id}/replies", response_model=ComplaintDetail, status_code=201)
 def create_reply(
     complaint_id: uuid.UUID,
@@ -404,27 +536,7 @@ def create_reply(
         raise AppError(404, "not_found", "Murojaat topilmadi")
     _check_department_access(complaint, staff)
 
-    latest_ai = complaint.ai_analyses[-1] if complaint.ai_analyses else None
-    reply = Reply(
-        complaint_id=complaint.id,
-        ai_draft=latest_ai.suggested_reply if latest_ai else None,
-        text=payload.text,
-        sent_by=staff.id,
-        channels=["track"],
-    )
-    db.add(reply)
-    db.flush()
-    db.add(
-        ComplaintEvent(
-            complaint_id=complaint.id,
-            event_type="reply_sent",
-            actor_type="staff",
-            actor_id=staff.id,
-            payload={"reply_id": str(reply.id)},
-        )
-    )
-    sms = sms_reply_text(complaint.citizen.language or "uz", complaint.ticket_number)
-    notify_citizen(db, complaint.citizen, "Murojaatingizga rasmiy javob keldi", complaint_id=complaint.id, sms_text=sms)
+    _record_reply(db, complaint, payload.text, staff)
     db.commit()
     db.refresh(complaint)
     return _complaint_to_detail(complaint)
@@ -732,6 +844,68 @@ def dashboard_stats(db: Session = Depends(get_db)):
             if any(t > ai_created_at for t in staff_by_complaint.get(cid, []))
         )
 
+    # ---- R0 avtomatlashtirish KPI (docs/03 §5, docs/00 §Muvaffaqiyat #5) ----
+    total_7d = db.query(Complaint).filter(Complaint.created_at >= seven_days_ago).count()
+
+    # zero_touch_7d: AI biriktirgan va admin keyin qayta yo'naltirMAgan ulush.
+    zero_touch_7d = (
+        round((len(ai_assigned_events) - ai_routing_corrected_7d) / total_7d, 2) if total_7d else None
+    )
+
+    # draft_reply_share_7d: ai_draft snapshotli javoblar ichida yuborilgan matn
+    # draft bilan >=50% o'xshash bo'lganlari (difflib ratio — kichik hajmda arzon).
+    replies_7d = (
+        db.query(Reply)
+        .filter(Reply.sent_at >= seven_days_ago, Reply.ai_draft.isnot(None))
+        .all()
+    )
+    draft_reply_share_7d = (
+        round(
+            sum(1 for r in replies_7d if SequenceMatcher(None, r.text, r.ai_draft).ratio() >= 0.5)
+            / len(replies_7d),
+            2,
+        )
+        if replies_7d
+        else None
+    )
+
+    # avg_first_action_hours_7d: birinchi biriktirilishdan xodimning birinchi
+    # harakatigacha (status/reply/comment, actor=staff) o'rtacha soat.
+    recent_events = (
+        db.query(ComplaintEvent)
+        .join(Complaint, ComplaintEvent.complaint_id == Complaint.id)
+        .filter(Complaint.created_at >= seven_days_ago)
+        .order_by(ComplaintEvent.created_at)
+        .all()
+    )
+    first_assigned: dict[uuid.UUID, datetime] = {}
+    first_action: dict[uuid.UUID, datetime] = {}
+    for e in recent_events:
+        if e.event_type == "assigned" and e.complaint_id not in first_assigned:
+            first_assigned[e.complaint_id] = e.created_at
+        elif (
+            e.event_type in ("status_changed", "reply_sent", "comment_added")
+            and e.actor_type == "staff"
+            and e.complaint_id in first_assigned
+            and e.complaint_id not in first_action
+        ):
+            first_action[e.complaint_id] = e.created_at
+    reaction_hours = [
+        (first_action[cid] - first_assigned[cid]).total_seconds() / 3600 for cid in first_action
+    ]
+    avg_first_action_hours_7d = round(sum(reaction_hours) / len(reaction_hours), 1) if reaction_hours else None
+
+    # resolved_with_reply_7d: 7 kunda hal qilinganlardan javob matni ham
+    # yuborilganlari ulushi (reply_required'dan keyin 1.0 bo'lishi kutiladi).
+    resolved_7d = (
+        db.query(Complaint)
+        .filter(Complaint.resolved_at.isnot(None), Complaint.resolved_at >= seven_days_ago)
+        .all()
+    )
+    resolved_with_reply_7d = (
+        round(sum(1 for c in resolved_7d if c.replies) / len(resolved_7d), 2) if resolved_7d else None
+    )
+
     return DashboardStats(
         today=db.query(Complaint).filter(Complaint.created_at >= today_start).count(),
         this_week=db.query(Complaint).filter(Complaint.created_at >= week_start).count(),
@@ -750,6 +924,79 @@ def dashboard_stats(db: Session = Depends(get_db)):
         ],
         ai_auto_routed_7d=len(ai_assigned_events),
         ai_routing_corrected_7d=ai_routing_corrected_7d,
+        zero_touch_7d=zero_touch_7d,
+        draft_reply_share_7d=draft_reply_share_7d,
+        avg_first_action_hours_7d=avg_first_action_hours_7d,
+        resolved_with_reply_7d=resolved_with_reply_7d,
+    )
+
+
+@router.get("/stats/ai-health", response_model=AiHealthOut, dependencies=[Depends(get_current_admin)])
+def stats_ai_health(db: Session = Depends(get_db)):
+    """R0/Q4 (docs/03 §5): LLM jim o'lishi endi ko'rinadigan hodisa.
+    Manba: worker yozadigan Redis markerlari + DB fallback + jonli ping."""
+    now = datetime.now(timezone.utc)
+
+    last_success: datetime | None = None
+    try:
+        raw = redis_client.get("ai:llm_last_success")
+        if raw:
+            last_success = datetime.fromisoformat(raw)
+    except Exception:
+        pass
+    if last_success is None:
+        # Redis bo'sh (restart) — oxirgi muvaffaqiyatli llm yozuvi DB'dan.
+        row = (
+            db.execute(
+                select(AiAnalysis.created_at)
+                .where(AiAnalysis.engine == "llm")
+                .order_by(AiAnalysis.created_at.desc())
+                .limit(1)
+            )
+            .scalars()
+            .first()
+        )
+        last_success = row
+
+    ollama_ok = last_success is not None and (now - last_success) <= timedelta(minutes=10)
+    if not ollama_ok:
+        # Yaqin muvaffaqiyat yo'q — jonli ping (2 s): server turibdimi o'zi?
+        try:
+            ping = httpx.get(f"{settings.ollama_url}/api/tags", timeout=2.0)
+            ollama_ok = ping.status_code == 200
+        except httpx.HTTPError:
+            ollama_ok = False
+
+    llm_queue_depth = 0
+    try:
+        # ARQ navbati sorted-set (arq:queue). Barcha turdagi kutayotgan ishlar —
+        # "AI navbati chuqurligi" sifatida yetarli yaqinlashuv.
+        llm_queue_depth = int(redis_client.zcard("arq:queue") or 0)
+    except Exception:
+        pass
+
+    llm_errors_1h = 0
+    try:
+        for bucket in (now, now - timedelta(hours=1)):
+            raw = redis_client.get(f"ai:llm_err:{bucket:%Y%m%d%H}")
+            llm_errors_1h += int(raw) if raw else 0
+    except Exception:
+        pass
+
+    from app.models.stt_job import SttJob  # lokal import — modul yuqorisida kerak emas
+
+    last_stt = (
+        db.execute(select(SttJob).order_by(SttJob.created_at.desc()).limit(1)).scalars().first()
+    )
+    stt_ok = last_stt is None or last_stt.status != "failed"
+
+    return AiHealthOut(
+        ollama_ok=ollama_ok,
+        model=settings.ollama_model,
+        last_llm_success_at=last_success,
+        llm_queue_depth=llm_queue_depth,
+        llm_errors_1h=llm_errors_1h,
+        stt_ok=stt_ok,
     )
 
 

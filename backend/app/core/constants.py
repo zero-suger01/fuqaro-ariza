@@ -96,5 +96,6 @@ FILE_LIMITS = {
 EVENT_TYPES = [
     "created", "ai_processed", "status_changed", "assigned", "comment_added",
     "reply_sent", "info_requested", "sms_sent", "telegram_sent", "escalated",
+    "sla_warning", "reviewed",
 ]
 ACTOR_TYPES = ["citizen", "staff", "system", "ai"]

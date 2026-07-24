@@ -28,11 +28,19 @@ class CategoryBrief(BaseModel):
     name: str
 
 
+class DepartmentPublic(BaseModel):
+    """R0/Q5 (docs/03 §3.2) — fuqaro «murojaatim qayerda» savoliga javob."""
+
+    code: str
+    name: str
+
+
 class TrackOut(BaseModel):
     ticket_number: str
     status_simple: str
     need_info: bool
     category: CategoryBrief
+    department: DepartmentPublic | None
     created_at: datetime
     deadline_at: datetime | None
     timeline: list[TimelineStep]
