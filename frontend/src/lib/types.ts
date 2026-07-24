@@ -1,73 +1,135 @@
-export type ComplaintCategory =
-  | "chiqindi"
-  | "yol"
-  | "elektr"
-  | "gaz"
-  | "suv"
-  | "daraxt"
-  | "ekologiya"
-  | "qurilish"
-  | "obodonlashtirish"
-  | "boshqa";
+// --- Auth (docs/03-kontraktlar.md §4) ---
 
-export type ComplaintStatus =
-  | "yangi"
-  | "korib_chiqilmoqda"
-  | "masul_tashkilotga_yuborildi"
-  | "jarayonda"
-  | "hal_qilindi"
-  | "rad_etildi";
+export type StaffRole = "operator" | "employee" | "manager" | "admin";
 
-export type UserRole = "user" | "admin";
-
-export interface User {
+export interface AuthUser {
+  kind: "citizen" | "staff";
   id: string;
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   fullname: string;
   phone: string;
   email: string | null;
-  role: UserRole;
+  role: StaffRole | null;
+  department_id: string | null;
 }
 
-export interface ComplaintImage {
-  id: string;
-  image_url: string;
-}
+// --- Admin API (docs/03-kontraktlar.md §5) ---
 
-export interface Organization {
-  id: string;
+export type ComplaintStatus =
+  | "new"
+  | "ai_processed"
+  | "assigned"
+  | "accepted"
+  | "in_progress"
+  | "need_info"
+  | "resolved"
+  | "rejected"
+  | "closed"
+  | "archived";
+
+export type Priority = "low" | "medium" | "high" | "critical";
+
+export interface CategoryBrief {
+  code: string;
   name: string;
-  category: string;
 }
 
-export interface Comment {
+export interface CitizenBrief {
   id: string;
-  admin_id: string;
-  comment: string;
+  phone: string;
+  fullname: string;
+}
+
+export interface DepartmentBrief {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface FileItem {
+  id: string;
+  kind: "image" | "video" | "audio" | "document";
+  url: string;
+  mime: string;
+  size_bytes: number;
+  duration_s: number | null;
+}
+
+export interface EventItem {
+  id: string;
+  event_type: string;
+  actor_type: "citizen" | "staff" | "system" | "ai";
+  actor_id: string | null;
+  payload: Record<string, unknown> | null;
   created_at: string;
 }
 
-export interface Complaint {
-  id: string;
-  user_id: string;
-  title: string | null;
-  description: string;
-  category: ComplaintCategory;
-  ai_category: ComplaintCategory | null;
+export interface AiAnalysisItem {
+  engine: "keyword" | "llm";
+  suggested_category: CategoryBrief | null;
   confidence: number | null;
+  priority: Priority | null;
+  sentiment: "negative" | "neutral" | "positive" | null;
+  summary: string | null;
+  suggested_reply: string | null;
+  tags: string[] | null;
+  created_at: string;
+}
+
+export interface ReplyItem {
+  id: string;
+  text: string;
+  channels: string[];
+  sent_at: string;
+}
+
+export interface ComplaintListItem {
+  id: string;
+  ticket_number: string;
+  status: ComplaintStatus;
+  priority: Priority;
+  category: CategoryBrief;
+  citizen: CitizenBrief;
+  neighborhood_name: string | null;
+  created_at: string;
+  deadline_at: string | null;
+  needs_review: boolean;
+}
+
+export interface ComplaintDetail {
+  id: string;
+  ticket_number: string;
+  status: ComplaintStatus;
+  priority: Priority;
+  source: string;
+  language: string;
+  description: string;
+  category: CategoryBrief;
+  citizen: CitizenBrief;
   latitude: number | null;
   longitude: number | null;
   address: string | null;
-  district: string | null;
-  neighborhood: string | null;
-  status: ComplaintStatus;
-  organization: Organization | null;
-  images: ComplaintImage[];
-  comments: Comment[];
+  neighborhood_name: string | null;
+  department: DepartmentBrief | null;
+  assigned_user_id: string | null;
+  deadline_at: string | null;
+  needs_review: boolean;
+  rejected_reason: string | null;
+  files: FileItem[];
+  events: EventItem[];
+  replies: ReplyItem[];
+  ai: AiAnalysisItem | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
+}
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 export interface DashboardStats {
@@ -76,19 +138,60 @@ export interface DashboardStats {
   this_month: number;
   resolved: number;
   in_progress: number;
+  overdue: number;
+  needs_review: number;
+  by_priority: Record<string, number>;
+  ai_accuracy_7d: number | null;
 }
 
-export interface AIAnalyzeResponse {
-  category: ComplaintCategory;
-  confidence: number;
-  recommended_organizations: string[];
+export interface DepartmentAdmin {
+  id: string;
+  code: string;
+  names: Record<string, string>;
+  phone: string | null;
+  email: string | null;
+  is_external: boolean;
+  is_active: boolean;
 }
 
-export interface StatsResponse {
-  monthly: { month: string; count: number }[];
-  by_category: { category: string; count: number }[];
-  resolution_time: { average_hours: number | null; resolved_count: number };
-  top_issues: { category: string; count: number }[];
+export interface CategoryAdmin {
+  id: string;
+  code: string;
+  names: Record<string, string>;
+  icon: string | null;
+  sla_hours: number;
+  department_id: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface KeywordItem {
+  id: string;
+  keyword_norm: string;
+  weight: number;
+  source: "seed" | "admin" | "auto";
+}
+
+export interface SuggestionItem {
+  id: string;
+  phrase_norm: string;
+  suggested_category: CategoryBrief | null;
+  occurrences: number;
+  sample_complaint_ids: string[];
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
+export interface StaffUser {
+  id: string;
+  first_name: string;
+  last_name: string;
+  fullname: string;
+  phone: string;
+  email: string | null;
+  role: StaffRole;
+  department_id: string | null;
+  is_active: boolean;
 }
 
 // --- Guest/public API (docs/03-kontraktlar.md §3) — B1+ backend contract ---

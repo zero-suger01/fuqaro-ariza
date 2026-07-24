@@ -2,59 +2,84 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FilterX, ClipboardList } from "lucide-react";
+import { FilterX, ClipboardList, AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { apiGet } from "@/lib/api";
-import type { Complaint, ComplaintCategory, ComplaintStatus } from "@/lib/types";
-import { CATEGORY_LABELS, STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
+import type { CategoryAdmin, ComplaintListItem, ComplaintStatus, DepartmentAdmin, Page, Priority } from "@/lib/types";
+import { PRIORITY_COLORS, PRIORITY_LABELS, STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
 
 interface Filters {
   status: ComplaintStatus | "";
-  category: ComplaintCategory | "";
-  district: string;
-  neighborhood: string;
+  category: string;
+  department_id: string;
+  priority: Priority | "";
+  overdue: boolean;
+  needs_review: boolean;
   date_from: string;
   date_to: string;
-  search: string;
+  q: string;
 }
 
 const EMPTY_FILTERS: Filters = {
   status: "",
   category: "",
-  district: "",
-  neighborhood: "",
+  department_id: "",
+  priority: "",
+  overdue: false,
+  needs_review: false,
   date_from: "",
   date_to: "",
-  search: "",
+  q: "",
 };
+
+const PAGE_SIZE = 20;
+
+function isOverdue(deadline: string | null, status: ComplaintStatus): boolean {
+  if (!deadline) return false;
+  if (["resolved", "closed", "rejected", "archived"].includes(status)) return false;
+  return new Date(deadline).getTime() < Date.now();
+}
 
 export default function AdminComplaintsPage() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [page, setPage] = useState(1);
+  const [result, setResult] = useState<Page<ComplaintListItem> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<CategoryAdmin[]>([]);
+  const [departments, setDepartments] = useState<DepartmentAdmin[]>([]);
+
+  useEffect(() => {
+    apiGet<CategoryAdmin[]>("/api/admin/categories").then(setCategories).catch(() => setCategories([]));
+    apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => setDepartments([]));
+  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- loading flag for the fetch below
     setLoading(true);
-    const params = new URLSearchParams();
+    const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) });
     Object.entries(filters).forEach(([key, value]) => {
-      if (value) params.set(key, value);
+      if (value) params.set(key, String(value));
     });
-    apiGet<Complaint[]>(`/api/admin/complaints?${params.toString()}`)
-      .then(setComplaints)
+    apiGet<Page<ComplaintListItem>>(`/api/admin/complaints?${params.toString()}`)
+      .then(setResult)
       .finally(() => setLoading(false));
-  }, [filters]);
+  }, [filters, page]);
 
   function update<K extends keyof Filters>(key: K, value: Filters[K]) {
     setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
   }
 
+  const items = result?.items ?? [];
+  const total = result?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   return (
-    <AppShell title="Murojaatlar" requireAdmin>
+    <AppShell title="Murojaatlar">
       <Card>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
           <div>
@@ -70,22 +95,36 @@ export default function AdminComplaintsPage() {
           </div>
           <div>
             <Label>Kategoriya</Label>
-            <Select value={filters.category} onChange={(e) => update("category", e.target.value as ComplaintCategory)}>
+            <Select value={filters.category} onChange={(e) => update("category", e.target.value)}>
               <option value="">Barchasi</option>
-              {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
+              {categories.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.names.uz ?? c.code}
                 </option>
               ))}
             </Select>
           </div>
           <div>
-            <Label>Tuman</Label>
-            <Input value={filters.district} onChange={(e) => update("district", e.target.value)} placeholder="Tuman" />
+            <Label>Bo&apos;lim</Label>
+            <Select value={filters.department_id} onChange={(e) => update("department_id", e.target.value)}>
+              <option value="">Barchasi</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.names.uz ?? d.code}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
-            <Label>Mahalla</Label>
-            <Input value={filters.neighborhood} onChange={(e) => update("neighborhood", e.target.value)} placeholder="Mahalla" />
+            <Label>Muhimlik</Label>
+            <Select value={filters.priority} onChange={(e) => update("priority", e.target.value as Priority)}>
+              <option value="">Barchasi</option>
+              {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <Label>Sana (dan)</Label>
@@ -95,12 +134,30 @@ export default function AdminComplaintsPage() {
             <Label>Sana (gacha)</Label>
             <Input type="date" value={filters.date_to} onChange={(e) => update("date_to", e.target.value)} />
           </div>
-          <div className="col-span-2 sm:col-span-2 lg:col-span-4">
+          <div className="col-span-2 sm:col-span-2 lg:col-span-3">
             <Label>Qidiruv</Label>
-            <Input value={filters.search} onChange={(e) => update("search", e.target.value)} placeholder="Tavsif bo'yicha qidirish..." />
+            <Input value={filters.q} onChange={(e) => update("q", e.target.value)} placeholder="Ticket, telefon yoki matn bo'yicha..." />
           </div>
-          <div className="lg:col-span-2">
-            <Button type="button" variant="secondary" className="w-full" onClick={() => setFilters(EMPTY_FILTERS)}>
+          <div className="flex items-center gap-4 lg:col-span-2 pb-2.5">
+            <label className="flex items-center gap-2 text-sm text-text-secondary">
+              <input type="checkbox" checked={filters.overdue} onChange={(e) => update("overdue", e.target.checked)} />
+              Muddati o&apos;tgan
+            </label>
+            <label className="flex items-center gap-2 text-sm text-text-secondary">
+              <input type="checkbox" checked={filters.needs_review} onChange={(e) => update("needs_review", e.target.checked)} />
+              AI tekshiruv kerak
+            </label>
+          </div>
+          <div className="lg:col-span-1">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => {
+                setFilters(EMPTY_FILTERS);
+                setPage(1);
+              }}
+            >
               <FilterX className="h-4 w-4" /> Tozalash
             </Button>
           </div>
@@ -111,13 +168,13 @@ export default function AdminComplaintsPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-text-primary">Murojaatlar ro&apos;yxati</h2>
           <span className="text-sm text-text-muted">
-            Jami <strong className="text-text-primary">{complaints.length}</strong> ta
+            Jami <strong className="text-text-primary">{total}</strong> ta
           </span>
         </div>
 
         {loading ? (
           <div className="py-14 text-center text-text-muted text-sm">Yuklanmoqda...</div>
-        ) : complaints.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="py-14 flex flex-col items-center gap-2 text-text-muted text-sm">
             <ClipboardList className="h-6 w-6" />
             Murojaatlar topilmadi
@@ -125,24 +182,60 @@ export default function AdminComplaintsPage() {
           </div>
         ) : (
           <div className="flex flex-col divide-y divide-border">
-            {complaints.map((c) => (
-              <Link
-                key={c.id}
-                href={`/admin/murojaatlar/${c.id}`}
-                className="flex items-center justify-between gap-4 py-3.5 hover:bg-bg-subtle -mx-2 px-2 rounded-inner transition"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-text-primary">{CATEGORY_LABELS[c.category]}</p>
-                  <p className="text-xs text-text-muted truncate max-w-xl">{c.description}</p>
-                  <p className="text-xs text-text-muted mt-1">
-                    {new Date(c.created_at).toLocaleDateString("uz-UZ")}
-                    {c.district ? ` · ${c.district}` : ""}
-                    {c.neighborhood ? `, ${c.neighborhood}` : ""}
-                  </p>
-                </div>
-                <Badge label={STATUS_LABELS[c.status]} color={STATUS_COLORS[c.status]} />
-              </Link>
-            ))}
+            {items.map((c) => {
+              const overdue = isOverdue(c.deadline_at, c.status);
+              return (
+                <Link
+                  key={c.id}
+                  href={`/admin/murojaatlar/${c.id}`}
+                  className="flex items-center justify-between gap-4 py-3.5 hover:bg-bg-subtle -mx-2 px-2 rounded-inner transition"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-mono font-medium text-text-primary">{c.ticket_number}</span>
+                      <span className="text-sm text-text-secondary">{c.category.name}</span>
+                      {c.needs_review && (
+                        <span className="inline-flex items-center gap-1 text-xs text-warning">
+                          <AlertTriangle className="h-3 w-3" /> tekshiruv kerak
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-text-muted mt-1">
+                      {c.citizen.fullname} · {c.citizen.phone}
+                      {c.neighborhood_name ? ` · ${c.neighborhood_name}` : ""}
+                    </p>
+                    <p className="text-xs mt-1">
+                      {new Date(c.created_at).toLocaleDateString("uz-UZ")}
+                      {c.deadline_at && (
+                        <span className={overdue ? "text-danger font-medium" : "text-text-muted"}>
+                          {" "}
+                          · muddat: {new Date(c.deadline_at).toLocaleDateString("uz-UZ")}
+                          {overdue ? " (o'tgan)" : ""}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <Badge label={PRIORITY_LABELS[c.priority]} color={PRIORITY_COLORS[c.priority]} />
+                    <Badge label={STATUS_LABELS[c.status]} color={STATUS_COLORS[c.status]} />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+            <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              Oldingi
+            </Button>
+            <span className="text-sm text-text-muted">
+              {page} / {totalPages}
+            </span>
+            <Button variant="secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              Keyingi
+            </Button>
           </div>
         )}
       </Card>

@@ -27,13 +27,15 @@ Sahifa spetsifikatsiyalari va matnlari: [10-ui-ux.md](10-ui-ux.md) §3–5. Fuqa
 
 Mavjud admin sahifalar saqlanadi, yangi sxema/endpointlarga moslanadi:
 
-- [ ] **F2.1 (M)** Ro'yxat: pagination envelope, yangi ustunlar (ticket, priority badge, deadline countdown/qizil overdue, bo'lim, needs_review belgisi), yangi filtrlar, global search input.
-- [ ] **F2.2 (L)** Tafsilot sahifasi qayta qurish ([10](10-ui-ux.md) §6): chapda — media galereya (rasm/video/audio player), matn, xarita, fuqaro kartasi; o'ngda — AI paneli (kategoriya+confidence, priority, sentiment, summary, teglar, needs_review ogohlantirish), status boshqaruvi (state-machine'ga mos tugmalar), biriktirish (bo'lim+xodim), timeline (events).
-- [ ] **F2.3 (M)** Javob editori: AI draft preload, tahrir, "Yuborish" (kanallar checkbox: SMS/Telegram) → `POST .../replies`; yuborilgach timeline'da.
-- [ ] **F2.4 (M)** Bo'limlar CRUD sahifasi (tashkilotlar sahifasi o'rniga), xodimlar CRUD (rol, bo'lim), faqat admin ko'radi.
-- [ ] **F2.5 (M)** Keyword boshqaruvi: kategoriya→keywordlar jadvali (qo'shish/o'chirish), **Suggestions inbox**: kutilayotgan takliflar (phrase, occurrences, namuna matnlar, taklif kategoriya) → Approve/Reject tugmalari.
-- [ ] **F2.6 (S)** Dashboard yangilash: overdue/needs_review kartalari, ai_accuracy_7d, priority breakdown.
-- [ ] **F2.7 (S)** RBAC UI: rolga qarab menyu/tugmalar (employee o'z bo'limi, manager KPI ko'radi...). `auth/me` dagi `role` dan.
+- [x] **F2.1 (M)** Ro'yxat (`app/admin/murojaatlar/page.tsx`): `Page<T>` pagination (oldingi/keyingi), ustunlar (ticket, priority+status badge, deadline+qizil overdue matni, needs_review belgisi), filtrlar (holat/kategoriya/bo'lim/muhimlik/sana/overdue/needs_review), qidiruv (`q`). Real backend bilan sinovdan o'tkazildi (6 ta murojaat, filtrlar, badge ranglar to'g'ri).
+- [x] **F2.2 (L)** Tafsilot sahifasi (`app/admin/murojaatlar/[id]/page.tsx`) qayta qurildi: chapda media/matn/fuqaro kartasi/xarita/ichki izohlar/voqealar tarixi; o'ngda holat+status tugmalari (faqat `STATUS_TRANSITIONS` ∩ rol ruxsati — masalan `in_progress`dan faqat "Ma'lumot kutilmoqda"/"Hal qilindi" ko'rinadi), AI paneli (dvigatel/ishonch/muhimlik/kayfiyat/xulosa/teglar, needs_review'da sariq ramka), bo'limga biriktirish, javob editori. Real murojaatda status o'zgartirish sinovdan o'tkazildi — voqealar tarixiga yangi yozuv qo'shildi, keyingi tugmalar to'g'ri yangilandi.
+- [x] **F2.3 (M)** Javob editori: mavjud bo'lsa AI `suggested_reply` avtomatik matn maydoniga tushadi, tahrirlanadi, "Yuborish" → `POST .../replies`. Kanal checkboxlari qo'shilmadi — backend hozircha faqat `text` qabul qiladi (kanal tanlash SMS/Telegram B4 bilan birga keladi). Oldingi B3 test-javobi ("Hurmatli fuqaro, muammo ertaga bartaraf etiladi.") sahifada to'g'ri ko'rindi.
+- [x] **F2.4 (M)** `app/admin/bolimlar/page.tsx` (departments CRUD, 14 ta bo'lim to'g'ri ko'rindi) va `app/admin/xodimlar/page.tsx` (users CRUD, rol+bo'lim). Ikkalasi ham `requireRoles={["admin"]}` bilan himoyalangan.
+- [x] **F2.5 (M)** `app/admin/kategoriyalar/page.tsx`: 15 kategoriya ro'yxati + tanlangan kategoriyaning keyword'lari (qo'shish/o'chirish, `seed` manbali so'zlar o'chirilmaydi). `app/admin/takliflar/page.tsx`: suggestions inbox (Approve/Reject). B2 sessiyasida yaratilgan sun'iy takliflar bilan to'liq sinovdan o'tkazilgan (approve → keyword bazasiga tushishi tasdiqlangan).
+- [x] **F2.6 (S)** Dashboard (`app/admin/page.tsx`) yangilandi: overdue/needs_review kartalari (qizil, agar >0), muhimlik bo'yicha taqsimot, `ai_accuracy_7d` ko'rsatkichi. Eski `/admin/statistika` (endi backend'da yo'q `/api/admin/stats/charts`ga tayangan edi) olib tashlandi — to'liq analitika F4'da qayta quriladi.
+- [x] **F2.7 (S)** `AppShell` endi `user.kind !== "staff"` tekshiradi (eski `role !== "admin"` o'rniga), sidebar admin-only bo'limlarni (`Bo'limlar`/`Xodimlar`/`Kategoriyalar`/`Keyword takliflari`) faqat `role === "admin"` bo'lsa ko'rsatadi, sahifa darajasida `requireRoles` prop bilan qo'shimcha himoya.
+
+**F2 real sinov natijasi:** login (staff) → dashboard (real statistika) → murojaatlar ro'yxati (filtrlar) → tafsilot (status o'zgartirish, ichki izoh, javob) → bo'limlar → xodimlar — barchasi Docker'dagi backend bilan xatosiz ishladi. `npm run build`/`lint` toza. **Muhim:** eski `lib/types.ts`/`lib/auth.tsx`/`lib/status.ts` to'liq yangi kontraktga almashtirildi (F1'dagi kabi qo'shimcha emas) — F1 fuqaro sahifalari bu fayllarni ishlatmagani uchun buzilmadi.
 
 ## F3 — QR landing va kabinet (P2–P3)
 

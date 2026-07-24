@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -24,7 +23,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const user = await login(loginValue, password);
-      router.push(user.role === "admin" ? "/admin" : "/");
+      router.push(user.kind === "staff" ? "/admin" : "/");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
     } finally {
@@ -39,9 +38,9 @@ export default function LoginPage() {
           <div className="h-12 w-12 rounded-full bg-accent-soft flex items-center justify-center mb-3">
             <ShieldCheck className="h-6 w-6 text-accent" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">Ariza tizimiga kirish</h1>
+          <h1 className="text-xl font-semibold text-text-primary">Xodimlar tizimiga kirish</h1>
           <p className="text-sm text-text-muted mt-1 text-center">
-            Murojaat yuborish uchun hisobingizga kiring
+            Admin panelga kirish uchun hisobingizga kiring
           </p>
         </div>
 
@@ -74,10 +73,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-sm text-text-muted text-center mt-6">
-          Hisobingiz yo&apos;qmi?{" "}
-          <Link href="/register" className="text-accent font-medium hover:underline">
-            Ro&apos;yxatdan o&apos;tish
-          </Link>
+          Xodim hisobini faqat administrator yaratadi.
         </p>
       </Card>
     </div>

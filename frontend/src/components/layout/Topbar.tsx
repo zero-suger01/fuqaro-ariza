@@ -2,10 +2,11 @@
 
 import { Bell } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { ROLE_LABELS } from "@/lib/status";
 
 export function Topbar({ title }: { title: string }) {
   const { user } = useAuth();
-  const initials = user ? `${user.first_name[0] ?? ""}${user.last_name[0] ?? ""}`.toUpperCase() : "";
+  const initials = user ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() : "";
 
   return (
     <header className="flex h-16 items-center gap-4 rounded-pill border border-border bg-bg-surface px-5 shadow-lift">
@@ -20,7 +21,7 @@ export function Topbar({ title }: { title: string }) {
         </div>
         <div className="hidden sm:block leading-tight">
           <div className="text-sm font-medium text-text-primary">{user?.fullname}</div>
-          <div className="text-xs text-text-muted">{user?.role === "admin" ? "Administrator" : "Foydalanuvchi"}</div>
+          <div className="text-xs text-text-muted">{user?.role ? ROLE_LABELS[user.role] : ""}</div>
         </div>
       </div>
     </header>

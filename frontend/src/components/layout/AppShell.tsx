@@ -4,37 +4,33 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  FilePlus2,
   ClipboardList,
-  Bell,
-  BarChart3,
   Building2,
+  Users,
+  Tags,
+  Lightbulb,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Sidebar, type NavItem } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 
-const USER_NAV: NavItem[] = [
-  { href: "/", label: "Bosh sahifa", icon: LayoutDashboard },
-  { href: "/ariza/yangi", label: "Ariza yuborish", icon: FilePlus2 },
-  { href: "/murojaatlarim", label: "Mening murojaatlarim", icon: ClipboardList },
-  { href: "/bildirishnomalar", label: "Bildirishnomalar", icon: Bell },
-];
-
-const ADMIN_NAV: NavItem[] = [
+const ADMIN_NAV: (NavItem & { roles?: string[] })[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/murojaatlar", label: "Murojaatlar", icon: ClipboardList },
-  { href: "/admin/statistika", label: "Statistika", icon: BarChart3 },
-  { href: "/admin/tashkilotlar", label: "Tashkilotlar", icon: Building2 },
+  { href: "/admin/bolimlar", label: "Bo'limlar", icon: Building2, roles: ["admin"] },
+  { href: "/admin/xodimlar", label: "Xodimlar", icon: Users, roles: ["admin"] },
+  { href: "/admin/kategoriyalar", label: "Kategoriyalar", icon: Tags, roles: ["admin"] },
+  { href: "/admin/takliflar", label: "Keyword takliflari", icon: Lightbulb, roles: ["admin"] },
 ];
 
 export function AppShell({
   title,
-  requireAdmin = false,
+  requireRoles,
   children,
 }: {
   title: string;
-  requireAdmin?: boolean;
+  /** Extra role gate on top of "must be logged-in staff" (F2.7 RBAC). */
+  requireRoles?: string[];
   children: React.ReactNode;
 }) {
   const { user, loading } = useAuth();
@@ -42,29 +38,34 @@ export function AppShell({
 
   useEffect(() => {
     if (loading) return;
-    if (!user) {
+    if (!user || user.kind !== "staff") {
       router.replace("/login");
-      return;
     }
-    if (requireAdmin && user.role !== "admin") {
-      router.replace("/");
-    }
-  }, [user, loading, requireAdmin, router]);
+  }, [user, loading, router]);
 
-  if (loading || !user || (requireAdmin && user.role !== "admin")) {
+  if (loading || !user || user.kind !== "staff") {
     return (
       <div className="flex h-screen items-center justify-center text-text-muted text-sm">Yuklanmoqda...</div>
     );
   }
 
-  const items = user.role === "admin" ? ADMIN_NAV : USER_NAV;
+  const items = ADMIN_NAV.filter((item) => !item.roles || item.roles.includes(user.role ?? ""));
+  const forbidden = requireRoles && !requireRoles.includes(user.role ?? "");
 
   return (
     <div className="flex min-h-screen">
       <Sidebar items={items} />
       <div className="flex-1 flex flex-col gap-6 p-4 md:p-6 min-w-0">
         <Topbar title={title} />
-        <main className="flex-1 flex flex-col gap-6 min-w-0">{children}</main>
+        <main className="flex-1 flex flex-col gap-6 min-w-0">
+          {forbidden ? (
+            <div className="flex flex-1 items-center justify-center text-text-muted text-sm py-20">
+              Bu sahifa uchun ruxsatingiz yetarli emas
+            </div>
+          ) : (
+            children
+          )}
+        </main>
       </div>
     </div>
   );

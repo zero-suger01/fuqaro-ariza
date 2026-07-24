@@ -72,6 +72,15 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   return handleResponse<T>(res);
 }
 
+export async function apiDelete<T>(path: string): Promise<T> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "DELETE",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return handleResponse<T>(res);
+}
+
 export async function apiPostForm<T>(path: string, formData: FormData): Promise<T> {
   const token = getToken();
   const res = await fetch(`${API_URL}${path}`, {

@@ -3,36 +3,30 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { apiGet, apiPost, setToken } from "@/lib/api";
-import type { User } from "@/lib/types";
+import type { AuthUser } from "@/lib/types";
 
 interface TokenResponse {
   access_token: string;
-  user: User;
+  user: AuthUser;
 }
 
 interface AuthContextValue {
-  user: User | null;
+  user: AuthUser | null;
   loading: boolean;
-  login: (login: string, password: string) => Promise<User>;
-  register: (data: {
-    first_name: string;
-    last_name: string;
-    phone: string;
-    email?: string;
-    password: string;
-  }) => Promise<User>;
+  login: (login: string, password: string) => Promise<AuthUser>;
+  register: (data: { first_name: string; last_name?: string; phone: string; password: string; language?: string }) => Promise<AuthUser>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    apiGet<User>("/api/auth/me")
+    apiGet<AuthUser>("/api/auth/me")
       .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
@@ -46,8 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (data: { first_name: string; last_name: string; phone: string; email?: string; password: string }) => {
-      const res = await apiPost<TokenResponse>("/api/auth/register", data);
+    async (data: { first_name: string; last_name?: string; phone: string; password: string; language?: string }) => {
+      const res = await apiPost<TokenResponse>("/api/auth/register", { language: "uz", ...data });
       setToken(res.access_token);
       setUser(res.user);
       return res.user;
