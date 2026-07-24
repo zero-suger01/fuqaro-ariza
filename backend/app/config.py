@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "gemma3:12b"
     ai_confidence_threshold: float = 0.75
+    # R1: generatsiya (xulosa + javob drafti + teglar) klassifikatsiyadan
+    # ancha ko'p token talab qiladi — CPU serverda 2-6 daqiqa. Fuqaro ham,
+    # xodim ham kutmaydi (async worker), shuning uchun timeout saxiy.
+    # O'lchangan qiymatlar: docs/07-ai-layer.md §4 model jadvali.
+    llm_timeout_s: float = 300.0
+    llm_max_attempts: int = 2
 
     # STT
     stt_provider: str = "whisper"

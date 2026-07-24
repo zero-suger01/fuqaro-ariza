@@ -40,7 +40,7 @@
 | `closed` | Yopildi (fuqaro tasdig'i yoki 7 kun sukut) | tizim/operator | P2 |
 | `archived` | Arxivlandi | tizim | P3 |
 
-Ruxsat etilgan o'tishlar: `new→ai_processed→assigned→(accepted)→in_progress→resolved→closed→archived`; `rejected` — `new/ai_processed/assigned` dan; `need_info` — `assigned/accepted/in_progress` dan va qaytishi `in_progress` ga. Boshqa o'tish = 422 `invalid_transition`.
+Ruxsat etilgan o'tishlar: `new→ai_processed→assigned→(accepted)→in_progress→resolved→closed→archived`; `rejected` — `new/ai_processed/assigned/accepted` dan (v1.2.1: `accepted` avtomatik qo'yilgani uchun rad etish imkoni saqlanadi); `need_info` — `assigned/accepted/in_progress` dan va qaytishi `in_progress` ga. Boshqa o'tish = 422 `invalid_transition`.
 
 **`accepted` avtomatik (R0/Q2):** biriktirilgan murojaatni o'z bo'limi xodimi tafsilot sahifasida BIRINCHI marta ochganida FE avtomatik `PATCH status=accepted` yuboradi (actor — o'sha xodim). Alohida tugma UI'dan olib tashlanadi; qo'lda bosish shart emas. «Bo'lim qachon ko'rdi» audit izi saqlanadi, ortiqcha bosish yo'qoladi.
 
@@ -196,7 +196,7 @@ Bildirishnomalar: backend worker statusi o'zgarganda `citizens.telegram_chat_id`
 
 ## 9. Muhit o'zgaruvchilari (kontraktga kiruvchi nomlar)
 
-Backend: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `TICKET_PREFIX=UY`, `S3_*` (mavjud), `OLLAMA_URL=http://localhost:11434`, `OLLAMA_MODEL=gemma3:12b`, `AI_CONFIDENCE_THRESHOLD=0.75`, `STT_PROVIDER=whisper|mohirai`, `STT_WHISPER_MODEL=medium`, `MOHIRAI_API_KEY`, `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `BOT_API_TOKEN`, `PUBLIC_BASE_URL`, `TURNSTILE_SECRET_KEY` (B4.7, bo'sh = captcha o'chirilgan).
+Backend: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `TICKET_PREFIX=UY`, `S3_*` (mavjud), `OLLAMA_URL=http://localhost:11434`, `OLLAMA_MODEL=gemma3:12b`, `AI_CONFIDENCE_THRESHOLD=0.75`, `LLM_TIMEOUT_S=300`, `LLM_MAX_ATTEMPTS=2` (R1 — [07](07-ai-layer.md) §4 o'lchovlari), `STT_PROVIDER=whisper|mohirai`, `STT_WHISPER_MODEL=medium`, `MOHIRAI_API_KEY`, `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `BOT_API_TOKEN`, `PUBLIC_BASE_URL`, `TURNSTILE_SECRET_KEY` (B4.7, bo'sh = captcha o'chirilgan).
 Frontend: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` (F3.1, bo'sh = `/go`dagi Telegram tugmasi "tez orada" holatida). Bot: `TELEGRAM_BOT_TOKEN`, `BACKEND_URL`, `BOT_API_TOKEN`.
 
 ## Changelog

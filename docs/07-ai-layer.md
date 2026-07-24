@@ -70,11 +70,21 @@ Test to'plami majburiy: "Кўчамизда свет йўқ" ≡ "ko'chamizda sv
 
 | Server | Tavsiya model | Izoh |
 |---|---|---|
-| GPU yo'q, 16 GB RAM | `gemma3:4b` (q4) | ~3 GB RAM, CPU'da 10–20 tok/s — async oqim uchun yetarli |
-| GPU yo'q, 32 GB RAM | `gemma3:12b` (q4) | sifat yaxshiroq, CPU'da sekin (javob 30–90 s) — async bo'lgani uchun OK |
-| GPU 12+ GB | `gemma3:12b` | 2–5 s javob |
+| GPU yo'q, 16 GB RAM | 4B sinf (`gemma3:4b`) | ~3 GB RAM, generatsiya ~1 daqiqa |
+| GPU yo'q, 32 GB RAM | **8B sinf (`gemma4:latest`)** | sifat/tezlik muvozanati — pastdagi o'lchovga qarang |
+| GPU 12+ GB | 12B sinf | 2–5 s javob, eng yaxshi sifat |
 
-(Foydalanuvchi kutmaydi — klassifikatsiya submit'dan KEYIN worker'da. Shuning uchun sekin CPU inference ham maqbul; navbat uzayib ketsa dashboard'da ko'rinadi.) Yangi Gemma versiyasi chiqsa shu env bilan almashtiriladi — kod o'zgarmaydi.
+**R1 da lokal mashinada o'lchangan (2026-07-25, CPU, Apple Silicon; bitta murojaat = xulosa + javob drafti + teglar):**
+
+| Model | Parametr | To'liq javob | Sifat |
+|---|---|---|---|
+| `qwen2.5:3b` | 3.1B | **14 s** | ❌ yaroqsiz — kategoriya xato, maydon nomlarini o'ylab topadi |
+| `gemma4:latest` | 8.0B | **137 s** | ✅ to'g'ri kategoriya, to'g'ri enum qiymatlar, yaxshi o'zbekcha xulosa |
+| `gemma4:12b` | 11.9B | **326 s** | ✅ sifat yaxshi, lekin CPU'da juda sekin (~0.56 tok/s) |
+
+**Bundan chiqadigan qat'iy qoida:** `LLM_TIMEOUT_S` tanlangan modelning real vaqtidan **kamida 2 barobar** katta bo'lishi shart. Standart 300 s (8B sinf uchun yetarli zaxira bilan). Timeout kichik bo'lsa oqibat jim va zararli: har murojaat `LlmError` bilan tugaydi, draft yaratilmaydi, tizim esa "ishlayotgandek" ko'rinadi — aynan shu holat R1 sinovida topildi (120 s timeout, 12B model → har safar 2×120 s kutib, natijasiz). Dashboard'dagi AI salomatlik indikatori (`llm_errors_1h`) shuni ko'rsatadi.
+
+(Foydalanuvchi kutmaydi — hammasi submit'dan KEYIN worker'da, konkurensiya 1. Kunlik hajm ×  o'rtacha vaqt server yukini beradi: 50 murojaat × 137 s ≈ 1.9 soat uzluksiz CPU — bitta tuman uchun maqbul.) Yangi model chiqsa shu env bilan almashtiriladi — kod o'zgarmaydi.
 
 ### So'rov (chat, `format: "json"`, temperature 0, `keep_alive: -1`)
 
@@ -93,11 +103,11 @@ loyihasi, 2-3 gap, "Hurmatli fuqaro" bilan boshlansin), tags (3-6 ta qisqa teg).
 
 User xabari: normalizatsiyadan O'TMAGAN asl matn (LLM'ga boy kontekst foydali) + mavjud bo'lsa mahalla/manzil.
 
-Javob validatsiyasi: Pydantic (`category_code` ro'yxatda bo'lishi shart; bo'lmasa `boshqa` + needs_review). Timeout 120 s, 1 marta retry, so'ng graceful fallback (§1 sxemadagi o'ng shox).
+Javob validatsiyasi: Pydantic (`category_code` ro'yxatda bo'lishi shart; bo'lmasa `boshqa` + needs_review; `priority`/`sentiment` noto'g'ri qiymat bersa — model o'zbekcha "yuqori"/"salbiy" deb qaytarishi kuzatilgan — standart qiymatga tushadi). Timeout `LLM_TIMEOUT_S` (standart 300 s), `LLM_MAX_ATTEMPTS` marta urinish, so'ng graceful fallback (§1 qarorlar jadvali).
 
 ### Sozlash
 
-`OLLAMA_URL`, `OLLAMA_MODEL`, `AI_CONFIDENCE_THRESHOLD`. Worker konkurensiyasi: LLM ishlari uchun 1 (CPU serverda), boshqa ishlar parallel.
+`OLLAMA_URL`, `OLLAMA_MODEL`, `AI_CONFIDENCE_THRESHOLD`, `LLM_TIMEOUT_S`, `LLM_MAX_ATTEMPTS`. Worker konkurensiyasi: LLM ishlari uchun 1 (CPU serverda), boshqa ishlar parallel.
 
 ## 5. O'rganish sikli (har kuni aqlliroq, LLM arzonlashadi)
 

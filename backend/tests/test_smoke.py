@@ -54,16 +54,24 @@ def test_guest_submit_track_admin_flow(client):
     assert any(item["ticket_number"] == ticket for item in items)
     complaint_id = next(item["id"] for item in items if item["ticket_number"] == ticket)
 
-    status_change = client.patch(
-        f"/api/admin/complaints/{complaint_id}/status", json={"status": "ai_processed"}, headers=headers
-    )
-    assert status_change.status_code == 200, status_change.text
-    assert status_change.json()["status"] == "ai_processed"
+    # Worker ishlab turgan bo'lsa murojaatni bir zumda `ai_processed`ga
+    # o'tkazib qo'yadi (klassifikatsiya ~0.2 s) — test o'sha o'tishni qayta
+    # qilmoqchi bo'lsa 422 `invalid_transition` olardi. Shuning uchun avval
+    # hozirgi holat o'qiladi.
+    current = client.get(f"/api/admin/complaints/{complaint_id}", headers=headers).json()["status"]
+    if current == "new":
+        status_change = client.patch(
+            f"/api/admin/complaints/{complaint_id}/status", json={"status": "ai_processed"}, headers=headers
+        )
+        assert status_change.status_code == 200, status_change.text
+        current = status_change.json()["status"]
+    assert current in ("ai_processed", "assigned")
 
     track_after = client.get("/api/public/complaints/track", params={"ticket": ticket, "phone": phone})
     assert track_after.json()["timeline"][0]["done"] is True
 
-    # rejected requires a note
+    # rejected requires a note (ai_processed va assigned — ikkalasidan ham
+    # rejected ruxsat etilgan o'tish, docs/03 §2.1)
     reject = client.patch(
         f"/api/admin/complaints/{complaint_id}/status", json={"status": "rejected"}, headers=headers
     )
@@ -92,9 +100,10 @@ def test_resolved_requires_reply_and_review_flow(client):
     listing = client.get("/api/admin/complaints", params={"q": ticket}, headers=headers)
     complaint_id = next(i["id"] for i in listing.json()["items"] if i["ticket_number"] == ticket)
 
-    # new -> ai_processed, keyin review (AI taklifi yo'q — kategoriya joyida
-    # qoladi, bo'limga biriktiriladi, needs_review=False)
-    client.patch(f"/api/admin/complaints/{complaint_id}/status", json={"status": "ai_processed"}, headers=headers)
+    # new -> ai_processed (worker allaqachon qilgan bo'lishi mumkin), keyin
+    # review: AI taklifini qabul qilib bo'limga biriktiradi, needs_review=False
+    if client.get(f"/api/admin/complaints/{complaint_id}", headers=headers).json()["status"] == "new":
+        client.patch(f"/api/admin/complaints/{complaint_id}/status", json={"status": "ai_processed"}, headers=headers)
     review = client.post(f"/api/admin/complaints/{complaint_id}/review", json={}, headers=headers)
     assert review.status_code == 200, review.text
     assert review.json()["status"] == "assigned"

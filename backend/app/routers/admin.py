@@ -22,6 +22,7 @@ from app.core.constants import (
     TERMINAL_STATUSES,
 )
 from app.core.redisdb import redis_client
+from app.core.timezone import day_bounds_utc, format_local
 from app.core.deps import get_current_admin, get_current_staff_up
 from app.core.errors import AppError
 from app.core.security import hash_password
@@ -287,6 +288,7 @@ def list_complaints(
             deadline_at=c.deadline_at,
             needs_review=c.needs_review,
             ai=_ai_list_brief(c),
+            description_snippet=c.description[:160],
         )
         for c in rows
     ]
@@ -352,9 +354,10 @@ def export_complaints_xlsx(
             c.assigned_department.name("uz") if c.assigned_department else "",
             c.assigned_user.fullname if c.assigned_user else "",
             c.source,
-            c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else "",
-            c.deadline_at.strftime("%Y-%m-%d %H:%M") if c.deadline_at else "",
-            c.resolved_at.strftime("%Y-%m-%d %H:%M") if c.resolved_at else "",
+            # B5.6: eksportdagi sanalar ham Toshkent vaqtida (UTC emas)
+            format_local(c.created_at, "%Y-%m-%d %H:%M"),
+            format_local(c.deadline_at, "%Y-%m-%d %H:%M"),
+            format_local(c.resolved_at, "%Y-%m-%d %H:%M"),
             "ha" if c.needs_review else "",
         ])
 
@@ -786,9 +789,9 @@ def reject_keyword_suggestion(
 @router.get("/stats/dashboard", response_model=DashboardStats, dependencies=[Depends(get_current_admin)])
 def dashboard_stats(db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
-    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
-    week_start = today_start - timedelta(days=today_start.weekday())
-    month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+    # B5.6: "bugun/hafta/oy" Toshkent kalendari bo'yicha — aks holda soat
+    # 00:00–05:00 da kelgan murojaatlar "kechagi" bo'lib ko'rinardi.
+    today_start, week_start, month_start = day_bounds_utc(now)
     seven_days_ago = now - timedelta(days=7)
 
     priority_rows = db.query(Complaint.priority, func.count()).group_by(Complaint.priority).all()

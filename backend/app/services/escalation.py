@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.constants import TERMINAL_STATUSES
+from app.core.timezone import format_local
 from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
 from app.models.user import User
@@ -82,7 +83,8 @@ def _warn_before_deadline(db: Session, now: datetime) -> int:
             notify_staff(
                 db,
                 user,
-                f"Muddat yaqinlashmoqda ({complaint.deadline_at:%d.%m %H:%M}): {complaint.ticket_number}",
+                f"Muddat yaqinlashmoqda ({format_local(complaint.deadline_at, '%d.%m %H:%M')}): "
+                f"{complaint.ticket_number}",
                 complaint_id=complaint.id,
             )
         db.add(

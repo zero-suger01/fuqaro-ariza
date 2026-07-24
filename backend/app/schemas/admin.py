@@ -241,6 +241,8 @@ class ComplaintListItem(BaseModel):
     deadline_at: datetime | None
     needs_review: bool
     ai: AiListBrief | None = None
+    # R2: navbat sahifalarida matnni ochmasdan ko'rish uchun (birinchi 160 belgi)
+    description_snippet: str = ""
 
     class Config:
         from_attributes = True
