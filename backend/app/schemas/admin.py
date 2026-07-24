@@ -276,6 +276,12 @@ class AssignRequest(BaseModel):
     assigned_user_id: uuid.UUID | None = None
 
 
+class NeighborhoodStat(BaseModel):
+    neighborhood_id: uuid.UUID | None
+    neighborhood_name: str | None
+    count: int
+
+
 class DashboardStats(BaseModel):
     today: int
     this_week: int
@@ -286,6 +292,7 @@ class DashboardStats(BaseModel):
     needs_review: int
     by_priority: dict[str, int]
     ai_accuracy_7d: float | None
+    by_neighborhood: list[NeighborhoodStat]
 
 
 class MonthlyPoint(BaseModel):
@@ -345,3 +352,19 @@ class QrCodeOut(BaseModel):
     created_at: datetime
     png_url: str
     pdf_url: str
+
+
+class HeatmapPoint(BaseModel):
+    lat: float
+    lng: float
+    weight: int
+
+
+class KpiRow(BaseModel):
+    key: str | None
+    label: str
+    total: int
+    resolved: int
+    avg_first_response_hours: float | None
+    avg_resolution_hours: float | None
+    sla_percent: float | None

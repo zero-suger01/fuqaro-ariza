@@ -1,14 +1,15 @@
 import secrets
 import uuid
+from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
 from app.core.constants import STATUS_ASSIGNED, STATUS_IN_PROGRESS, STATUS_RESOLVED, TERMINAL_STATUSES
-from app.core.deps import get_current_admin, get_current_employee_up, get_current_operator_up
+from app.core.deps import get_current_admin, get_current_employee_up, get_current_manager_up, get_current_operator_up
 from app.core.errors import AppError
 from app.core.security import hash_password
 from app.database import get_db
@@ -43,8 +44,11 @@ from app.schemas.admin import (
     DepartmentPatch,
     EventOut,
     FileOut,
+    HeatmapPoint,
     KeywordIn,
     KeywordOut,
+    KpiRow,
+    NeighborhoodStat,
     QrCodeIn,
     QrCodeOut,
     ReplyIn,
@@ -562,6 +566,14 @@ def dashboard_stats(db: Session = Depends(get_db)):
         else None
     )
 
+    neighborhood_rows = (
+        db.query(Neighborhood.id, Neighborhood.name, func.count(Complaint.id))
+        .join(Complaint, Complaint.neighborhood_id == Neighborhood.id)
+        .group_by(Neighborhood.id, Neighborhood.name)
+        .order_by(func.count(Complaint.id).desc())
+        .all()
+    )
+
     return DashboardStats(
         today=db.query(Complaint).filter(Complaint.created_at >= today_start).count(),
         this_week=db.query(Complaint).filter(Complaint.created_at >= week_start).count(),
@@ -574,7 +586,121 @@ def dashboard_stats(db: Session = Depends(get_db)):
         needs_review=db.query(Complaint).filter(Complaint.needs_review.is_(True)).count(),
         by_priority={priority: count for priority, count in priority_rows},
         ai_accuracy_7d=ai_accuracy_7d,
+        by_neighborhood=[
+            NeighborhoodStat(neighborhood_id=nid, neighborhood_name=name, count=count)
+            for nid, name, count in neighborhood_rows
+        ],
     )
+
+
+@router.get("/stats/heatmap", response_model=list[HeatmapPoint], dependencies=[Depends(get_current_operator_up)])
+def stats_heatmap(date_from: date | None = None, date_to: date | None = None, db: Session = Depends(get_db)):
+    """docs/03-kontraktlar.md §5: [{lat, lng, weight}]. Yaqin koordinatalar
+    (~11m, 4 xona) bitta nuqtaga birlashtirilib, weight = shu joydagi
+    murojaatlar soni — xom nuqtalar to'plami emas, haqiqiy zichlik signali."""
+    query = db.query(Complaint.latitude, Complaint.longitude).filter(
+        Complaint.latitude.isnot(None), Complaint.longitude.isnot(None)
+    )
+    if date_from:
+        query = query.filter(Complaint.created_at >= date_from)
+    if date_to:
+        query = query.filter(Complaint.created_at < date_to + timedelta(days=1))
+
+    buckets: dict[tuple[float, float], int] = defaultdict(int)
+    for lat, lng in query.all():
+        buckets[(round(lat, 4), round(lng, 4))] += 1
+
+    return [HeatmapPoint(lat=lat, lng=lng, weight=weight) for (lat, lng), weight in buckets.items()]
+
+
+_KPI_GROUP_ATTRS = {
+    "department": "assigned_department_id",
+    "user": "assigned_user_id",
+    "neighborhood": "neighborhood_id",
+    "category": "category_id",
+}
+
+
+def _kpi_label(group_by: str, complaint: Complaint) -> str:
+    if group_by == "department":
+        return complaint.assigned_department.name("uz") if complaint.assigned_department else "Biriktirilmagan"
+    if group_by == "user":
+        return complaint.assigned_user.fullname if complaint.assigned_user else "Biriktirilmagan"
+    if group_by == "neighborhood":
+        return complaint.neighborhood.name if complaint.neighborhood else "Noma'lum"
+    return complaint.category.name("uz") if complaint.category else "Noma'lum"
+
+
+@router.get("/stats/kpi", response_model=list[KpiRow], dependencies=[Depends(get_current_manager_up)])
+def stats_kpi(
+    group_by: str = Query(...),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    db: Session = Depends(get_db),
+):
+    if group_by not in _KPI_GROUP_ATTRS:
+        raise AppError(422, "validation_error", "Noto'g'ri group_by qiymati")
+
+    query = db.query(Complaint).options(
+        joinedload(Complaint.assigned_department),
+        joinedload(Complaint.assigned_user),
+        joinedload(Complaint.neighborhood),
+        joinedload(Complaint.category),
+    )
+    if date_from:
+        query = query.filter(Complaint.created_at >= date_from)
+    if date_to:
+        query = query.filter(Complaint.created_at < date_to + timedelta(days=1))
+    complaints = query.all()
+
+    first_reply_at: dict[uuid.UUID, datetime] = {}
+    if complaints:
+        reply_rows = (
+            db.query(Reply.complaint_id, func.min(Reply.sent_at))
+            .filter(Reply.complaint_id.in_([c.id for c in complaints]))
+            .group_by(Reply.complaint_id)
+            .all()
+        )
+        first_reply_at = dict(reply_rows)
+
+    attr = _KPI_GROUP_ATTRS[group_by]
+    groups: dict[str | None, list[Complaint]] = defaultdict(list)
+    for c in complaints:
+        value = getattr(c, attr)
+        groups[str(value) if value else None].append(c)
+
+    rows = []
+    for key, items in groups.items():
+        resolved_items = [c for c in items if c.status in (STATUS_RESOLVED, "closed")]
+
+        response_hours = [
+            (first_reply_at[c.id] - c.created_at).total_seconds() / 3600 for c in items if c.id in first_reply_at
+        ]
+        resolution_hours = [
+            (c.resolved_at - c.created_at).total_seconds() / 3600 for c in resolved_items if c.resolved_at
+        ]
+        sla_eligible = [c for c in resolved_items if c.resolved_at and c.deadline_at]
+
+        rows.append(
+            KpiRow(
+                key=key,
+                label=_kpi_label(group_by, items[0]),
+                total=len(items),
+                resolved=len(resolved_items),
+                avg_first_response_hours=round(sum(response_hours) / len(response_hours), 1)
+                if response_hours
+                else None,
+                avg_resolution_hours=round(sum(resolution_hours) / len(resolution_hours), 1)
+                if resolution_hours
+                else None,
+                sla_percent=round(100 * sum(1 for c in sla_eligible if c.resolved_at <= c.deadline_at) / len(sla_eligible), 1)
+                if sla_eligible
+                else None,
+            )
+        )
+
+    rows.sort(key=lambda r: r.total, reverse=True)
+    return rows
 
 
 @router.get("/users", response_model=list[UserAdminOut], dependencies=[Depends(get_current_admin)])

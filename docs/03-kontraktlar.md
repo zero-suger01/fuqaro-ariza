@@ -152,9 +152,9 @@ Mavjud endpointlar saqlanadi, quyidagilar o'zgaradi/qo'shiladi (— bilan belgil
 | `GET/POST/DELETE /api/admin/categories/{id}/keywords` | keyword boshqarish | admin | P2 |
 | `GET /api/admin/keyword-suggestions` / `POST .../{id}/approve` / `POST .../{id}/reject` | o'rganish sikli | admin | P2 |
 | `GET/POST/PATCH /api/admin/users` (staff CRUD, rol, bo'lim) | xodimlar | admin | P2 |
-| `GET /api/admin/stats/dashboard` — javobga `overdue`, `needs_review`, `by_priority`, `ai_accuracy_7d` qo'shiladi | dashboard | operator+ | P2 |
-| `GET /api/admin/stats/heatmap?from=&to=` → `[{lat, lng, weight}]` | xarita | operator+ | P3 |
-| `GET /api/admin/stats/kpi?group_by=department\|user\|neighborhood\|category&from=&to=` | KPI | manager+ | P3 |
+| `GET /api/admin/stats/dashboard` — javobga `overdue`, `needs_review`, `by_priority`, `ai_accuracy_7d`, `by_neighborhood: [{neighborhood_id,neighborhood_name,count}]` qo'shiladi | dashboard | operator+ | P2 |
+| `GET /api/admin/stats/heatmap?date_from=&date_to=` → `[{lat, lng, weight}]` (koordinatalar ~11m aniqlikda guruhlanadi) | xarita | operator+ | P3 |
+| `GET /api/admin/stats/kpi?group_by=department\|user\|neighborhood\|category&date_from=&date_to=` → `[{key,label,total,resolved,avg_first_response_hours,avg_resolution_hours,sla_percent}]` | KPI | manager+ | P3 |
 | `GET /api/admin/audit-logs` | audit | admin | P3 |
 | `GET /api/admin/qr-codes` / `POST /api/admin/qr-codes` (mahallaga QR yaratish, PNG/PDF url qaytadi) | QR | admin | P3 |
 
