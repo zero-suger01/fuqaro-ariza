@@ -34,6 +34,15 @@ def enforce_submit_limits(request: Request, phone: str) -> None:
     _hit(f"rl:submit:ip:{_client_ip(request)}", 20, 86400)
 
 
+def enforce_bot_submit_limit(phone: str) -> None:
+    """Bot (X-Bot-Token bilan autentifikatsiya qilingan, IP asossiz — Telegram
+    server IP'lari umumiy) uchun faqat telefon bo'yicha, lekin xuddi shu
+    Redis kaliti bilan (`rl:submit:phone:{phone}`) — shu sabab bitta fuqaro
+    web orqali 5 marta yuborib, keyin botga o'tib yana 5 marta yubora
+    olmaydi, ikkalasi bitta umumiy limitga tushadi."""
+    _hit(f"rl:submit:phone:{phone}", 5, 3600)
+
+
 def enforce_stt_limit(request: Request) -> None:
     _hit(f"rl:stt:ip:{_client_ip(request)}", 10, 3600)
 

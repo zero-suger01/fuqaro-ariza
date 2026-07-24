@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.core.audit import audit_log_middleware
 from app.core.errors import AppError, default_code
-from app.routers import admin, auth, citizen, notifications, public
+from app.routers import admin, auth, bot, citizen, notifications, public
 from app.services.storage import ensure_bucket
 
 settings = get_settings()
@@ -36,6 +36,7 @@ app.include_router(public.router)
 app.include_router(admin.router)
 app.include_router(citizen.router)
 app.include_router(notifications.router)
+app.include_router(bot.router)
 
 
 @app.exception_handler(AppError)

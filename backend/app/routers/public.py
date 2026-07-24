@@ -9,12 +9,8 @@ from app.core.constants import LANGUAGES, SOURCES, STATUS_NEW, STATUS_REJECTED, 
 from app.core.errors import AppError
 from app.core.ratelimit import enforce_stt_limit, enforce_submit_limits, enforce_track_limit
 from app.database import get_db
-from app.i18n.messages import qabul_text
 from app.models.category import Category
-from app.models.citizen import Citizen
 from app.models.complaint import Complaint
-from app.models.complaint_event import ComplaintEvent
-from app.models.complaint_file import ComplaintFile
 from app.models.neighborhood import Neighborhood
 from app.models.qr_code import QrCode
 from app.models.stt_job import SttJob
@@ -30,12 +26,10 @@ from app.schemas.public import (
     TimelineStep,
     TrackOut,
 )
-from app.services.ai.classifier import classify
 from app.services.captcha import verify_captcha
-from app.services.notifications import notify_citizen
+from app.services.complaint_intake import create_complaint
 from app.services.queue import enqueue
 from app.services.storage import upload_file, validate_file
-from app.services.tickets import next_ticket_number
 
 router = APIRouter(prefix="/api/public", tags=["public"])
 
@@ -65,86 +59,27 @@ def submit_complaint(
         raise AppError(422, "validation_error", "Noto'g'ri til kodi")
     if source not in SOURCES:
         raise AppError(422, "validation_error", "Noto'g'ri manba")
-    real_images = [img for img in images if img.filename]
-    if len(real_images) > 5:
-        raise AppError(422, "invalid_file", "Ko'pi bilan 5 ta rasm yuklash mumkin")
 
     verify_captcha(captcha_token, request.client.host if request.client else None)
     enforce_submit_limits(request, phone)
 
-    category = None
-    if category_code:
-        category = db.execute(
-            select(Category).where(Category.code == category_code, Category.is_active.is_(True))
-        ).scalar_one_or_none()
-        if category is None:
-            raise AppError(422, "validation_error", "Noto'g'ri kategoriya kodi")
-
-    if neighborhood_id is not None and db.get(Neighborhood, neighborhood_id) is None:
-        raise AppError(422, "validation_error", "Mahalla topilmadi")
-
-    citizen = db.execute(select(Citizen).where(Citizen.phone == phone)).scalar_one_or_none()
-    if citizen is None:
-        citizen = Citizen(phone=phone, first_name=first_name, last_name=last_name or None, language=language)
-        db.add(citizen)
-        db.flush()
-    else:
-        citizen.first_name = first_name
-        citizen.last_name = last_name or citizen.last_name
-
-    if category is None:
-        # STT (B2.4) isn't wired up yet, so description is required even for
-        # audio submits until then — see docs/07-ai-layer.md §6.
-        classification = classify(db, description)
-        category = db.get(Category, classification.category_id) if classification.category_id else None
-        if category is None:
-            raise AppError(500, "server_error", "Kategoriya aniqlanmadi")
-
-    complaint = Complaint(
-        ticket_number=next_ticket_number(db),
-        citizen_id=citizen.id,
-        category_id=category.id,
+    complaint = create_complaint(
+        db,
         description=description,
-        status=STATUS_NEW,
-        source=source,
+        first_name=first_name,
+        last_name=last_name,
+        phone=phone,
         language=language,
+        source=source,
+        category_code=category_code,
         latitude=latitude,
         longitude=longitude,
         address=address,
         neighborhood_id=neighborhood_id,
+        images=images,
+        video=video,
+        audio=audio,
     )
-    db.add(complaint)
-    db.flush()
-
-    for image in real_images:
-        data, mime = validate_file(image, "image")
-        url = upload_file(data, mime, "image")
-        db.add(ComplaintFile(complaint_id=complaint.id, kind="image", url=url, mime=mime, size_bytes=len(data)))
-
-    if video is not None and video.filename:
-        data, mime = validate_file(video, "video")
-        url = upload_file(data, mime, "video")
-        db.add(ComplaintFile(complaint_id=complaint.id, kind="video", url=url, mime=mime, size_bytes=len(data)))
-
-    if audio is not None and audio.filename:
-        data, mime = validate_file(audio, "audio")
-        url = upload_file(data, mime, "audio")
-        db.add(ComplaintFile(complaint_id=complaint.id, kind="audio", url=url, mime=mime, size_bytes=len(data)))
-
-    db.add(
-        ComplaintEvent(
-            complaint_id=complaint.id, event_type="created", actor_type="citizen", actor_id=citizen.id, payload=None
-        )
-    )
-
-    db.commit()
-    db.refresh(complaint)
-
-    sms = qabul_text(citizen.language or "uz", complaint.ticket_number)
-    notify_citizen(db, citizen, f"Arizangiz qabul qilindi: {complaint.ticket_number}", complaint_id=complaint.id, sms_text=sms)
-    db.commit()
-
-    enqueue("classify_complaint", str(complaint.id))
 
     return ComplaintSubmitOut(
         id=complaint.id,
