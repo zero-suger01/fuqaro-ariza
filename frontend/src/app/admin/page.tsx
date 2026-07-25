@@ -71,8 +71,10 @@ function AiHealthStrip({ health }: { health: AiHealth | null }) {
             {health.ollama_ok ? "ishlayapti" : "JAVOB BERMAYAPTI"}
           </span>
         </span>
-        <span className="text-text-muted">Oxirgi LLM javobi: {lastText}</span>
-        <span className="text-text-muted">Navbatda: {health.llm_queue_depth} ish</span>
+        <span className="text-text-muted">Oxirgi javob: {lastText}</span>
+        <span className={health.pending_analysis > 0 ? "text-warning font-medium" : "text-text-muted"}>
+          Tahlil kutmoqda: {health.pending_analysis} murojaat
+        </span>
         {health.llm_errors_1h > 0 && (
           <span className="text-warning font-medium">Oxirgi soatda {health.llm_errors_1h} xato</span>
         )}
@@ -80,8 +82,9 @@ function AiHealthStrip({ health }: { health: AiHealth | null }) {
       </div>
       {!health.ollama_ok && (
         <p className="text-xs text-danger mt-2">
-          Ollama ishlamayapti — murojaatlar kategoriyalanadi (kalit so&apos;z), lekin AI xulosa/javob draftlari
-          yaratilmayapti. Serverda <code className="font-mono">ollama serve</code> va model nomini tekshiring.
+          Ollama javob bermayapti — yangi murojaatlar kategoriyalanmayapti va bo&apos;limlarga yo&apos;naltirilmayapti.
+          Ular yo&apos;qolmaydi: tizim har 15 daqiqada qayta uradi va Ollama tiklanishi bilan navbat o&apos;zi
+          ishlab ketadi. Serverda <code className="font-mono">ollama serve</code> va model nomini tekshiring.
         </p>
       )}
     </Card>

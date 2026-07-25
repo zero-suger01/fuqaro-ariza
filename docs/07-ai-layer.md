@@ -1,70 +1,51 @@
-# 07 — AI qatlami: gibrid klassifikator, o'rganish sikli, ovoz→matn
+# 07 — AI qatlami: LLM yagona dvigatel, ovoz→matn
 
-Maqsad: **arzon, offline, vaqt o'tgan sari aqlliroq**. Keyword birinchi (bepul, millisekund), lokal LLM faqat keyword ojiz qolganda (sheva, murakkab matn), va har kuni LLM natijalaridan keyword bazasi boyitiladi — LLM chaqiruvi tobora kamayadi.
+Maqsad: **murojaat tushgach hech kim aralashmasin.** Lokal LLM (Ollama) har bir murojaatni o'zi o'qiydi, kategoriyalaydi, ustuvorlik beradi, mas'ul bo'limga yo'naltiradi va javob loyihasini yozadi. Tunda ham, dam olish kunida ham — navbat o'zi ishlaydi, ertalab xodim tayyor ish ro'yxatini ko'radi.
 
-## 1. Pipeline v2 (R0): keyword = ROUTING, LLM = GENERATSIYA
+> **v1.3 (2026-07-25) — keyword dvigateli BUTUNLAY olib tashlandi.** Sabab: ikki dvigatelli sxemada kategoriyani kim aniqlagani (keyword yoki LLM) doim tushunarsiz edi, keyword lug'atini boqish (o'rganish sikli, admin tasdig'i) doimiy qo'l mehnati talab qilardi, va eng yomoni — keyword ishonchli deb xato yo'naltirsa LLM buni tuzata olmasdi. Endi qaror qabul qiluvchi bitta: LLM. Lug'at, o'rganish sikli, normalizatsiya, `category_keywords`/`keyword_suggestions` jadvallari va ular bilan bog'liq admin sahifalari yo'q.
 
-> O'zgarish sababi (premortem, Xato 1): xulosa/javob-draft/kayfiyat faqat LLM'da yaratiladi, LLM esa faqat fallback edi — keyword qancha yaxshi o'rgansa, AI ko'rinadigan qiymat shuncha KAMAYARDI. Endi LLM har murojaatda ishlaydi; keyword esa routing'ni bir zumda hal qiladi. Fuqaro hech narsa kutmaydi (hammasi submit'dan keyin, async).
+## 1. Pipeline v3: LLM yagona dvigatel
 
-Ikki bosqichli worker:
-
-**1-bosqich — `classify_complaint` (millisekundlar, routing):**
+Bitta worker ishi — `analyze_complaint` (submit'dan keyin darhol navbatga tushadi; fuqaro kutmaydi):
 
 ```
-matn ──► normalizatsiya ──► keyword scoring ──► confident (threshold+margin OK)?
-             │ ha: kategoriya + priority (danger-evristika) + deadline
-             │     → status=ai_processed → kategoriya bo'limga bog'langan bo'lsa
-             │       avto-assign (actor_type=ai) → fuqaroga «yo'naltirildi»
-             │ yo'q: status=ai_processed, biriktirilmaydi (routing 2-bosqichni kutadi)
-             ▼
-     ai_analyses(engine=keyword, confident=true|false) yoziladi
-     → `generate_analysis` ishi navbatga qo'yiladi (HAR DOIM)
+murojaat (kategoriya = fuqaro tanlagani yoki 'boshqa')
+   │
+   ▼
+Ollama (Gemma, JSON, §3) ─── muvaffaqiyat ──► category_code, priority, sentiment,
+   │                                          summary_uz, reply_draft_uz, tags
+   │                                             │
+   │                                             ▼
+   │                    ai_analyses(engine=llm) → complaint yangilanadi
+   │                    (kategoriya, priority, deadline) → status=ai_processed
+   │                                             │
+   │                                             ▼
+   │                    kategoriya bo'limga bog'langan bo'lsa
+   │                    workflow.assign(actor_type="ai") → status=assigned
+   │                    → fuqaroga SMS/Telegram «yo'naltirildi»
+   │
+   └── xato/timeout ──► QAYTA URINISH (§2): 2 daq → 10 daq → 30 daq → 2 soat...
+                        Admin navbati YO'Q. Ollama tiklanganda o'zi davom etadi.
 ```
 
-**2-bosqich — `generate_analysis` (har murojaatda, LLM navbati konkurensiya=1):**
+**Qat'iy qoidalar:**
 
-Ollama (Gemma, JSON, §4 formati) → `summary_uz`, `reply_draft_uz`, `sentiment`, `tags`, `category_code` (ikkinchi fikr), `priority` → `ai_analyses(engine=llm)` yoziladi.
+- **Inson kutilmaydi.** AI ishonchi past bo'lsa ham murojaat baribir yo'naltiriladi (eng yaqin kategoriya bo'yicha), chunki yo'naltirilmagan murojaat = to'xtab qolgan murojaat. Past ishonch faqat **belgi** qo'yadi (`needs_review=true`) — bu bloklamaydi, admin xohlasa keyin ko'radi ("AI nazorati" sahifasi).
+- **Noma'lum kategoriya kodi** (LLM ro'yxatda yo'q kod qaytarsa) → `boshqa` + `needs_review=true`, lekin `boshqa` ham o'z bo'limiga (Hokimlik murojaat bo'limi) yo'naltiriladi.
+- **Hech qachon tashlab yuborilmaydi.** LLM javob bermasa murojaat `new` holatida qoladi va qayta urinish navbatiga tushadi (§2). `needs_review` bunday holatda qo'yilmaydi — bu odam hal qiladigan muammo emas, server muammosi (`ai-health`da ko'rinadi).
+- **Priority to'liq LLM'niki** (low|medium|high|critical). Deadline shu priority va kategoriyaning `sla_hours`i asosida hisoblanadi.
+- Fuqaro murojaat yuborishda kategoriyani O'ZI tanlagan bo'lsa ham, LLM uni qayta baholaydi va noto'g'ri bo'lsa almashtiradi (fuqaro ko'pincha adashadi — "kommunal" deb elektr muammosini yuboradi).
 
-**Qarorlar jadvali** (`needs_review` endi FAQAT «routing insonga muhtoj» degani):
+## 2. Ishonchlilik: qayta urinish va navbatni tozalash
 
-| Keyword | LLM | Natija |
-|---|---|---|
-| confident | OK, kategoriya MOS | hammasi avtomatik; needs_review=false |
-| confident | OK, kategoriya FARQLI | biriktirish QOLADI, lekin needs_review=true — admin Tasdiqlash navbatida tekshiradi (keyword xato yo'naltirgan bo'lishi mumkin) |
-| confident | xato/timeout | needs_review=FALSE (routing keyword'niki, buzilmagan); draft'siz davom — degradatsiya, blokirovka emas |
-| not confident | OK | LLM kategoriyasi routing'ni hal qiladi: kategoriya + deadline + avto-assign; noma'lum `category_code` → `boshqa` + needs_review=true |
-| not confident | xato/timeout | keyword natijasi (yoki `boshqa`) + needs_review=true (avvalgi xatti-harakat) |
+LLM yagona dvigatel bo'lgani uchun Ollama'ning ishlashi kritik. Ikki qatlamli himoya (ikkalasi ham admin aralashuvisiz):
 
-Qo'shimcha qoidalar:
+1. **Job darajasida qayta urinish.** `analyze_complaint` xato bersa, ish `AI_RETRY_DELAYS` (standart `120, 600, 1800, 7200, 21600` soniya) bo'yicha qayta navbatga qo'yiladi. Ya'ni Ollama 6 soatgacha o'chiq bo'lsa ham murojaat oxir-oqibat tahlil qilinadi.
+2. **Sweeper cron (har 15 daqiqada).** Qayta urinishlar tugagan yoki worker qayta ishga tushib navbat yo'qolgan holatlar uchun: `status='new'` va yaratilganiga 10 daqiqadan oshgan murojaatlar qayta navbatga qo'yiladi. Bu — "uxlab qolgan murojaat qolmaydi" kafolati.
 
-- **Priority faqat KO'TARILADI:** yakuniy = max(keyword, llm) (low<medium<high<critical) — LLM «critical» desa keyword'ning «medium»i yutmaydi; pastga tushirish taqiqlanadi.
-- Ikkala yugurish ham `ai_analyses`da; keyword yozuviga yangi **`confident`** belgisi ([04](04-database.md) §4 M7) — o'rganish sikli (§5) va KPI shu belgiga tayanadi.
-- Admin detail'dagi `ai` — oxirgi tahlil (bu rejimda odatda engine=llm, ya'ni summary/draft HAR murojaatda ko'rinadi); routing haqiqati murojaatning o'zida (`category`, `needs_review`).
-- LLM navbat chuqurligi va oxirgi muvaffaqiyat vaqti `GET /api/admin/stats/ai-health`da ([03](03-kontraktlar.md) §5) — jim sinish (premortem X5) endi ko'rinadigan hodisa.
+Server holati `GET /api/admin/stats/ai-health` da: `ollama_ok`, oxirgi muvaffaqiyat vaqti, navbat chuqurligi, soatlik xatolar soni, **`pending_analysis`** (tahlil kutayotgan murojaatlar soni). Dashboard'da doimiy indikator.
 
-## 2. Normalizatsiya (`app/services/ai/normalize.py`) — hamma narsaning poydevori
-
-Kirill, lotin, apostrof-xaos va shevalar bitta shaklga keltiriladi. Keywordlar DB'da FAQAT normalizatsiyalangan shaklda saqlanadi; kiruvchi matn ham shu funksiyadan o'tadi.
-
-Qadamlar (tartib muhim):
-
-1. `lower()` + unicode NFC.
-2. **Kirill→lotin transliteratsiya** (o'zbek jadvali): `ў→o'`, `ғ→g'`, `қ→q`, `ҳ→h`, `ш→sh`, `ч→ch`, `я→ya`, `ю→yu`, `ё→yo`, `ц→ts`, `ж→j`, `э→e`, `ъ→'`... To'liq jadval kodda konstanta bo'ladi. (Rus so'zlari ham lotinlashadi — "свет йўқ" → "svet yo'q" — keywordlar buni qamraydi.)
-3. **Apostrof birxillashtirish:** `ʻ ʼ ` ´ '` → `'` ; `o'/oʻ/o`/o´` hammasi `o'`.
-4. Punktuatsiya → bo'sh joy; ko'p bo'sh joy → bitta.
-5. (Matching uchun) so'zlarga bo'lish; 2 tagacha so'zli fraza sifatida ham qidiriladi.
-
-Test to'plami majburiy: "Кўчамизда свет йўқ" ≡ "ko'chamizda svet yo'q"; "suv oqmayapti" / "сув оқмаяпти"; "yo`l chuqur" / "yo'l chuqur".
-
-## 3. Keyword klassifikator v2 (`app/services/ai/classifier.py` qayta yoziladi)
-
-- Manba: `category_keywords` jadvali (in-memory kesh, 60 s TTL yoki o'zgarishda invalidatsiya). Mavjud hardcoded lug'at seed'ga ko'chadi va **kengaytiriladi**: har kategoriya uchun kirill orqali kiradigan ruscha so'zlar ("svet", "musor", "vodoprovod"), keng tarqalgan sheva/xato yozuvlar ("chiroq o'chdi", "lampichka", "arik", "kanalizatsiya bitgan").
-- Scoring: `score(cat) = Σ weight(keyword ∈ matn)`; fraza (2 so'z) topilsa weight ×2 sanaladi.
-- Confidence: `top1 / (top1 + top2 + 1)` ko'rinishidagi nisbiy formula (0–1). Qo'shimcha **margin sharti**: `top1_score - top2_score ≥ 2` bo'lmasa ishonchsiz.
-- Qaror: `confidence ≥ AI_CONFIDENCE_THRESHOLD (default 0.75)` VA margin OK → keyword natijasi qabul. Aks holda → LLM.
-- Keyword yo'lida priority ham evristik: "portlash, gaz hidi, sim uzilgan, toshqin, avariya" kabi xavf so'zlari (`danger_keywords` ro'yxati, settings'da) → `high/critical`; aks holda `medium`.
-
-## 4. LLM — Ollama + Gemma (har murojaatda generatsiya; ishonchsiz routing'da hakam)
+## 3. LLM — Ollama + Gemma (yagona dvigatel)
 
 ### Model tanlash (serverga qarab, env `OLLAMA_MODEL`)
 
@@ -101,21 +82,22 @@ summary_uz (o'zbek lotin, max 2 gap), reply_draft_uz (rasmiy, xushmuomala javob
 loyihasi, 2-3 gap, "Hurmatli fuqaro" bilan boshlansin), tags (3-6 ta qisqa teg).
 ```
 
-User xabari: normalizatsiyadan O'TMAGAN asl matn (LLM'ga boy kontekst foydali) + mavjud bo'lsa mahalla/manzil.
+User xabari: fuqaroning asl matni (hech qanday normalizatsiyasiz — LLM kirill/lotin/shevani o'zi tushunadi, bu keyword lug'atidan farqli o'laroq uning kuchli tomoni) + mavjud bo'lsa mahalla/manzil.
 
-Javob validatsiyasi: Pydantic (`category_code` ro'yxatda bo'lishi shart; bo'lmasa `boshqa` + needs_review; `priority`/`sentiment` noto'g'ri qiymat bersa — model o'zbekcha "yuqori"/"salbiy" deb qaytarishi kuzatilgan — standart qiymatga tushadi). Timeout `LLM_TIMEOUT_S` (standart 300 s), `LLM_MAX_ATTEMPTS` marta urinish, so'ng graceful fallback (§1 qarorlar jadvali).
+Javob validatsiyasi: Pydantic (`category_code` ro'yxatda bo'lishi shart; bo'lmasa `boshqa` + `needs_review=true`; `priority`/`sentiment` noto'g'ri qiymat bersa — model o'zbekcha "yuqori"/"salbiy" deb qaytarishi kuzatilgan — standart qiymatga tushadi). Timeout `LLM_TIMEOUT_S` (standart 300 s), `LLM_MAX_ATTEMPTS` marta urinish; barchasi tugasa — §2 qayta urinish navbati (admin navbati EMAS).
 
 ### Sozlash
 
-`OLLAMA_URL`, `OLLAMA_MODEL`, `AI_CONFIDENCE_THRESHOLD`, `LLM_TIMEOUT_S`, `LLM_MAX_ATTEMPTS`. Worker konkurensiyasi: LLM ishlari uchun 1 (CPU serverda), boshqa ishlar parallel.
+`OLLAMA_URL`, `OLLAMA_MODEL`, `LLM_TIMEOUT_S`, `LLM_MAX_ATTEMPTS`, `AI_LOW_CONFIDENCE` (standart 0.6 — LLM shundan past ishonch bersa `needs_review` belgisi qo'yiladi, lekin yo'naltirish baribir bajariladi). Worker konkurensiyasi: 1 (CPU serverda navbat ketma-ket).
 
-## 5. O'rganish sikli (har kuni aqlliroq, LLM arzonlashadi)
+## 5. Sifatni kuzatish (o'rganish sikli o'rniga)
 
-1. **Iz qoldirish:** LLM ishlagan har murojaat uchun `ai_analyses` da engine=llm yozuvi bor (keyword nima degani ham yonida).
-2. **Kunlik cron (02:00, ARQ cron):** so'nggi 24 soatdagi "keyword topolmagan, LLM topgan" murojaatlar olinadi (**R0 aniqlashtirish:** LLM-always rejimida `engine=llm` yozuvi HAR murojaatda bor, shuning uchun tanlov sharti — o'sha murojaatning `engine=keyword` yozuvida `confident=false` bo'lishi; `confident IS NULL` — eski yozuvlar — kirmaydi, aks holda lug'at allaqachon biladigan so'zlar taklif navbatini to'ldirib yuboradi) → matn normalizatsiya qilinadi → token va 2-so'zli frazalar chiqariladi → stopwordlar (uz/ru ro'yxat kodda) va mavjud keywordlar chiqarib tashlanadi → kamida 2 marta uchragan nomzodlar `keyword_suggestions` ga yoziladi (suggested_category = LLM tanlagan kategoriya, sample_complaint_ids bilan).
-3. **Admin tasdiqlaydi:** Suggestions inbox'da (FE F2.5) Approve → `category_keywords` (source=auto) → kesh yangilanadi. Reject → qayta taklif qilinmaydi.
-4. **Operator to'g'rilashi ham signal:** operator kategoriyani o'zgartirsa, event asosida shu matn ham keyingi cron'da tahlilga kiradi (to'g'ri kategoriya = operatorniki).
-5. **Metrika (dashboard AI KPI):** haftalik keyword hit-rate (ROUTING'ni keyword o'zi hal qilgan %), routing'da LLM'ga qolgan ulush, AI aniqligi (yakuniy kategoriya vs AI taklifi). Maqsad: hit-rate o'sib boradi → routing bir zumda; generatsiya (summary/draft) esa doimiy qatlam — u hech qachon «tejash» uchun o'chirilmaydi.
+Keyword lug'ati bo'lmagani uchun "o'rganish" endi lug'at boyitish emas — **prompt va model sifatini kuzatish**:
+
+1. **AI aniqligi** (`ai_accuracy_7d`, dashboard): `ai_analyses.suggested_category_id` vs murojaatning yakuniy `category_id` — ya'ni admin nechta marta AI kategoriyasini qo'lda to'g'irlagan. 85% dan pastga tushsa prompt yoki model qayta ko'riladi.
+2. **Past ishonch ulushi** (`needs_review` soni): AI o'zi ikkilangan holatlar. Ko'payib ketsa — kategoriya ro'yxati noaniq (masalan "kommunal" va "suv" chegarasi) degani, kategoriya tavsiflari aniqlashtiriladi.
+3. **AI nazorati sahifasi** (admin, FE): past ishonch bilan yo'naltirilgan murojaatlar ro'yxati. Bu **navbat emas** — hech narsa kutmaydi, admin xohlasa kirib ko'radi va noto'g'ri yo'naltirilganini qayta yo'naltiradi (`POST .../review`).
+4. **Prompt versiyalash:** system prompt kodda (`app/services/ai/llm.py`), o'zgartirilganda `ai_analyses.model` maydoniga model nomi yozilgani kabi o'zgarish commit'da qayd etiladi — aniqlik tushsa qaysi o'zgarishdan keyinligi ko'rinadi.
 
 ## 6. Ovoz→matn (STT) — tanlangan yechim
 

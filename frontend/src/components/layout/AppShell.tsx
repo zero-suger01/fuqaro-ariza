@@ -8,7 +8,6 @@ import {
   Building2,
   Users,
   Tags,
-  Lightbulb,
   QrCode,
   Map,
   BarChart3,
@@ -22,14 +21,13 @@ import { Topbar } from "@/components/layout/Topbar";
 const ADMIN_NAV: (NavItem & { roles?: string[] })[] = [
   { href: "/admin/navbatim", label: "Navbatim", icon: Inbox, roles: ["department_staff"] },
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: ["admin"] },
-  { href: "/admin/tasdiqlash", label: "Tasdiqlash navbati", icon: SquareCheckBig, roles: ["admin"] },
+  { href: "/admin/tasdiqlash", label: "AI nazorati", icon: SquareCheckBig, roles: ["admin"] },
   { href: "/admin/murojaatlar", label: "Murojaatlar", icon: ClipboardList },
   { href: "/admin/xarita", label: "Xarita", icon: Map, roles: ["admin"] },
   { href: "/admin/kpi", label: "KPI", icon: BarChart3, roles: ["admin"] },
   { href: "/admin/bolimlar", label: "Bo'limlar", icon: Building2, roles: ["admin"] },
   { href: "/admin/xodimlar", label: "Xodimlar", icon: Users, roles: ["admin"] },
   { href: "/admin/kategoriyalar", label: "Kategoriyalar", icon: Tags, roles: ["admin"] },
-  { href: "/admin/takliflar", label: "Keyword takliflari", icon: Lightbulb, roles: ["admin"] },
   { href: "/admin/qr", label: "QR kodlar", icon: QrCode, roles: ["admin"] },
 ];
 

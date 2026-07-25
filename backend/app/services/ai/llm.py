@@ -1,7 +1,9 @@
-"""Ollama (Gemma) fallback classifier — only called when the keyword
-classifier isn't confident (docs/07-ai-layer.md §4). Any failure (Ollama
-down, timeout, malformed JSON) raises `LlmError`; the caller must catch it
-and keep the keyword result (graceful fallback, needs_review=True).
+"""Ollama (Gemma) — loyihaning YAGONA AI dvigateli (docs/07-ai-layer.md §3).
+
+Har murojaat shu yerdan o'tadi: kategoriya, ustuvorlik, kayfiyat, xulosa va
+javob drafti bitta JSON javobda qaytadi. Har qanday xato (Ollama o'chiq,
+timeout, buzuq JSON) `LlmError` ko'taradi — chaqiruvchi (worker) uni ushlab,
+murojaatni qayta urinish navbatiga qo'yadi (docs/07 §2), admin navbatiga EMAS.
 """
 import json
 import time
@@ -30,7 +32,7 @@ class LlmError(Exception):
     pass
 
 
-class LlmResult(BaseModel):
+class LlmAnalysis(BaseModel):
     category_code: str
     confidence: float = 0.5
     priority: str = "medium"
@@ -60,9 +62,9 @@ def _category_catalog(db: Session) -> str:
     return "\n".join(f"- {c.code}: {c.name('uz')}" for c in categories)
 
 
-def classify_with_llm(db: Session, text: str, address: str | None = None) -> tuple[LlmResult, int]:
-    """Returns (result, latency_ms). Raises LlmError after `llm_max_attempts`
-    failures — caller (generate_analysis worker) tushiradi, pipeline to'xtamaydi."""
+def analyze_with_llm(db: Session, text: str, address: str | None = None) -> tuple[LlmAnalysis, int]:
+    """Returns (analysis, latency_ms). `llm_max_attempts` urinishdan keyin
+    ham bo'lmasa `LlmError` — worker qayta urinish navbatiga qo'yadi."""
     payload = {
         "model": settings.ollama_model,
         "messages": [
@@ -84,7 +86,7 @@ def classify_with_llm(db: Session, text: str, address: str | None = None) -> tup
             )
             response.raise_for_status()
             content = response.json()["message"]["content"]
-            result = LlmResult.model_validate(json.loads(content))
+            result = LlmAnalysis.model_validate(json.loads(content))
             return result, int((time.monotonic() - started) * 1000)
         except (httpx.HTTPError, KeyError, json.JSONDecodeError) as exc:
             last_error = exc

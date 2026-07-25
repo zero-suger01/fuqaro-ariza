@@ -10,10 +10,11 @@ import { Label, Select } from "@/components/ui/Input";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
 import type { CategoryAdmin, ComplaintListItem, DepartmentAdmin, Page } from "@/lib/types";
 
-/** R2/Q3 — «Tasdiqlash navbati»: AI ishonchsiz bo'lgan (needs_review)
- * murojaatlar. Bir bosishda AI taklifini qabul qilish (POST review, bo'sh
- * body) yoki kategoriya/bo'limni to'g'irlab qabul qilish. Eski oqim (har
- * murojaatni ochib, qo'lda kategoriya+bo'lim tanlash) shu bilan almashadi. */
+/** v1.3 — «AI nazorati»: AI o'zi ikkilanib (past ishonch bilan) yo'naltirgan
+ * murojaatlar. MUHIM: bu navbat EMAS — murojaatlar allaqachon bo'limga
+ * yuborilgan va ijroda; bu sahifa faqat nazorat uchun. Admin hech narsa
+ * qilmasa ham ish davom etadi; «To'g'ri» — belgini olib tashlaydi,
+ * «To'g'irlash» — kategoriya/bo'limni almashtiradi. */
 export default function TasdiqlashPage() {
   const [items, setItems] = useState<ComplaintListItem[]>([]);
   const [categories, setCategories] = useState<CategoryAdmin[]>([]);
@@ -58,13 +59,14 @@ export default function TasdiqlashPage() {
   }
 
   return (
-    <AppShell title="Tasdiqlash navbati" requireRoles={["admin"]}>
+    <AppShell title="AI nazorati" requireRoles={["admin"]}>
       {error && <div className="rounded-inner bg-danger/10 text-danger text-sm px-4 py-3">{error}</div>}
 
       <p className="text-sm text-text-secondary max-w-2xl">
-        AI ishonchsiz bo&apos;lgan yoki kalit so&apos;z va LLM kelishmagan murojaatlar. «Qabul» — AI taklifini bir
-        bosishda tasdiqlaydi (kategoriya + bo&apos;limga biriktirish); «O&apos;zgartirish» — to&apos;g&apos;irlab qabul
-        qilish.
+        Sun&apos;iy intellekt <strong>o&apos;zi ikkilangan</strong> murojaatlar. Ular allaqachon bo&apos;limga
+        yo&apos;naltirilgan va ijroda — bu navbat emas, nazorat. Siz hech narsa qilmasangiz ham ish davom etadi.
+        «To&apos;g&apos;ri» — belgini olib tashlaydi; «To&apos;g&apos;irlash» — kategoriya yoki bo&apos;limni
+        almashtiradi.
       </p>
 
       {loading ? (
@@ -72,7 +74,7 @@ export default function TasdiqlashPage() {
       ) : items.length === 0 ? (
         <Card>
           <p className="py-8 text-center text-text-muted text-sm">
-            Navbat bo&apos;sh — barcha murojaatlar avtomatik yo&apos;naltirilgan ✨
+            AI hamma narsani ishonch bilan hal qilgan — tekshiradigan narsa yo&apos;q ✨
           </p>
         </Card>
       ) : (
@@ -97,23 +99,23 @@ export default function TasdiqlashPage() {
                       <Sparkles className="h-3 w-3 text-accent shrink-0" />
                       {suggestion ? (
                         <>
-                          AI taklifi: <strong className="text-accent">{suggestion.name}</strong>
+                          AI tanlovi: <strong className="text-accent">{suggestion.name}</strong>
                           {c.ai?.confidence != null && <> · ishonch {Math.round(c.ai.confidence * 100)}%</>}
                         </>
                       ) : (
-                        <>AI taklif bera olmadi — hozirgi kategoriya: {c.category.name}</>
+                        <>AI kategoriyani aniqlay olmadi — hozir: {c.category.name}</>
                       )}
-                      {c.department && <> · hozir: {c.department.name}</>}
+                      {c.department && <> · yo&apos;naltirildi: {c.department.name}</>}
                     </p>
                   </div>
 
                   {!isEditing ? (
                     <div className="flex gap-2 shrink-0">
                       <Button onClick={() => accept(c, {})} disabled={busy === c.id}>
-                        <Check className="h-4 w-4" /> Qabul
+                        <Check className="h-4 w-4" /> To&apos;g&apos;ri
                       </Button>
                       <Button variant="secondary" onClick={() => startEdit(c)} disabled={busy === c.id}>
-                        <Pencil className="h-4 w-4" /> O&apos;zgartirish
+                        <Pencil className="h-4 w-4" /> To&apos;g&apos;irlash
                       </Button>
                     </div>
                   ) : (

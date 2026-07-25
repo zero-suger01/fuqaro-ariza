@@ -1,47 +1,52 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Plus } from "lucide-react";
+import { Save, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { apiDelete, apiGet, apiPost, ApiError } from "@/lib/api";
-import type { CategoryAdmin, KeywordItem } from "@/lib/types";
+import { Input, Label, Select } from "@/components/ui/Input";
+import { apiGet, apiPatch, ApiError } from "@/lib/api";
+import type { CategoryAdmin, DepartmentAdmin } from "@/lib/types";
 
-export default function CategoriesPage() {
-  const [categories, setCategories] = useState<CategoryAdmin[]>([]);
-  const [selected, setSelected] = useState<CategoryAdmin | null>(null);
-  const [keywords, setKeywords] = useState<KeywordItem[]>([]);
-  const [newPhrase, setNewPhrase] = useState("");
+/** v1.3 — keyword lug'ati olib tashlangach bu sahifa AI'ning QAROR MAYDONINI
+ * boshqaradi: LLM faqat shu ro'yxatdagi kategoriyalardan birini tanlaydi, va
+ * tanlangan kategoriyaning bo'limi murojaat qayerga yo'naltirilishini,
+ * `sla_hours` esa muddatni belgilaydi. */
+/** Tahrir formasi alohida komponent va `key={category.id}` bilan chaqiriladi:
+ * kategoriya almashganda React uni qaytadan yaratadi, ya'ni holat effekt
+ * ichida setState qilmasdan yangilanadi (React Compiler talabi). */
+function CategoryForm({
+  category,
+  departments,
+  onSaved,
+}: {
+  category: CategoryAdmin;
+  departments: DepartmentAdmin[];
+  onSaved: (updated: CategoryAdmin) => void;
+}) {
+  const [sla, setSla] = useState(String(category.sla_hours));
+  const [departmentId, setDepartmentId] = useState(category.department_id ?? "");
+  const [isActive, setIsActive] = useState(category.is_active);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    apiGet<CategoryAdmin[]>("/api/admin/categories").then((cats) => {
-      setCategories(cats);
-      if (cats.length > 0) setSelected(cats[0]);
-    });
-  }, []);
+  const departmentName = (id: string | null) =>
+    departments.find((d) => d.id === id)?.names.uz ?? "— biriktirilmagan —";
 
-  useEffect(() => {
-    if (!selected) return;
-    apiGet<KeywordItem[]>(`/api/admin/categories/${selected.id}/keywords`).then(setKeywords);
-  }, [selected]);
-
-  async function addKeyword(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selected || !newPhrase.trim()) return;
+  async function save() {
     setSaving(true);
     setError(null);
     try {
-      const keyword = await apiPost<KeywordItem>(`/api/admin/categories/${selected.id}/keywords`, {
-        phrase: newPhrase,
-        weight: 1,
+      const updated = await apiPatch<CategoryAdmin>(`/api/admin/categories/${category.id}`, {
+        sla_hours: Number(sla),
+        department_id: departmentId || null,
+        is_active: isActive,
       });
-      setKeywords((prev) => [...prev, keyword]);
-      setNewPhrase("");
+      onSaved(updated);
+      setSaved(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
     } finally {
@@ -49,14 +54,93 @@ export default function CategoriesPage() {
     }
   }
 
-  async function removeKeyword(keyword: KeywordItem) {
-    if (!selected) return;
-    await apiDelete(`/api/admin/categories/${selected.id}/keywords/${keyword.id}`);
-    setKeywords((prev) => prev.filter((k) => k.id !== keyword.id));
-  }
+  return (
+    <>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-base font-semibold text-text-primary">{category.names.uz ?? category.code}</h2>
+        <span className="text-xs font-mono text-text-muted">{category.code}</span>
+      </div>
+      <p className="text-sm text-text-muted mb-5">
+        Hozir bu kategoriya <strong className="text-text-primary">{departmentName(category.department_id)}</strong>{" "}
+        bo&apos;limiga yo&apos;naltiriladi.
+      </p>
+
+      <div className="flex flex-col gap-4 max-w-md">
+        <div>
+          <Label>Mas&apos;ul bo&apos;lim</Label>
+          <Select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+            <option value="">— biriktirilmagan —</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.names.uz ?? d.code}
+              </option>
+            ))}
+          </Select>
+          {!departmentId && (
+            <p className="text-xs text-warning mt-1">
+              Bo&apos;limsiz kategoriyaga tushgan murojaat avtomatik yo&apos;naltirilmaydi — admin qo&apos;lda
+              biriktirishi kerak bo&apos;ladi.
+            </p>
+          )}
+        </div>
+
+        <div>
+          <Label>Javob muddati (SLA, soat)</Label>
+          <Input type="number" min={1} value={sla} onChange={(e) => setSla(e.target.value)} />
+          <p className="text-xs text-text-muted mt-1">
+            Muhimlik yuqori bo&apos;lsa muddat avtomatik qisqaradi (critical — 2 soat).
+          </p>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-text-primary">
+          <input
+            type="checkbox"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+            className="h-4 w-4 accent-[var(--accent)]"
+          />
+          Faol (AI shu kategoriyani tanlay oladi)
+        </label>
+
+        {error && <p className="text-sm text-danger">{error}</p>}
+        {saved && <p className="text-sm text-success">Saqlandi</p>}
+
+        <Button onClick={save} disabled={saving} className="self-start">
+          <Save className="h-4 w-4" /> Saqlash
+        </Button>
+      </div>
+    </>
+  );
+}
+
+export default function CategoriesPage() {
+  const [categories, setCategories] = useState<CategoryAdmin[]>([]);
+  const [departments, setDepartments] = useState<DepartmentAdmin[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiGet<CategoryAdmin[]>("/api/admin/categories").then((cats) => {
+      setCategories(cats);
+      setSelectedId(cats[0]?.id ?? null);
+    });
+    apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => {});
+  }, []);
+
+  const selected = categories.find((c) => c.id === selectedId) ?? null;
 
   return (
     <AppShell title="Kategoriyalar" requireRoles={["admin"]}>
+      <Card>
+        <div className="flex items-start gap-2">
+          <Sparkles className="h-4 w-4 text-accent mt-0.5 shrink-0" />
+          <p className="text-sm text-text-secondary">
+            Sun&apos;iy intellekt har bir murojaat uchun shu ro&apos;yxatdan bitta kategoriyani tanlaydi va uni
+            kategoriyaning bo&apos;limiga avtomatik yo&apos;naltiradi. Ya&apos;ni <strong>bo&apos;lim</strong> — murojaat
+            kimga tushishini, <strong>SLA</strong> — javob muddatini belgilaydi. Nofaol kategoriyani AI tanlay olmaydi.
+          </p>
+        </div>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1">
           <h2 className="text-base font-semibold text-text-primary mb-4">Kategoriyalar</h2>
@@ -65,10 +149,12 @@ export default function CategoriesPage() {
               <button
                 key={cat.id}
                 type="button"
-                onClick={() => setSelected(cat)}
+                onClick={() => setSelectedId(cat.id)}
                 className={clsx(
                   "text-left rounded-inner px-3 py-2.5 text-sm transition",
-                  selected?.id === cat.id ? "bg-accent-soft text-accent font-medium" : "text-text-primary hover:bg-bg-subtle"
+                  selectedId === cat.id
+                    ? "bg-accent-soft text-accent font-medium"
+                    : "text-text-primary hover:bg-bg-subtle"
                 )}
               >
                 {cat.names.uz ?? cat.code}
@@ -80,44 +166,14 @@ export default function CategoriesPage() {
 
         <Card className="lg:col-span-2">
           {selected ? (
-            <>
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-base font-semibold text-text-primary">{selected.names.uz ?? selected.code}</h2>
-                <span className="text-xs text-text-muted">SLA: {selected.sla_hours} soat</span>
-              </div>
-              <p className="text-xs text-text-muted mb-4">Kod: {selected.code}</p>
-
-              <form onSubmit={addKeyword} className="flex gap-2 mb-4">
-                <Input
-                  value={newPhrase}
-                  onChange={(e) => setNewPhrase(e.target.value)}
-                  placeholder="Yangi kalit so'z yoki ibora..."
-                  className="flex-1"
-                />
-                <Button type="submit" disabled={saving || !newPhrase.trim()}>
-                  <Plus className="h-4 w-4" /> Qo&apos;shish
-                </Button>
-              </form>
-              {error && <p className="text-sm text-danger mb-3">{error}</p>}
-
-              <div className="flex flex-wrap gap-2">
-                {keywords.map((kw) => (
-                  <span
-                    key={kw.id}
-                    className="inline-flex items-center gap-1.5 rounded-pill bg-bg-subtle px-3 py-1.5 text-sm text-text-primary"
-                  >
-                    {kw.keyword_norm}
-                    <span className="text-xs text-text-muted">({kw.source})</span>
-                    {kw.source !== "seed" && (
-                      <button type="button" onClick={() => removeKeyword(kw)} className="text-text-muted hover:text-danger">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </span>
-                ))}
-                {keywords.length === 0 && <p className="text-sm text-text-muted">Kalit so&apos;zlar yo&apos;q</p>}
-              </div>
-            </>
+            <CategoryForm
+              key={selected.id}
+              category={selected}
+              departments={departments}
+              onSaved={(updated) =>
+                setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+              }
+            />
           ) : (
             <div className="py-14 text-center text-text-muted text-sm">Kategoriya tanlang</div>
           )}

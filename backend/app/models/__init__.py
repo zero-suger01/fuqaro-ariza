@@ -6,8 +6,6 @@ from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
 from app.models.complaint_file import ComplaintFile
 from app.models.department import Department
-from app.models.keyword import CategoryKeyword
-from app.models.keyword_suggestion import KeywordSuggestion
 from app.models.neighborhood import Neighborhood
 from app.models.notification import Notification
 from app.models.qr_code import QrCode
@@ -22,14 +20,12 @@ __all__ = [
     "Citizen",
     "Department",
     "Category",
-    "CategoryKeyword",
     "Neighborhood",
     "Complaint",
     "ComplaintFile",
     "ComplaintEvent",
     "Reply",
     "AiAnalysis",
-    "KeywordSuggestion",
     "SttJob",
     "TicketCounter",
     "QrCode",

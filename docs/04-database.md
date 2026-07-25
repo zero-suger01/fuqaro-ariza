@@ -5,11 +5,13 @@ PostgreSQL 16. Hamma id — UUID v4. Hamma vaqt — `timestamptz`. Enum qiymatla
 ## 1. Jadval ro'yxati (maqsad)
 
 ```
-citizens, users(staff), departments, categories, category_keywords,
+citizens, users(staff), departments, categories,
 neighborhoods, complaints, complaint_files, complaint_events, replies,
-ai_analyses, keyword_suggestions, stt_jobs, notifications, audit_logs,
+ai_analyses, stt_jobs, notifications, audit_logs,
 qr_codes, ticket_counters, settings
 ```
+
+> v1.3: `category_keywords` va `keyword_suggestions` jadvallari **olib tashlandi** (keyword dvigateli yo'q, [07](07-ai-layer.md) §1). Migratsiya: M8.
 
 ## 2. Jadval spetsifikatsiyalari
 
@@ -49,18 +51,6 @@ Mavjud jadval o'zgaradi: `role` → `department_staff|admin` (B6, `alembic/versi
 | sla_hours | int NOT NULL default 72 | deadline hisobi uchun |
 | department_id | uuid FK NULL | standart mas'ul bo'lim (AI routing shu orqali) |
 | sort_order | int, is_active bool | |
-
-### category_keywords — klassifikator lug'ati (DB'da, kodda EMAS)
-
-| Ustun | Tur | Izoh |
-|---|---|---|
-| id, category_id FK | | |
-| keyword_norm | varchar(120) | **normalizatsiyadan o'tgan** shakl (lotin, kichik, ' birxillashtirilgan) |
-| weight | smallint default 1 | kuchli so'zga 2–3 |
-| source | varchar(10) | seed/admin/auto |
-| created_at | | |
-
-UNIQUE (category_id, keyword_norm).
 
 ### neighborhoods — mahallalar
 
@@ -103,13 +93,11 @@ Deadline formulasi: `critical → min(sla_hours, 2h)`, `high → sla_hours/2`, `
 
 ### ai_analyses — har AI yugurishi (tarix)
 
-`id, complaint_id FK idx, engine varchar(10) [keyword|llm], suggested_category_id FK, confidence float, confident boolean NULL (R0/M7 — faqat engine=keyword yozuvlarida: threshold+margin qarori; llm yozuvlarida NULL), priority varchar(10), sentiment varchar(10), summary text, suggested_reply text, tags jsonb, model varchar(60) NULL, latency_ms int, created_at`.
+`id, complaint_id FK idx, engine varchar(10) [llm], suggested_category_id FK, confidence float, priority varchar(10), sentiment varchar(10), summary text, suggested_reply text, tags jsonb, model varchar(60) NULL, latency_ms int, created_at`.
+
+(v1.3/M8: `confident` ustuni tashlandi — u faqat keyword dvigateli uchun kerak edi.)
 
 AI aniqlik KPI: `ai_analyses.suggested_category_id` vs murojaatning yakuniy `category_id` (admin to'g'rilagani).
-
-### keyword_suggestions — o'rganish sikli navbati
-
-`id, phrase_norm varchar(120), suggested_category_id FK NULL, occurrences int, sample_complaint_ids jsonb, status varchar(10) [pending|approved|rejected], created_at, reviewed_by uuid NULL, reviewed_at NULL`. UNIQUE (phrase_norm, suggested_category_id).
 
 ### stt_jobs
 
@@ -137,13 +125,13 @@ Qo'shiladi: `citizen_id uuid FK NULL` (user_id NULL bo'lishi mumkin bo'ladi), `c
 
 ## 3. Indekslar (minimal majburiy)
 
-`complaints`: (status), (category_id), (assigned_department_id), (citizen_id), (created_at), (deadline_at), (ticket_number UNIQUE), (neighborhood_id). `complaint_events`: (complaint_id, created_at). `category_keywords`: (keyword_norm). `citizens`: (phone UNIQUE), (telegram_chat_id UNIQUE).
+`complaints`: (status), (category_id), (assigned_department_id), (citizen_id), (created_at), (deadline_at), (ticket_number UNIQUE), (neighborhood_id). `complaint_events`: (complaint_id, created_at). `citizens`: (phone UNIQUE), (telegram_chat_id UNIQUE).
 
 ## 4. Mavjud sxemadan migratsiya (Alembic, tartib bilan)
 
 Bitta katta migratsiya EMAS — kichik bosqichlar, har biri alohida tekshiriladi (M1–M5 boshlang'ich; keyin `m6_role_model_v2` — B6, `m7_llm_always` — R0):
 
-1. **M1 — yangi jadvallar:** citizens, departments, categories, category_keywords, neighborhoods, complaint_files, complaint_events, replies, ai_analyses, keyword_suggestions, stt_jobs, ticket_counters, qr_codes, settings, audit_logs. Seed data migratsiya ichida EMAS — `python -m app.seed` yangilanadi.
+1. **M1 — yangi jadvallar** (tarixiy; `category_keywords`/`keyword_suggestions` M8'da tashlandi)**:** citizens, departments, categories, category_keywords, neighborhoods, complaint_files, complaint_events, replies, ai_analyses, keyword_suggestions, stt_jobs, ticket_counters, qr_codes, settings, audit_logs. Seed data migratsiya ichida EMAS — `python -m app.seed` yangilanadi.
 2. **M2 — data ko'chirish (data migration):**
    - `users.role='user'` qatorlar → `citizens` (phone, ism, password_hash ko'chadi); `users` da faqat staff qoladi (`admin` → role `admin`).
    - `organizations` → `departments` (`is_external=true`, names.uz = name).
@@ -155,10 +143,11 @@ Bitta katta migratsiya EMAS — kichik bosqichlar, har biri alohida tekshiriladi
    `yangi→new, korib_chiqilmoqda→ai_processed, masul_tashkilotga_yuborildi→assigned, jarayonda→in_progress, hal_qilindi→resolved, rad_etildi→rejected`.
 4. **M4 — eski ustun/jadvallarni o'chirish:** complaints.user_id/organization_id/district/category(enum)/ai_category(enum); jadvallar: organizations, images. Eski enum tiplar DROP.
 5. **M5 — indekslar + CHECK'lar.**
-6. **M7 — LLM-always (R0):** `ai_analyses.confident boolean NULL` qo'shiladi. Backfill YO'Q — eski keyword yozuvlarida margin ma'lumoti saqlanmagan, ular NULL qoladi (o'rganish sikli NULL'ni tanlamaydi, [07](07-ai-layer.md) §5.2). Fayl: `alembic/versions/m7_llm_always.py` (`m6_role_model_v2`dan keyingi tartib).
+6. **M7 — LLM-always (R0):** `ai_analyses.confident boolean NULL` qo'shildi (M8'da qayta tashlandi — pastga qarang). Fayl: `alembic/versions/m7_llm_always.py`.
+7. **M8 — LLM-only (v1.3):** `category_keywords` va `keyword_suggestions` jadvallari DROP, `ai_analyses.confident` ustuni DROP, `ai_analyses` dagi eski `engine='keyword'` yozuvlari o'chiriladi (ular endi hech qayerda o'qilmaydi va KPI hisobini buzadi). **Ma'lumot yo'qoladi:** 106 ta seed keyword va taklif navbati — ikkalasi ham qayta tiklanmaydi, lekin seed keywordlar `app/seed.py` tarixida qolgan va taklif navbati hosila ma'lumot edi. `downgrade()` sxemani qaytaradi (bo'sh jadvallar bilan). Fayl: `alembic/versions/m8_llm_only.py`.
 
 > Dev bazalar odatda bo'sh — lekin migratsiya baribir data-safe yoziladi (server pilotida kerak bo'ladi). Har migratsiyadan keyin: `alembic upgrade head && python -m app.seed && pytest -k smoke`.
 
 ## 5. Seed (yangilangan `app/seed.py`)
 
-1) 15 kategoriya (names 4 tilda, icon, sla_hours, department bog'lash); 2) ~10 bo'lim (Suvsoz, Hudgaz, Elektr tarmoqlari, Yo'l xo'jaligi, Obodonlashtirish, Ekologiya, Qurilish inspeksiyasi, Kadastr, Soliq, Hokimlik murojaat bo'limi); 3) keyword seed — [07-ai-layer.md](07-ai-layer.md) §3 dagi kengaytirilgan lug'at (mavjud classifier.py lug'ati + kirill/sheva variantlari), `source='seed'`; 4) admin user; 5) `settings` standartlari; 6) mahalla CSV import buyrug'i: `python -m app.tools.import_neighborhoods data/uychi_mfy.csv`.
+1) 15 kategoriya (names 4 tilda, icon, sla_hours, department bog'lash); 2) ~10 bo'lim (Suvsoz, Hudgaz, Elektr tarmoqlari, Yo'l xo'jaligi, Obodonlashtirish, Ekologiya, Qurilish inspeksiyasi, Kadastr, Soliq, Hokimlik murojaat bo'limi); 3) ~~keyword seed~~ (v1.3: keyword dvigateli yo'q); 4) admin user; 5) `settings` standartlari; 6) mahalla CSV import buyrug'i: `python -m app.tools.import_neighborhoods data/uychi_mfy.csv`.

@@ -88,31 +88,6 @@ class CategoryPatch(BaseModel):
     is_active: bool | None = None
 
 
-class KeywordOut(BaseModel):
-    id: uuid.UUID
-    keyword_norm: str
-    weight: int
-    source: str
-
-    class Config:
-        from_attributes = True
-
-
-class KeywordIn(BaseModel):
-    phrase: str = Field(min_length=1, max_length=120)
-    weight: int = Field(default=1, ge=1, le=5)
-
-
-class SuggestionOut(BaseModel):
-    id: uuid.UUID
-    phrase_norm: str
-    suggested_category: CategoryBrief | None
-    occurrences: int
-    sample_complaint_ids: list
-    status: str
-    created_at: datetime
-
-
 class FileOut(BaseModel):
     id: uuid.UUID
     kind: str
@@ -335,6 +310,9 @@ class AiHealthOut(BaseModel):
     last_llm_success_at: datetime | None
     llm_queue_depth: int
     llm_errors_1h: int
+    # v1.3: hali tahlil qilinmagan (status=new) murojaatlar — LLM yagona
+    # dvigatel bo'lgani uchun eng muhim signal (docs/03 §5).
+    pending_analysis: int
     stt_ok: bool
 
 
@@ -426,4 +404,6 @@ class KpiRow(BaseModel):
 class AiTrendPoint(BaseModel):
     date: str
     accuracy: float | None
-    llm_share: float | None
+    # v1.3: eski `llm_share` o'rniga — LLM yagona dvigatel bo'lgach u doim
+    # 1.0 bo'lardi. Endi AI o'zi ikkilangan murojaatlar ulushi (docs/07 §5).
+    low_confidence_share: float | None

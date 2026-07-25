@@ -35,8 +35,6 @@ from app.models.citizen import Citizen
 from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
 from app.models.department import Department
-from app.models.keyword import CategoryKeyword
-from app.models.keyword_suggestion import KeywordSuggestion
 from app.models.neighborhood import Neighborhood
 from app.models.qr_code import QrCode
 from app.models.reply import Reply
@@ -63,8 +61,6 @@ from app.schemas.admin import (
     EventOut,
     FileOut,
     HeatmapPoint,
-    KeywordIn,
-    KeywordOut,
     KpiRow,
     MapPoint,
     NeighborhoodStat,
@@ -74,7 +70,6 @@ from app.schemas.admin import (
     ReplyOut,
     ReviewRequest,
     StatusUpdateRequest,
-    SuggestionOut,
     UserAdminOut,
     UserIn,
     UserPatch,
@@ -82,7 +77,6 @@ from app.schemas.admin import (
 from app.schemas.common import Page
 from app.schemas.public import CategoryBrief
 from app.services import workflow
-from app.services.ai.normalize import normalize
 from app.services.deadline import compute_deadline
 from app.services.notifications import notify_citizen
 from app.services.qr import generate_poster_pdf, generate_qr_png
@@ -125,7 +119,7 @@ def _department_brief(department: Department) -> DepartmentBrief:
 def _ai_list_brief(complaint: Complaint) -> AiListBrief | None:
     """R2: ro'yxat qatori uchun qisqa AI ma'lumoti — Navbatim'dagi xulosa
     qatori va Tasdiqlash navbatidagi taklif. Oxirgi tahlil (LLM-always'da
-    odatda engine=llm) olinadi; taklif kategoriyasi bo'lmasa keyword yozuvi."""
+    LLM tahlili) olinadi."""
     if not complaint.ai_analyses:
         return None
     latest = complaint.ai_analyses[-1]
@@ -632,160 +626,6 @@ def update_category(category_id: uuid.UUID, payload: CategoryPatch, db: Session 
     return category
 
 
-@router.get(
-    "/categories/{category_id}/keywords",
-    response_model=list[KeywordOut],
-    dependencies=[Depends(get_current_staff_up)],
-)
-def list_keywords(category_id: uuid.UUID, db: Session = Depends(get_db)):
-    if db.get(Category, category_id) is None:
-        raise AppError(404, "not_found", "Kategoriya topilmadi")
-    return (
-        db.execute(select(CategoryKeyword).where(CategoryKeyword.category_id == category_id).order_by(CategoryKeyword.keyword_norm))
-        .scalars()
-        .all()
-    )
-
-
-@router.post(
-    "/categories/{category_id}/keywords",
-    response_model=KeywordOut,
-    status_code=201,
-    dependencies=[Depends(get_current_admin)],
-)
-def add_keyword(category_id: uuid.UUID, payload: KeywordIn, db: Session = Depends(get_db)):
-    if db.get(Category, category_id) is None:
-        raise AppError(404, "not_found", "Kategoriya topilmadi")
-    keyword_norm = normalize(payload.phrase)
-    if not keyword_norm:
-        raise AppError(422, "validation_error", "Kalit so'z bo'sh bo'lishi mumkin emas")
-    exists = db.execute(
-        select(CategoryKeyword).where(
-            CategoryKeyword.category_id == category_id, CategoryKeyword.keyword_norm == keyword_norm
-        )
-    ).scalar_one_or_none()
-    if exists:
-        raise AppError(400, "already_exists", "Bu kalit so'z allaqachon qo'shilgan")
-    keyword = CategoryKeyword(category_id=category_id, keyword_norm=keyword_norm, weight=payload.weight, source="admin")
-    db.add(keyword)
-    db.commit()
-    db.refresh(keyword)
-    return keyword
-
-
-@router.delete(
-    "/categories/{category_id}/keywords/{keyword_id}", status_code=204, dependencies=[Depends(get_current_admin)]
-)
-def delete_keyword(category_id: uuid.UUID, keyword_id: uuid.UUID, db: Session = Depends(get_db)):
-    keyword = db.get(CategoryKeyword, keyword_id)
-    if keyword is None or keyword.category_id != category_id:
-        raise AppError(404, "not_found", "Kalit so'z topilmadi")
-    db.delete(keyword)
-    db.commit()
-
-
-@router.get(
-    "/keyword-suggestions", response_model=list[SuggestionOut], dependencies=[Depends(get_current_admin)]
-)
-def list_keyword_suggestions(status: str = "pending", db: Session = Depends(get_db)):
-    rows = (
-        db.execute(
-            select(KeywordSuggestion)
-            .where(KeywordSuggestion.status == status)
-            .order_by(KeywordSuggestion.occurrences.desc())
-        )
-        .scalars()
-        .all()
-    )
-    return [
-        SuggestionOut(
-            id=s.id,
-            phrase_norm=s.phrase_norm,
-            suggested_category=_category_brief(s.suggested_category) if s.suggested_category else None,
-            occurrences=s.occurrences,
-            sample_complaint_ids=s.sample_complaint_ids,
-            status=s.status,
-            created_at=s.created_at,
-        )
-        for s in rows
-    ]
-
-
-@router.post(
-    "/keyword-suggestions/{suggestion_id}/approve", response_model=SuggestionOut, dependencies=[Depends(get_current_admin)]
-)
-def approve_keyword_suggestion(
-    suggestion_id: uuid.UUID, db: Session = Depends(get_db), staff: User = Depends(get_current_admin)
-):
-    suggestion = db.get(KeywordSuggestion, suggestion_id)
-    if suggestion is None:
-        raise AppError(404, "not_found", "Taklif topilmadi")
-    if suggestion.status != "pending":
-        raise AppError(400, "already_reviewed", "Bu taklif allaqachon ko'rib chiqilgan")
-    if suggestion.suggested_category_id is None:
-        raise AppError(422, "validation_error", "Taklifda kategoriya yo'q")
-
-    existing = db.execute(
-        select(CategoryKeyword).where(
-            CategoryKeyword.category_id == suggestion.suggested_category_id,
-            CategoryKeyword.keyword_norm == suggestion.phrase_norm,
-        )
-    ).scalar_one_or_none()
-    if existing is None:
-        weight = 2 if " " in suggestion.phrase_norm else 1
-        db.add(
-            CategoryKeyword(
-                category_id=suggestion.suggested_category_id,
-                keyword_norm=suggestion.phrase_norm,
-                weight=weight,
-                source="auto",
-            )
-        )
-
-    suggestion.status = "approved"
-    suggestion.reviewed_by = staff.id
-    suggestion.reviewed_at = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(suggestion)
-    return SuggestionOut(
-        id=suggestion.id,
-        phrase_norm=suggestion.phrase_norm,
-        suggested_category=_category_brief(suggestion.suggested_category) if suggestion.suggested_category else None,
-        occurrences=suggestion.occurrences,
-        sample_complaint_ids=suggestion.sample_complaint_ids,
-        status=suggestion.status,
-        created_at=suggestion.created_at,
-    )
-
-
-@router.post(
-    "/keyword-suggestions/{suggestion_id}/reject", response_model=SuggestionOut, dependencies=[Depends(get_current_admin)]
-)
-def reject_keyword_suggestion(
-    suggestion_id: uuid.UUID, db: Session = Depends(get_db), staff: User = Depends(get_current_admin)
-):
-    suggestion = db.get(KeywordSuggestion, suggestion_id)
-    if suggestion is None:
-        raise AppError(404, "not_found", "Taklif topilmadi")
-    if suggestion.status != "pending":
-        raise AppError(400, "already_reviewed", "Bu taklif allaqachon ko'rib chiqilgan")
-
-    suggestion.status = "rejected"
-    suggestion.reviewed_by = staff.id
-    suggestion.reviewed_at = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(suggestion)
-    return SuggestionOut(
-        id=suggestion.id,
-        phrase_norm=suggestion.phrase_norm,
-        suggested_category=_category_brief(suggestion.suggested_category) if suggestion.suggested_category else None,
-        occurrences=suggestion.occurrences,
-        sample_complaint_ids=suggestion.sample_complaint_ids,
-        status=suggestion.status,
-        created_at=suggestion.created_at,
-    )
-
-
 @router.get("/stats/dashboard", response_model=DashboardStats, dependencies=[Depends(get_current_admin)])
 def dashboard_stats(db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
@@ -999,6 +839,7 @@ def stats_ai_health(db: Session = Depends(get_db)):
         last_llm_success_at=last_success,
         llm_queue_depth=llm_queue_depth,
         llm_errors_1h=llm_errors_1h,
+        pending_analysis=db.query(Complaint).filter(Complaint.status == STATUS_NEW).count(),
         stt_ok=stt_ok,
     )
 
@@ -1299,37 +1140,34 @@ def create_qr_code(payload: QrCodeIn, db: Session = Depends(get_db)):
 
 @router.get("/stats/ai-trend", response_model=list[AiTrendPoint], dependencies=[Depends(get_current_admin)])
 def stats_ai_trend(days: int = Query(30, ge=1, le=180), db: Session = Depends(get_db)):
-    """F4.2 — 'aniqlik trendi, LLM ulushi kamayishi grafigi'. Kunlik
-    kesimda: accuracy = ai_category_id==category_id ulushi (ai_processed
-    murojaatlar orasida), llm_share = shu kunda LLM'ga murojaat qilingan
-    ai_analyses ulushi (keyword lug'ati boyigan sari kamayishi kutiladi,
-    B2.5 o'rganish sikli tufayli)."""
+    """Kunlik AI sifat trendi (v1.3 — LLM yagona dvigatel, shu sabab eski
+    "LLM ulushi" ko'rsatkichi ma'nosini yo'qotdi va olib tashlandi):
+    `accuracy` = AI tanlagan kategoriya yakuniy kategoriyaga teng bo'lgan
+    ulush (ya'ni admin qo'lda to'g'irlamagan), `low_confidence_share` = AI
+    o'zi ikkilangan (needs_review) murojaatlar ulushi — docs/07 §5."""
     since = datetime.now(timezone.utc) - timedelta(days=days)
 
     accuracy_by_day: dict[str, list[bool]] = defaultdict(list)
-    for created_at, ai_cat, cat in (
-        db.query(Complaint.created_at, Complaint.ai_category_id, Complaint.category_id)
+    low_conf_by_day: dict[str, list[bool]] = defaultdict(list)
+    for created_at, ai_cat, cat, needs_review in (
+        db.query(Complaint.created_at, Complaint.ai_category_id, Complaint.category_id, Complaint.needs_review)
         .filter(Complaint.created_at >= since, Complaint.ai_category_id.isnot(None))
         .all()
     ):
-        accuracy_by_day[created_at.date().isoformat()].append(ai_cat == cat)
-
-    engine_by_day: dict[str, list[str]] = defaultdict(list)
-    for created_at, engine in (
-        db.query(AiAnalysis.created_at, AiAnalysis.engine).filter(AiAnalysis.created_at >= since).all()
-    ):
-        engine_by_day[created_at.date().isoformat()].append(engine)
+        day = created_at.date().isoformat()
+        accuracy_by_day[day].append(ai_cat == cat)
+        low_conf_by_day[day].append(bool(needs_review))
 
     points = []
     for i in range(days + 1):
         day = (since + timedelta(days=i)).date().isoformat()
         acc_list = accuracy_by_day.get(day)
-        eng_list = engine_by_day.get(day)
+        low_list = low_conf_by_day.get(day)
         points.append(
             AiTrendPoint(
                 date=day,
                 accuracy=round(sum(acc_list) / len(acc_list), 2) if acc_list else None,
-                llm_share=round(sum(1 for e in eng_list if e == "llm") / len(eng_list), 2) if eng_list else None,
+                low_confidence_share=round(sum(low_list) / len(low_list), 2) if low_list else None,
             )
         )
     return points

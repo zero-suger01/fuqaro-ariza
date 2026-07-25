@@ -30,10 +30,12 @@ class Settings(BaseSettings):
     smtp_host: str | None = None
     smtp_port: int = 587
 
-    # AI (docs/07-ai-layer.md)
+    # AI (docs/07-ai-layer.md) — LLM yagona dvigatel (v1.3)
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "gemma3:12b"
-    ai_confidence_threshold: float = 0.75
+    # LLM shundan past ishonch bersa `needs_review` BELGISI qo'yiladi
+    # (bloklamaydi — murojaat baribir yo'naltiriladi, docs/07 §1).
+    ai_low_confidence: float = 0.6
     # R1: generatsiya (xulosa + javob drafti + teglar) klassifikatsiyadan
     # ancha ko'p token talab qiladi — CPU serverda 2-6 daqiqa. Fuqaro ham,
     # xodim ham kutmaydi (async worker), shuning uchun timeout saxiy.
