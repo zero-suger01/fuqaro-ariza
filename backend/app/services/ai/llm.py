@@ -20,13 +20,28 @@ settings = get_settings()
 
 SYSTEM_PROMPT_TEMPLATE = """Sen O'zbekiston tuman hokimligi murojaatlarini tasniflovchi yordamchisan.
 Fuqaro matni o'zbek (lotin/kirill/sheva), rus yoki ingliz tilida bo'lishi mumkin.
-Faqat JSON qaytar. Kategoriyalardan FAQAT bittasini tanla:
+Faqat JSON qaytar. Kategoriyalar ro'yxati:
 {categories}
-Maydonlar: category_code, confidence (0..1), priority (low|medium|high|critical — \
-hayot/xavfsizlik tahdidi bo'lsa critical), sentiment (negative|neutral|positive), \
-summary_uz (o'zbek lotin, max 2 gap), reply_draft_uz (rasmiy, xushmuomala javob \
-loyihasi, 2-3 gap, "Hurmatli fuqaro" bilan boshlansin), tags (3-6 ta qisqa teg).
+Maydonlar:
+- category_code: ASOSIY muammoning kategoriyasi, ro'yxatdan FAQAT bitta kod.
+- secondary_category_codes: fuqaro bitta matnda BIR NECHTA ALOHIDA muammo \
+yozgan bo'lsa, qolganlarining kodlari (ro'yxatdan, ko'pi bilan 3 ta). \
+Masalan "chiroq va suv yo'q" — bu ikki xil xizmat: biri category_code, \
+ikkinchisi shu ro'yxatda. Bitta muammo bo'lsa BO'SH ro'yxat [] qaytar. \
+Umumlashtiruvchi kategoriya tanlab, alohida muammolarni bitta kodga \
+yig'ib yuborma — har xizmatni alohida ko'rsat.
+- confidence: 0..1 (asosiy kategoriyaga ishonch).
+- priority: low|medium|high|critical (hayot/xavfsizlik tahdidi bo'lsa critical).
+- sentiment: negative|neutral|positive.
+- summary_uz: o'zbek lotin, max 2 gap.
+- reply_draft_uz: rasmiy, xushmuomala javob loyihasi, 2-3 gap, \
+"Hurmatli fuqaro" bilan boshlansin.
+- tags: 3-6 ta qisqa teg.
 Javobni FAQAT JSON obyekt sifatida qaytar, boshqa hech qanday matn yozma."""
+
+# LLM ko'p kod qaytarsa ham shuncha olinadi: bitta murojaatni 3 tadan
+# ortiq bo'limga bo'lish amaliy emas va odatda LLM adashganini bildiradi.
+MAX_SECONDARY_CATEGORIES = 3
 
 class LlmError(Exception):
     pass
@@ -34,12 +49,43 @@ class LlmError(Exception):
 
 class LlmAnalysis(BaseModel):
     category_code: str
+    # v1.5 — ko'p bo'limli murojaat ([07] §1.1). Bu yerda faqat SHAKL
+    # tozalanadi (bo'sh/takroriy qiymatlar, limit); kodning haqiqiyligi
+    # va bo'limga bog'liqligi worker'da tekshiriladi — LLM'ga ishonib
+    # to'g'ridan-to'g'ri topshiriq yaratib bo'lmaydi.
+    secondary_category_codes: list[str] = []
     confidence: float = 0.5
     priority: str = "medium"
     sentiment: str = "neutral"
     summary_uz: str | None = None
     reply_draft_uz: str | None = None
     tags: list[str] = []
+
+    @field_validator("secondary_category_codes", mode="before")
+    @classmethod
+    def _coerce_list(cls, value: object) -> list[str]:
+        # Ba'zi modellar bitta string yoki null qaytaradi — sxema
+        # buzilib butun tahlil yo'qolmasligi uchun yumshoq keltiramiz.
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            return [str(item) for item in value]
+        return []
+
+    @field_validator("secondary_category_codes")
+    @classmethod
+    def _clean_secondary(cls, value: list[str]) -> list[str]:
+        seen: set[str] = set()
+        cleaned: list[str] = []
+        for code in value:
+            code = code.strip().lower()
+            if not code or code in seen:
+                continue
+            seen.add(code)
+            cleaned.append(code)
+        return cleaned[:MAX_SECONDARY_CATEGORIES]
 
     @field_validator("priority")
     @classmethod

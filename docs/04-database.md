@@ -132,10 +132,12 @@ Fuqaro keyin yuborgan **rasm/fayllar uchun alohida jadval yo'q** — `complaint_
 | status | varchar(10) NOT NULL default 'open' | `open` \| `done` \| `cancelled` |
 | note | text NOT NULL | nima qilinishi kerak |
 | deadline_at | timestamptz NULL | |
-| created_by | uuid FK users NOT NULL | admin |
+| created_by | uuid FK users NULL | admin; **v1.5: `NULL` = AI yaratgan** ([07](07-ai-layer.md) §1.1). `complaint_events.actor_id` bilan bir xil naqsh — AI harakatida xodim bo'lmaydi |
 | created_at / closed_at | timestamptz | |
 
 Ota murojaat ochiq (`open`) sub-task bilan `resolved` ga o'ta olmaydi → 422 `subtasks_open`. Fuqaroga sub-tasklar ko'rinmaydi — javob **bitta va umumiy**.
+
+Sub-taskni admin qo'lda yoki **AI avtomatik** yaratadi (v1.5): LLM `secondary_category_codes` qaytarsa, worker har bir kod uchun mos bo'limga topshiriq ochadi. AI yozuvida `created_by IS NULL`.
 
 ### ai_analyses — har AI yugurishi (tarix)
 
@@ -195,6 +197,8 @@ Bitta katta migratsiya EMAS — kichik bosqichlar, har biri alohida tekshiriladi
 7. **M8 — LLM-only (v1.3):** `category_keywords` va `keyword_suggestions` jadvallari DROP, `ai_analyses.confident` ustuni DROP, `ai_analyses` dagi eski `engine='keyword'` yozuvlari o'chiriladi (ular endi hech qayerda o'qilmaydi va KPI hisobini buzadi). **Ma'lumot yo'qoladi:** 106 ta seed keyword va taklif navbati — ikkalasi ham qayta tiklanmaydi, lekin seed keywordlar `app/seed.py` tarixida qolgan va taklif navbati hosila ma'lumot edi. `downgrade()` sxemani qaytaradi (bo'sh jadvallar bilan). Fayl: `alembic/versions/m8_llm_only.py`.
 
 8. **M9 — egalik va ma'lumot sikli (v1.4):** `complaints` ga `accepted_at`, `info_requested_at`, `info_provided_at`, `satisfaction`, `reopened_count`; `departments.wip_limit`; `users.must_change_password`; yangi jadvallar `citizen_messages`, `complaint_subtasks`; yangi indekslar (§3). **Backfill:** mavjud `accepted`/`in_progress`+ statusdagi murojaatlar uchun `accepted_at` — `complaint_events` dagi `status_changed → accepted` eventining vaqti (yo'q bo'lsa NULL qoladi). `ck_complaints_status` CHECK'iga tegilmaydi — yangi status qo'shilmagan, faqat yangi **o'tishlar** (`resolved→in_progress`, `closed→in_progress`) qo'shilgan, ular esa ilova darajasida. Fayl: `alembic/versions/m9_ownership_and_info_loop.py`.
+
+9. **M10 — AI sub-tasklari (v1.5):** `complaint_subtasks.created_by` `NOT NULL` → `NULL`. Sabab: AI ko'p bo'limli murojaatni o'zi bo'lganda topshiriqni **xodim emas, AI** yaratadi ([07](07-ai-layer.md) §1.1) va `created_by` ga yozadigan `users.id` yo'q. `complaint_events.actor_id` allaqachon shu naqshda (AI harakatida NULL). Ma'lumot yo'qolmaydi; `downgrade()` ustunni qayta `NOT NULL` qiladi va buning uchun avval AI yaratgan qatorlarni **o'chiradi** (ular uchun to'g'ri `created_by` qiymati yo'q — docstring'da ogohlantirilgan). Fayl: `alembic/versions/m10_ai_subtasks.py`.
 
 > Dev bazalar odatda bo'sh — lekin migratsiya baribir data-safe yoziladi (server pilotida kerak bo'ladi). Har migratsiyadan keyin: `alembic upgrade head && python -m app.seed && pytest -k smoke`.
 

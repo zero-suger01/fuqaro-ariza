@@ -26,11 +26,13 @@ class ComplaintSubtask(Base):
     status: Mapped[str] = mapped_column(String(10), default="open")
     note: Mapped[str] = mapped_column(Text)
     deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    # v1.5: NULL = AI yaratgan ([07] §1.1). `complaint_events.actor_id`
+    # bilan bir xil naqsh — AI harakatida xodim bo'lmaydi.
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     complaint: Mapped["Complaint"] = relationship(back_populates="subtasks")
     department: Mapped["Department"] = relationship()
     assigned_user: Mapped["User | None"] = relationship(foreign_keys=[assigned_user_id])
-    creator: Mapped["User"] = relationship(foreign_keys=[created_by])
+    creator: Mapped["User | None"] = relationship(foreign_keys=[created_by])

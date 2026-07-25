@@ -126,6 +126,16 @@ Sabab: `QA-TEST` murojaati fuqarodan yopilgungacha yurgizildi. Asosiy oqim ishla
 - [x] **S2.4 (S)** `POST .../review` uchun `reason` majburiy (`ok`/`wrong_category`/`wrong_department`/`wrong_priority`/`other`) — AI sifatini o'lchash uchun.
 - [ ] **S2.5 (S)** `departments.wip_limit` + `stats/kpi?group_by=department` ga `active_load`/`wip_limit`/`over_limit`. Bloklamaydi, faqat ko'rsatkich.
 
+## S3 — Ko'p bo'limli murojaat (kontrakt v1.5)
+
+Sabab: lokal sinovda «Uyimizda 2 kundan beri chiroq va suv to'xtab qoldi» matni **`kommunal`** kategoriyasiga `confidence=1.0` bilan tushdi. AI ikkala muammoni ham tushungan edi (`tags`: `suv`, `elektr`), lekin bitta kategoriya so'ralgani uchun soyabon kategoriyani tanladi — `needs_review` ham qo'yilmadi, Elektr va Suvsoz murojaatni umuman ko'rmadi ([07](07-ai-layer.md) §1.1).
+
+- [ ] **S3.1 (S)** M10 migratsiya: `complaint_subtasks.created_by` nullable (AI yaratgan topshiriqda xodim yo'q).
+- [ ] **S3.2 (M)** `llm.py`: promptga `secondary_category_codes` ko'rsatmasi + `LlmAnalysis` maydoni. Validator: max 3, bo'sh/takroriy qiymatlar tozalanadi.
+- [ ] **S3.3 (M)** `worker.py`: har `secondary_category_codes` kodi uchun sub-task (bo'lim = kategoriyaning `department_id`). **LLM'ga ishonilmaydi** — noma'lum kod, asosiy kategoriyaning takrori, asosiy bo'lim bilan bir xil bo'limga tushadigan kod va bo'limsiz kategoriya tashlanadi. `needs_review=true`, `subtask_created` event `actor_type=ai`, bo'lim xodimlariga bildirishnoma.
+- [ ] **S3.4 (S)** `SubtaskOut` ga `created_by_ai`; tafsilot sahifasida «AI aniqladi» belgisi.
+- [ ] **S3.5 (S)** `tests/test_multi_department.py`: AI sub-task yaratishi, filtrlar (dublikat/noma'lum/bir xil bo'lim), ochiq sub-task bilan `resolved` bloklanishi.
+
 ## Doimiy qoidalar (har taskda)
 
 - Har endpoint Pydantic schema bilan (`app/schemas/`), Swagger'da ko'rinadi, [03](03-kontraktlar.md) dagi shaklga AYNAN mos.

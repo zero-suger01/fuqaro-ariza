@@ -29,13 +29,16 @@ from app.models.ai_analysis import AiAnalysis
 from app.models.category import Category
 from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
+from app.models.complaint_subtask import ComplaintSubtask
 from app.models.stt_job import SttJob
+from app.models.user import User
 from app.services.ai.llm import LlmError, analyze_with_llm
 from app.services.ai.stt import SttError, transcribe
 from app.services import workflow
 from app.services.deadline import compute_deadline
 from app.services.escalation import escalate_overdue
 from app.services.lifecycle import auto_archive_closed, auto_close_resolved
+from app.services.notifications import notify_staff
 from app.services.storage import download_to_temp
 
 logger = logging.getLogger(__name__)
@@ -74,6 +77,87 @@ async def _mark_llm_error(ctx) -> None:
         await ctx["redis"].expire(key, 7200)
     except Exception:
         pass
+
+
+def _create_ai_subtasks(
+    db,
+    complaint: Complaint,
+    secondary_codes: list[str],
+    primary_category: Category | None,
+) -> int:
+    """LLM topgan qo'shimcha muammolar uchun idoralararo topshiriq
+    yaratadi (docs/07 §1.1). Yaratilganlar sonini qaytaradi.
+
+    **LLM'ga ishonilmaydi.** U ro'yxatda yo'q kod, asosiy kategoriyaning
+    o'zi yoki bo'limga bog'lanmagan kategoriya qaytarishi mumkin —
+    hammasi shu yerda tozalanadi. Eng muhim filtr: **asosiy bo'lim
+    bilan bir xil bo'limga tushadigan** kod tashlanadi, aks holda bitta
+    jamoa o'z ishi uchun o'ziga topshiriq olardi.
+    """
+    if not secondary_codes:
+        return 0
+
+    primary_department_id = complaint.assigned_department_id or (
+        primary_category.department_id if primary_category else None
+    )
+    primary_code = primary_category.code if primary_category else None
+
+    created = 0
+    used_departments: set[uuid.UUID] = set()
+    for code in secondary_codes:
+        if code == primary_code:
+            continue
+        secondary = db.execute(
+            select(Category).where(Category.code == code, Category.is_active.is_(True))
+        ).scalar_one_or_none()
+        if secondary is None or secondary.department_id is None:
+            continue
+        if secondary.department_id == primary_department_id or secondary.department_id in used_departments:
+            continue
+
+        used_departments.add(secondary.department_id)
+        subtask = ComplaintSubtask(
+            complaint_id=complaint.id,
+            department_id=secondary.department_id,
+            note=f"AI aniqladi: murojaatda «{secondary.name('uz')}» bo'yicha ham alohida muammo bor.",
+            # `created_by` yo'q — AI yaratgan (M10, [04] complaint_subtasks).
+            deadline_at=complaint.deadline_at,
+        )
+        db.add(subtask)
+        db.flush()
+
+        db.add(
+            ComplaintEvent(
+                complaint_id=complaint.id,
+                event_type="subtask_created",
+                actor_type="ai",
+                payload={
+                    "subtask_id": str(subtask.id),
+                    "department_id": str(secondary.department_id),
+                    "category_code": secondary.code,
+                },
+            )
+        )
+        for user in db.execute(
+            select(User).where(
+                User.is_active.is_(True),
+                User.role == "department_staff",
+                User.department_id == secondary.department_id,
+            )
+        ).scalars():
+            notify_staff(
+                db,
+                user,
+                f"AI idoralararo topshiriq berdi ({secondary.name('uz')}): {complaint.ticket_number}",
+                complaint_id=complaint.id,
+            )
+        created += 1
+
+    if created:
+        logger.info(
+            "%s: AI %s ta qo'shimcha bo'limga topshiriq yaratdi", complaint.ticket_number, created
+        )
+    return created
 
 
 async def analyze_complaint(ctx, complaint_id: str, attempt: int = 0) -> None:
@@ -193,6 +277,11 @@ async def analyze_complaint(ctx, complaint_id: str, attempt: int = 0) -> None:
             # ochiq `None` uzatilardi va AI qayta yo'naltirganda adminning
             # qo'lda tayinlagan xodimi jimgina yo'qolardi ([03] §5).
             workflow.assign(db, complaint, category.department_id, actor_type="ai")
+
+        # v1.5: ko'p bo'limli murojaat — ikkinchi muammo ham bo'limiga
+        # tushadi ([07] §1.1).
+        if _create_ai_subtasks(db, complaint, result.secondary_category_codes, category):
+            complaint.needs_review = True
 
         db.commit()
     finally:

@@ -135,6 +135,8 @@ export interface Subtask {
   deadline_at: string | null;
   created_at: string;
   closed_at: string | null;
+  /** v1.5 — AI ko'p bo'limli murojaatni o'zi bo'lgan (docs/07 §1.1). */
+  created_by_ai: boolean;
 }
 
 export interface ComplaintDetail {

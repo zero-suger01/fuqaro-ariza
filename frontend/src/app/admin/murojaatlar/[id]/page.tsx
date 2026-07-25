@@ -722,6 +722,11 @@ export default function AdminComplaintDetailPage() {
                         color={s.status === "open" ? "var(--warning)" : "var(--success)"}
                       />
                     </div>
+                    {s.created_by_ai && (
+                      <span className="inline-flex items-center gap-1 mt-1 text-xs text-accent">
+                        <Sparkles className="h-3 w-3" /> AI aniqladi
+                      </span>
+                    )}
                     <p className="text-sm text-text-secondary mt-1">{s.note}</p>
                     {s.status === "open" && (user?.role === "admin" || user?.department_id === s.department_id) && (
                       <Button

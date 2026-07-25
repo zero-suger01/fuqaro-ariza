@@ -254,6 +254,9 @@ class SubtaskOut(BaseModel):
     deadline_at: datetime | None
     created_at: datetime
     closed_at: datetime | None
+    # v1.5: AI ko'p bo'limli murojaatni o'zi bo'lganda `created_by` NULL
+    # bo'ladi ([04] complaint_subtasks) — UI manbani ko'rsatishi uchun.
+    created_by_ai: bool = False
 
 
 class ComplaintDetail(BaseModel):

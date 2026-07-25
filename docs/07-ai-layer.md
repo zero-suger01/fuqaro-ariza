@@ -36,6 +36,28 @@ Ollama (Gemma, JSON, §3) ─── muvaffaqiyat ──► category_code, priori
 - **Priority to'liq LLM'niki** (low|medium|high|critical). Deadline shu priority va kategoriyaning `sla_hours`i asosida hisoblanadi.
 - Fuqaro murojaat yuborishda kategoriyani O'ZI tanlagan bo'lsa ham, LLM uni qayta baholaydi va noto'g'ri bo'lsa almashtiradi (fuqaro ko'pincha adashadi — "kommunal" deb elektr muammosini yuboradi).
 
+### 1.1 Ko'p bo'limli murojaat (v1.5)
+
+Fuqaro bitta matnda **bir necha bo'limga tegishli** muammoni yozishi juda ko'p uchraydi: *«uyimizda 2 kundan beri chiroq va suv to'xtab qoldi»* — bu Elektr tarmoqlari ham, Suvsoz ham. LLM javobi bitta `category_code` bo'lgani uchun ikkinchi muammo yo'naltirishdan tushib qolardi.
+
+**Real o'lchov (2026-07-25, `gemma4:latest`, aynan shu matn):** AI ikkala muammoni ham to'g'ri tushundi (`summary` da «elektr va suv», `tags` da `suv` va `elektr`, javob draftida hatto «bo'limlarimiz» ko'plikda) — lekin bitta kategoriya so'ralgani uchun **`kommunal`** degan soyabon kategoriyani tanladi va **`confidence = 1.0`** qaytardi. Ya'ni `needs_review` ham qo'yilmadi: hech qanday signal bo'lmadi, Elektr va Suvsoz murojaatni umuman ko'rmadi. Ma'lumot `ai_analyses` da saqlangan edi-yu, hech kim unga qarab harakat qilmasdi.
+
+Shuning uchun LLM javobiga **`secondary_category_codes`** qo'shildi ([03](03-kontraktlar.md) §2.3):
+
+```
+category_code            → asosiy muammo, murojaat shu bo'limga yo'naltiriladi
+secondary_category_codes → matnda BOSHQA bo'limga tegishli ALOHIDA muammo
+                           ham bo'lsa (max 3). Yo'q bo'lsa — bo'sh ro'yxat.
+```
+
+Worker har `secondary_category_codes` elementi uchun **avtomatik sub-task** yaratadi (bo'lim = kategoriyaning `department_id` si), `subtask_created` eventi `actor_type="ai"` bilan yoziladi va bo'lim xodimlariga bildirishnoma ketadi.
+
+Filtrlar (worker'da, LLM'ga ishonilmaydi): noma'lum kod tashlanadi; asosiy kategoriyaning o'zi tashlanadi; **asosiy bo'lim bilan bir xil bo'limga tushadigan** kod tashlanadi (bir jamoaga ikki marta topshiriq bermaymiz); bo'limga bog'lanmagan kategoriya tashlanadi.
+
+Sub-task yaratilganda `needs_review=true` qo'yiladi — bo'linish to'g'ri bo'lganini odam bir marta tasdiqlashi kerak. Bu **bloklamaydi**: asosiy bo'lim ishni darhol boshlaydi.
+
+> **Nega bu «inson kutilmaydi» qoidasini buzmaydi:** murojaat baribir darhol yo'naltiriladi va ijroga ketadi. Sub-task ham darhol tegishli bo'limga tushadi. `needs_review` faqat nazorat belgisi — admin hech narsa qilmasa ham ikkala bo'lim ishlayveradi. Yagona qattiq qoida: **ochiq sub-task bilan murojaat `resolved` ga o'ta olmaydi** ([03](03-kontraktlar.md) §5) — aks holda fuqaroga «hal qilindi» deb aytilar, suv esa hamon yo'q bo'lardi.
+
 ## 2. Ishonchlilik: qayta urinish va navbatni tozalash
 
 LLM yagona dvigatel bo'lgani uchun Ollama'ning ishlashi kritik. Ikki qatlamli himoya (ikkalasi ham admin aralashuvisiz):

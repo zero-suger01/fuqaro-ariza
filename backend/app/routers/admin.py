@@ -216,6 +216,7 @@ def _complaint_to_detail(complaint: Complaint) -> ComplaintDetail:
                 deadline_at=s.deadline_at,
                 created_at=s.created_at,
                 closed_at=s.closed_at,
+                created_by_ai=s.created_by is None,
             )
             for s in complaint.subtasks
         ],
