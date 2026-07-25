@@ -1,6 +1,10 @@
 # 01 — Hozirgi holat (codebase auditi)
 
-Audit sanasi: 2026-07-24, `main` (B1+B2+B3+B4+B5 backend to'liq; F1+F2+F3+F4 frontend to'liq; T1/T3.1/T3.2 Telegram bot kod jihatdan tayyor — AI coder solo sessiya). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi. Yangi tasklar shu gap'lardan kelib chiqqan. Qolgan yagona to'siq — real `TELEGRAM_BOT_TOKEN` (@BotFather) va DevOps (D2-D8).
+Audit sanasi: **2026-07-25**, `main` (B1–B6 + R1–R2 backend to'liq; F1–F4 + R1–R2 frontend to'liq; T1/T3.1/T3.2 Telegram bot kod jihatdan tayyor). Bu hujjat — "nima bor, nima yo'q" ning haqiqiy manzarasi.
+
+**R1–R2 (2026-07-25, premortem asosida):** AI endi "fallback" emas — LLM har murojaatda ishlab, xulosa + tayyor javob drafti yaratadi ([07](07-ai-layer.md) §1); xodim ish navbatini ko'radi va murojaatni bir bosishda yopadi; `resolved` javobsiz mumkin emas; bildirishnoma qo'ng'irog'i ulandi; lifecycle (auto-close/archive), SLA-75% ogohlantirishi, AI salomatlik indikatori va 4 avtomatlashtirish KPI qo'shildi. Tafsilot: [05](05-backend-tasklar.md) R1–R2, [06](06-frontend-tasklar.md) R1–R2.
+
+Qolgan to'siqlar: real `TELEGRAM_BOT_TOKEN` (@BotFather), Eskiz SMS kalitlari, DevOps (D2–D8), jonli 60+ UX testi.
 
 ## 1. Nima bor (ishlaydi)
 
@@ -39,18 +43,20 @@ K1 (majburiy ro'yxatdan o'tish), K2 (mobil nav — fuqaro sahifalarida endi to'l
 
 K7 (rate limit/captcha) — hal qilindi (B4.3/B4.7).
 
-**Hali ochiq:** K8 (statistika UTC — B5.6), K11 (JWT localStorage), admin mobil drawer menyu (F1.8, hali qilinmagan).
+K8 (statistika UTC) — hal qilindi (B5.6, R1 bilan birga: `app/core/timezone.py`).
+
+**Hali ochiq:** K11 (JWT localStorage), admin mobil drawer menyu (F1.8, hali qilinmagan).
 
 ## 3. TZ va yangi talablar bo'yicha YO'Q narsalar (yangilangan gap-jadval)
 
 | Soha | Yo'q narsa | Qayerda hal qilinadi |
 |---|---|---|
 | Fuqaro UX | **Tayyor** (F1+F3.1+F3.3) — wizard, holat, i18n, ovoz, QR landing, kabinet. Qolgan: admin mobil drawer (F1.8) | [06](06-frontend-tasklar.md) F1.8 |
-| Admin panel | **To'liq tayyor** (F2+F3.2+F4) — ro'yxat, tafsilot, status/biriktirish/javob, bo'lim/xodim/kategoriya/keyword/QR CRUD, dashboard, xarita, KPI, Excel eksport, RBAC | — |
+| Admin panel | **To'liq tayyor** (F2+F3.2+F4+R2) — ish navbati (Navbatim), tasdiqlash navbati, approve-first tafsilot, bo'lim/xodim/kategoriya/keyword/QR CRUD, dashboard (AI health + avtomatlashtirish KPI), xarita, KPI, Excel eksport, RBAC | — |
 | i18n | Backend + fuqaro FE tayyor (F1). Admin hali faqat uz (rejalashtirilganidek) | — |
-| AI | Asosiy pipeline tayyor. Qolgan: rasm tahlili/OCR (V2, backlog), mohir.ai provider (stub) | [07-ai-layer.md](07-ai-layer.md) §7 |
-| Workflow | **Eskalatsiya croni va AI avto-yo'naltirish (B6) tayyor** — AI ishonchli bo'lsa murojaat avtomatik bo'limga biriktiriladi; deadline o'tgan → bo'lim xodimi (`department_staff`), 24h javobsiz → admin | — |
-| Bildirishnoma | **SMS (Eskiz) va Telegram (B4.2) yuborish tayyor** (real `TELEGRAM_BOT_TOKEN` kelganda ishlaydi). Bot API (`/api/bot/*`) ham tayyor — qolgan yagona narsa standalone `bot/` (aiogram) jarayoni | [05](05-backend-tasklar.md) B4.2, [08](08-telegram-bot.md) |
+| AI | **LLM-always pipeline tayyor (R1)** — har murojaatda xulosa + javob drafti. Qolgan: rasm tahlili/OCR (V2, backlog), mohir.ai provider (stub) | [07-ai-layer.md](07-ai-layer.md) §7 |
+| Workflow | **To'liq avtomatlashtirilgan (B6+R1+R2):** AI ishonchli bo'lsa avtomatik biriktiradi; `accepted` sahifa ochilganda o'zi qo'yiladi; `resolved` javobsiz mumkin emas; SLA-75% ogohlantirish → deadline o'tgan → 24h javobsiz admin; `resolved`+7 kun → `closed`, +30 kun → `archived` | — |
+| Bildirishnoma | **SMS (Eskiz) va Telegram (B4.2) yuborish tayyor** (real kalitlar kelganda ishlaydi). **Xodim bildirishnomalari endi UI'da ko'rinadi (R1.7 qo'ng'iroq)** — avval faqat jadvalga yozilardi. Bot API (`/api/bot/*`) tayyor | [05](05-backend-tasklar.md) B4.2, [08](08-telegram-bot.md) |
 | Analitika | **To'liq tayyor** (heatmap, KPI, mahalla kesimi, global qidiruv, Excel eksport — backend+FE) | — |
 | Xavfsizlik | **Rate limit, captcha, fayl xavfsizligi (EXIF strip) va audit log — barchasi tayyor.** | — |
 | Kanallar | **QR generatsiya (PNG/PDF), Bot API va Telegram bot (aiogram, kod tayyor) bor.** Real bot tokeni va mobil ilova qolgan | [08](08-telegram-bot.md), [09](09-mobile.md) |
@@ -59,7 +65,17 @@ K7 (rate limit/captcha) — hal qilindi (B4.3/B4.7).
 
 ## 4. Keyingi qadam (tavsiya)
 
-Guest oqim, admin panel, QR/kabinet VA analitika (backend+frontend) endi **to'liq ishlaydi va sinovdan o'tgan** — loyihaning yadrosi (checkpoint C1) va deyarli barcha P1-P3 backend/frontend tasklari tayyor. Qolgan yagona yirik yo'nalish — Telegram bot:
+Guest oqim, admin panel, QR/kabinet, analitika VA **avtomatlashtirish qatlami (R1–R2)** endi to'liq ishlaydi va real sinovdan o'tgan. Kod tomondan pilotga tayyorlik uchun qolgani — tashkiliy kalitlar va DevOps:
+
+**Eng ustuvor uchtasi (kodsiz hal bo'lmaydi):**
+
+1. **Eskiz SMS kalitlari** (`ESKIZ_EMAIL`/`ESKIZ_PASSWORD`) — kod tayyor, kalitsiz har bildirishnoma `failed` yoziladi. Fuqaro hozircha holatni faqat o'zi tekshirib biladi.
+2. **`TELEGRAM_BOT_TOKEN`** (@BotFather) — bot kodi tayyor, tokensiz Telegram kanali butunlay uxlab yotibdi.
+3. **DevOps (D2–D8)** — app dockerfile'lari, nginx, HTTPS, CI, backup. Bularsiz serverga chiqib bo'lmaydi.
+
+**Server tanlashda muhim (R1 o'lchovi):** LLM generatsiya endi har murojaatda ishlaydi, shuning uchun server quvvati to'g'ridan-to'g'ri javob tezligiga ta'sir qiladi. CPU'da 8B model ≈ 137 s/murojaat (kuniga 50 murojaat ≈ 1.9 soat uzluksiz yuk) — bitta tuman uchun maqbul, lekin GPU bo'lsa 2–5 s. To'liq jadval va `LLM_TIMEOUT_S` qoidasi: [07](07-ai-layer.md) §4.
+
+Qolgan (avvalgi ro'yxat, o'zgarishsiz):
 
 1. ~~**Mahalla CSV import**~~ — mexanizm sinovdan o'tkazildi (8 ta NAMUNA yozuv bilan, `backend/data/uychi_mfy_SAMPLE.csv`). Hokimlikdan real 62 ta MFY ro'yxati kelganda: yangi CSV → `python -m app.tools.import_neighborhoods <csv>` → NAMUNA yozuvlarni o'chirish.
 2. ~~**B4 (B4.1-B4.7)**~~ — SMS (Eskiz), Telegram xabar yuborish + Bot API (`/api/bot/*`, B4.2), rate limit, EXIF strip, eskalatsiya croni, audit log, captcha — barchasi tayyor va sinovdan o'tkazildi. B4 to'liq yopildi.
