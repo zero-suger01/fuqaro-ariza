@@ -55,7 +55,7 @@ export default function KpiPage() {
   const chartData = trend.map((p) => ({
     date: p.date.slice(5),
     "Aniqlik (%)": p.accuracy != null ? Math.round(p.accuracy * 100) : null,
-    "LLM ulushi (%)": p.llm_share != null ? Math.round(p.llm_share * 100) : null,
+    "Past ishonch (%)": p.low_confidence_share != null ? Math.round(p.low_confidence_share * 100) : null,
   }));
 
   return (
@@ -135,8 +135,9 @@ export default function KpiPage() {
       <Card>
         <h2 className="text-base font-semibold text-text-primary mb-1">AI aniqlik trendi (30 kun)</h2>
         <p className="text-sm text-text-muted mb-4">
-          LLM ulushi vaqt o&apos;tishi bilan kamayishi kerak — bu keyword lug&apos;ati o&apos;rganish sikli
-          (B2.5) orqali boyib borayotganini bildiradi.
+          <strong>Aniqlik</strong> — AI tanlagan kategoriya o&apos;zgartirilmasdan qolgan ulush (85% dan pastga tushsa
+          model yoki prompt qayta ko&apos;riladi). <strong>Past ishonch</strong> — AI o&apos;zi ikkilangan murojaatlar
+          ulushi; ko&apos;payib ketsa kategoriyalar chegarasi noaniq degani.
         </p>
         <div style={{ width: "100%", height: 280 }}>
           <ResponsiveContainer>
@@ -147,7 +148,7 @@ export default function KpiPage() {
               <Tooltip />
               <Legend />
               <Line type="monotone" dataKey="Aniqlik (%)" stroke="var(--success)" connectNulls dot={false} />
-              <Line type="monotone" dataKey="LLM ulushi (%)" stroke="var(--purple)" connectNulls dot={false} />
+              <Line type="monotone" dataKey="Past ishonch (%)" stroke="var(--purple)" connectNulls dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

@@ -10,7 +10,7 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.constants import STATUS_NEW
+from app.core.constants import DEFAULT_CATEGORY_CODE, STATUS_NEW
 from app.core.errors import AppError
 from app.i18n.messages import qabul_text
 from app.models.category import Category
@@ -19,7 +19,6 @@ from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
 from app.models.complaint_file import ComplaintFile
 from app.models.neighborhood import Neighborhood
-from app.services.ai.classifier import classify
 from app.services.notifications import notify_citizen
 from app.services.queue import enqueue
 from app.services.storage import upload_file, validate_file
@@ -78,10 +77,16 @@ def create_complaint(
             citizen.telegram_chat_id = telegram_chat_id
 
     if category is None:
-        classification = classify(db, description)
-        category = db.get(Category, classification.category_id) if classification.category_id else None
+        # v1.3: intake paytida hech qanday klassifikatsiya YO'Q — `category_id`
+        # NOT NULL bo'lgani uchun vaqtinchalik `boshqa` qo'yiladi, bir necha
+        # daqiqadan keyin `analyze_complaint` worker'i LLM qarori bilan
+        # almashtiradi (docs/07 §1). Fuqaro o'zi tanlagan bo'lsa ham LLM
+        # qayta baholaydi.
+        category = db.execute(
+            select(Category).where(Category.code == DEFAULT_CATEGORY_CODE)
+        ).scalar_one_or_none()
         if category is None:
-            raise AppError(500, "server_error", "Kategoriya aniqlanmadi")
+            raise AppError(500, "server_error", "Standart kategoriya topilmadi (seed ishga tushirilmagan?)")
 
     complaint = Complaint(
         ticket_number=next_ticket_number(db),
@@ -127,5 +132,5 @@ def create_complaint(
     notify_citizen(db, citizen, f"Arizangiz qabul qilindi: {complaint.ticket_number}", complaint_id=complaint.id, sms_text=sms)
     db.commit()
 
-    enqueue("classify_complaint", str(complaint.id))
+    enqueue("analyze_complaint", str(complaint.id))
     return complaint

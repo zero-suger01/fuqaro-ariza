@@ -37,7 +37,10 @@ def test_guest_submit_track_admin_flow(client):
     track = client.get("/api/public/complaints/track", params={"ticket": ticket, "phone": phone})
     assert track.status_code == 200, track.text
     assert track.json()["ticket_number"] == ticket
-    assert track.json()["category"]["code"] == "yol"
+    # v1.3: intake paytida hech qanday klassifikatsiya YO'Q — kategoriya
+    # `boshqa` bo'lib turadi va bir necha daqiqadan keyin LLM uni almashtiradi
+    # (docs/07 §1). Test LLM'ni kutmaydi — bu async, daqiqalar oladi.
+    assert track.json()["category"]["code"] == "boshqa"
 
     # Enumeration protection: wrong phone for a real ticket still 404s.
     wrong = client.get("/api/public/complaints/track", params={"ticket": ticket, "phone": "+998900000001"})
@@ -54,10 +57,9 @@ def test_guest_submit_track_admin_flow(client):
     assert any(item["ticket_number"] == ticket for item in items)
     complaint_id = next(item["id"] for item in items if item["ticket_number"] == ticket)
 
-    # Worker ishlab turgan bo'lsa murojaatni bir zumda `ai_processed`ga
-    # o'tkazib qo'yadi (klassifikatsiya ~0.2 s) — test o'sha o'tishni qayta
-    # qilmoqchi bo'lsa 422 `invalid_transition` olardi. Shuning uchun avval
-    # hozirgi holat o'qiladi.
+    # Worker LLM tahlilini tugatgan bo'lsa murojaat allaqachon `ai_processed`
+    # yoki `assigned` bo'ladi — test o'sha o'tishni qayta qilmoqchi bo'lsa 422
+    # `invalid_transition` olardi. Shuning uchun avval hozirgi holat o'qiladi.
     current = client.get(f"/api/admin/complaints/{complaint_id}", headers=headers).json()["status"]
     if current == "new":
         status_change = client.patch(

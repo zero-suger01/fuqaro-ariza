@@ -67,7 +67,7 @@ export interface EventItem {
 }
 
 export interface AiAnalysisItem {
-  engine: "keyword" | "llm";
+  engine: "llm"; // v1.3: keyword dvigateli olib tashlandi
   suggested_category: CategoryBrief | null;
   confidence: number | null;
   priority: Priority | null;
@@ -176,6 +176,7 @@ export interface AiHealth {
   last_llm_success_at: string | null;
   llm_queue_depth: number;
   llm_errors_1h: number;
+  pending_analysis: number; // tahlil kutayotgan murojaatlar (v1.3)
   stt_ok: boolean;
 }
 
@@ -219,7 +220,7 @@ export interface KpiRow {
 export interface AiTrendPoint {
   date: string;
   accuracy: number | null;
-  llm_share: number | null;
+  low_confidence_share: number | null; // v1.3: eski llm_share o'rniga
 }
 
 export interface DepartmentAdmin {
@@ -253,23 +254,6 @@ export interface QrCodeAdmin {
   created_at: string;
   png_url: string;
   pdf_url: string;
-}
-
-export interface KeywordItem {
-  id: string;
-  keyword_norm: string;
-  weight: number;
-  source: "seed" | "admin" | "auto";
-}
-
-export interface SuggestionItem {
-  id: string;
-  phrase_norm: string;
-  suggested_category: CategoryBrief | null;
-  occurrences: number;
-  sample_complaint_ids: string[];
-  status: "pending" | "approved" | "rejected";
-  created_at: string;
 }
 
 export interface StaffUser {

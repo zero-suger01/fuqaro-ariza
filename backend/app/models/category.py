@@ -24,7 +24,6 @@ class Category(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     department: Mapped["Department | None"] = relationship(back_populates="categories")
-    keywords: Mapped[list["CategoryKeyword"]] = relationship(back_populates="category", cascade="all, delete-orphan")
 
     def name(self, lang: str = "uz") -> str:
         return self.names.get(lang) or self.names.get("uz") or self.code

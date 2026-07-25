@@ -1,4 +1,4 @@
-"""Seed categories, departments, keywords, an admin user and default settings.
+"""Seed categories, departments, an admin user and default settings.
 
 Run with: python -m app.seed
 """
@@ -6,10 +6,8 @@ from app.core.security import hash_password
 from app.database import SessionLocal
 from app.models.category import Category
 from app.models.department import Department
-from app.models.keyword import CategoryKeyword
 from app.models.setting import Setting
 from app.models.user import User
-from app.services.ai.normalize import normalize
 
 DEPARTMENTS = [
     ("sanitariya", "Sanitariya tozalash xizmati", "Санитария тозалаш хизмати", "Служба санитарной очистки", "Sanitation service", True),
@@ -47,74 +45,9 @@ CATEGORIES = [
     ("boshqa", "Boshqa", "Бошқа", "Другое", "Other", "help-circle", 72, "hokimlik"),
 ]
 
-# category_code -> raw keyword phrases (normalized at insert time). Includes
-# Cyrillic/Russian loanwords and common dialect misspellings so the
-# normalizer's transliteration is exercised (docs/07-ai-layer.md §3).
-KEYWORDS: dict[str, list[str]] = {
-    "chiqindi": [
-        "chiqindi", "axlat", "musor", "olib ketilmayapti", "poligon", "tashlandiq",
-        "iflos", "konteyner", "chiqindilar", "чиқинди", "мусор", "ахлат",
-    ],
-    "yol": [
-        "yol", "asfalt", "chuqur", "yoriq", "svetofor", "yo'l belgisi",
-        "piyodalar", "ko'cha yuzasi", "chuqurcha", "yo'l chuqur", "дорога", "ёл",
-    ],
-    "transport": [
-        "avtobus", "marshrutka", "transport harakati", "yo'lovchi tashish",
-        "chipta narxi", "haydovchi qo'pol", "jamoat transporti", "автобус", "маршрутка",
-    ],
-    "elektr": [
-        "elektr", "svet", "ustun", "sim uzilgan", "transformator", "quvvat",
-        "tok urmoqda", "lampochka", "lampichka", "chiroq", "chiroq o'chdi",
-        "elektr ta'minoti", "свет", "электр",
-    ],
-    "gaz": [
-        "gaz", "gaz hidi", "gaz sizmoqda", "gaz quvuri", "portlash xavfi",
-        "gaz ta'minoti", "газ", "газ ҳиди",
-    ],
-    "suv": [
-        "suv", "quvur", "suv toshqini", "ichimlik suvi", "kanalizatsiya",
-        "suv oqmoqda", "suv ta'minoti", "vodoprovod", "kanalizatsiya bitgan",
-        "arik", "сув", "водопровод",
-    ],
-    "kommunal": [
-        "kommunal xizmat", "isitish", "markaziy isitish", "batareya sovuq",
-        "kommunal to'lov", "lift ishlamayapti", "chordoq", "коммунал",
-    ],
-    "daraxt": [
-        "daraxt", "shox", "yiqilgan daraxt", "butalar", "yashil maydon",
-        "daraxtlar kesilmoqda", "дарахт",
-    ],
-    "ekologiya": [
-        "ekologiya", "hid yomon", "tutun", "havo ifloslanishi",
-        "chiqindi yoqilmoqda", "atrof-muhit", "экология",
-    ],
-    "qurilish": [
-        "qurilish", "noqonuniy qurilish", "bino xavfli", "inshoot",
-        "ruxsatnomasiz qurilish", "qurilish chiqindisi", "қурилиш",
-    ],
-    "obodonlashtirish": [
-        "obodonlashtirish", "hovli tozalanmagan", "skameyka buzilgan",
-        "bolalar maydonchasi", "landshaft", "yashillashtirish", "tozalik yo'q",
-    ],
-    "kadastr": [
-        "yer uchastkasi", "kadastr", "mulk hujjati", "xususiylashtirish",
-        "yer maydoni", "texpasport", "кадастр",
-    ],
-    "soliq": [
-        "soliq", "soliq inspeksiyasi", "jarima noto'g'ri", "bojxona",
-        "patent", "yig'im", "солиқ",
-    ],
-    "ijtimoiy": [
-        "nogironlar uchun", "kam ta'minlangan", "ijtimoiy yordam", "nafaqa",
-        "subsidiya", "moddiy yordam", "ижтимоий ёрдам",
-    ],
-}
-
 DEFAULT_SETTINGS = {
-    "ai_confidence_threshold": 0.75,
+    "ai_low_confidence": 0.6,
     "sla_escalation_hours": 24,
-    "danger_keywords": ["portlash", "gaz hidi", "sim uzilgan", "toshqin", "avariya"],
 }
 
 
@@ -151,27 +84,6 @@ def run() -> None:
                 db.flush()
             categories_by_code[code] = category
         print(f"Categories ready: {len(categories_by_code)}")
-
-        keyword_count = 0
-        for category_code, phrases in KEYWORDS.items():
-            category = categories_by_code[category_code]
-            existing_norms = {
-                row.keyword_norm
-                for row in db.query(CategoryKeyword.keyword_norm).filter(CategoryKeyword.category_id == category.id)
-            }
-            seen_norms: set[str] = set()
-            for phrase in phrases:
-                keyword_norm = normalize(phrase)
-                # Cyrillic and Latin spellings of the same word can normalize
-                # to an identical string — skip once already queued/stored.
-                if keyword_norm in existing_norms or keyword_norm in seen_norms:
-                    continue
-                seen_norms.add(keyword_norm)
-                weight = 2 if " " in keyword_norm else 1
-                db.add(CategoryKeyword(category_id=category.id, keyword_norm=keyword_norm, weight=weight, source="seed"))
-                keyword_count += 1
-        if keyword_count:
-            print(f"Seeded {keyword_count} keywords")
 
         admin_phone = "+998900000000"
         if not db.query(User).filter(User.phone == admin_phone).first():

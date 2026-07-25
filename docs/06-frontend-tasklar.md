@@ -70,6 +70,13 @@ Sabab: interfeys "ma'lumot ko'rsatardi", "ish boshqarmasdi" — xodimning haqiqi
 
 **Brauzerda real backend bilan sinovdan o'tkazildi:** admin (dashboard KPI/health → tasdiqlash navbatida bir bosishli qabul), `department_staff` (login → navbatim → tafsilot avto-qabul → bir bosishli hal qilish), fuqaro `/holat` (bo'lim + muddat) uz va en tillarida. `npm run lint && i18n:check && build` toza.
 
+## R3 — Keyword UI olib tashlash (kontrakt v1.3)
+
+- [x] **R3.6 (S)** `/admin/takliflar` (keyword takliflari inbox) butunlay o'chirildi, sidebar'dan olib tashlandi — o'rganish sikli endi yo'q.
+- [x] **R3.7 (M)** `/admin/kategoriyalar` qayta yozildi: keyword boshqaruvi o'rniga **AI qaror maydoni** — har kategoriyaning mas'ul bo'limi (murojaat kimga tushishi), SLA soati (muddat) va faol/nofaol holati (AI tanlay oladimi) tahrirlanadi. Tepada AI qanday ishlashini tushuntiruvchi kartochka. Tahrir formasi alohida komponent + `key={id}` bilan (React Compiler effekt ichida `setState`ni man qiladi).
+- [x] **R3.8 (S)** «Tasdiqlash navbati» → **«AI nazorati»**: matn qayta yozildi — bu navbat emas, nazorat; murojaatlar allaqachon yo'naltirilgan va ijroda, admin hech narsa qilmasa ham ish davom etadi. Tugmalar: «Qabul» → «To'g'ri», «O'zgartirish» → «To'g'irlash».
+- [x] **R3.9 (S)** Dashboard AI chizig'i: «Navbatda: N ish» o'rniga **«Tahlil kutmoqda: N murojaat»** (`pending_analysis`); Ollama o'chganda ko'rsatiladigan matn yangilandi — «murojaatlar yo'qolmaydi, tizim har 15 daqiqada qayta uradi». KPI grafigida «LLM ulushi» o'rniga «Past ishonch».
+
 ## F5 — Sayqal (P3)
 
 - [ ] **F5.1 (S)** Accessibility audit: [10](10-ui-ux.md) §8 checklist (kontrast, focus, aria, 200% zoom).

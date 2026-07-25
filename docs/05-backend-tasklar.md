@@ -92,6 +92,18 @@ Sabab: premortem hisoboti (2026-07-25) ko'rsatdi — AI'ning ko'rinadigan qiymat
 
 **Sinovda topilgan va tuzatilgan muammo:** kontraktdagi 120 s LLM timeout bu apparatda yetarli emas edi — `gemma4:12b` bitta murojaatga **326 s** sarflaydi, ya'ni generatsiya har safar 2×120 s kutib natijasiz tugardi (jim degradatsiya). `LLM_TIMEOUT_S`/`LLM_MAX_ATTEMPTS` env qo'shildi (standart 300 s), o'lchangan model jadvali [07](07-ai-layer.md) §4 ga yozildi, lokal `.env` `gemma4:latest` (8B, 137 s) ga o'tkazildi.
 
+## R3 — LLM yagona dvigatel (kontrakt v1.3, foydalanuvchi qarori)
+
+Sabab (foydalanuvchi): «uxlaganda AI modeli avtomatik o'zi saralasin hamma murojaatlarni admin aralashuvisiz, engine keywordsni olib tashla umuman». Ikki dvigatelli sxemada kategoriyani kim aniqlagani doim tushunarsiz edi, keyword lug'atini boqish doimiy qo'l mehnati talab qilardi, va keyword ishonchli deb xato yo'naltirsa LLM buni tuzata olmasdi.
+
+- [x] **R3.1 (M)** `worker.py` bitta ishga qaytdi — `analyze_complaint`: LLM kategoriya + ustuvorlik + muddat + bo'limga yo'naltirish + xulosa/javob draftini bir yugurishda hal qiladi. Past ishonchda ham yo'naltiriladi (`needs_review` endi faqat **belgi**, bloklamaydi). `classify_complaint`/`generate_analysis` ikkiligi tugadi.
+- [x] **R3.2 (M)** Ishonchlilik (LLM yagona bo'lgani uchun kritik): job darajasida qayta urinish (`AI_RETRY_DELAYS` = 2 daq → 10 daq → 30 daq → 2 soat → 6 soat) + har 15 daqiqada `sweep_pending_analysis` cron (10 daqiqadan oshgan `new` murojaatlarni qayta navbatga qo'yadi). Admin navbati YO'Q. LLM ishlari Redis qulfi (`ai:llm_lock`) bilan ketma-ketlashtirildi — `max_jobs=1` qilinmadi, chunki u STT'ni ham bloklardi (fuqaro ovoz natijasini kutib turadi).
+- [x] **R3.3 (S)** O'chirildi: `ai/classifier.py`, `ai/learning.py`, `ai/normalize.py`, `models/keyword.py`, `models/keyword_suggestion.py`, keyword+suggestions admin endpointlari, seed'dagi 106 keyword va `danger_keywords` sozlamasi. `complaint_intake` endi intake paytida klassifikatsiya qilmaydi — kategoriya vaqtincha `boshqa` bo'lib turadi (`category_id` NOT NULL), LLM uni almashtiradi.
+- [x] **R3.4 (S)** M8 migratsiya: `category_keywords`, `keyword_suggestions` jadvallari va `ai_analyses.confident` ustuni DROP; eski `engine='keyword'` yozuvlari o'chirildi.
+- [x] **R3.5 (S)** `ai-health`ga `pending_analysis` (tahlil kutayotgan murojaatlar) qo'shildi — LLM yagona dvigatel bo'lgani uchun eng muhim signal. `ai-trend`dagi `llm_share` (endi doim 1.0) o'rniga `low_confidence_share`. `AI_CONFIDENCE_THRESHOLD` → `AI_LOW_CONFIDENCE` (ma'nosi teskari).
+
+**Real sinovdan o'tkazildi (2026-07-25):** (1) Ollama o'lik manzilga qaratilib murojaat yuborildi → murojaat `new` holatida saqlanib qoldi, tahlil YO'QOLMADI, qayta urinish navbatga tushdi. (2) Worker to'g'ri Ollama bilan qayta ishga tushirildi → 120 s dan keyin kechiktirilgan ish o'zi ishga tushdi va murojaatni to'liq hal qildi: kategoriya `suv` (to'g'ri), prioritet `high` (LLM ko'tardi), «Suvsoz» bo'limiga avtomatik biriktirildi, o'zbekcha xulosa + javob drafti yozildi, `needs_review=false`. (3) Sweeper cron qolgan murojaatlarni ham o'zi tozaladi. `pytest -m smoke` 5/5.
+
 ## Doimiy qoidalar (har taskda)
 
 - Har endpoint Pydantic schema bilan (`app/schemas/`), Swagger'da ko'rinadi, [03](03-kontraktlar.md) dagi shaklga AYNAN mos.

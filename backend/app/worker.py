@@ -1,39 +1,31 @@
 """ARQ worker. Run with: arq app.worker.WorkerSettings
 
-Pipeline v2 (docs/07-ai-layer.md §1, R0): ikki bosqich.
-1) `classify_complaint` — keyword ROUTING (millisekund): kategoriya, priority,
-   deadline; ishonchli bo'lsa avto-assign. Har doim 2-bosqichni navbatga qo'yadi.
-2) `generate_analysis` — LLM GENERATSIYA har murojaatda: summary, javob drafti,
-   sentiment, teglar; keyword ishonchsiz bo'lgan holatda routing'ni ham hal qiladi.
+Pipeline v3 (docs/07-ai-layer.md §1, v1.3): LLM YAGONA dvigatel.
+`analyze_complaint` bitta ishda murojaatni o'qiydi, kategoriyalaydi,
+ustuvorlik beradi, bo'limga yo'naltiradi va javob drafti yozadi —
+inson aralashuvi kutilmaydi.
 
-`needs_review` FAQAT "routing insonga muhtoj" degani: keyword ishonchli bo'lsa
-LLM xatosi uni true qilmaydi (draft'siz degradatsiya — blokirovka emas).
+LLM javob bermasa admin navbati YO'Q: ish `AI_RETRY_DELAYS` bo'yicha qayta
+navbatga qo'yiladi va har 15 daqiqada sweeper cron tahlilsiz qolgan
+murojaatlarni qaytadan uradi (§2). Ollama tiklanganda navbat o'zi ketadi.
 """
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from arq import cron
 from arq.connections import RedisSettings
 from sqlalchemy import select
 
 from app.config import get_settings
-from app.core.constants import (
-    DEFAULT_CATEGORY_CODE,
-    PRIORITIES,
-    STATUS_AI_PROCESSED,
-    STATUS_NEW,
-    TERMINAL_STATUSES,
-)
+from app.core.constants import DEFAULT_CATEGORY_CODE, STATUS_AI_PROCESSED, STATUS_NEW
 from app.database import SessionLocal
 from app.models.ai_analysis import AiAnalysis
 from app.models.category import Category
 from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
 from app.models.stt_job import SttJob
-from app.services.ai.classifier import classify
-from app.services.ai.learning import mine_keyword_suggestions
-from app.services.ai.llm import LlmError, classify_with_llm
+from app.services.ai.llm import LlmError, analyze_with_llm
 from app.services.ai.stt import SttError, transcribe
 from app.services import workflow
 from app.services.deadline import compute_deadline
@@ -43,11 +35,23 @@ from app.services.storage import download_to_temp
 
 settings = get_settings()
 
-PRIORITY_RANK = {p: i for i, p in enumerate(PRIORITIES)}
+# Ollama uzoq muddat o'chiq bo'lsa ham murojaat yo'qolmasin: 2 daq → 10 daq
+# → 30 daq → 2 soat → 6 soat. Undan keyin sweeper cron baribir uradi.
+AI_RETRY_DELAYS = [120, 600, 1800, 7200, 21600]
 
-# AI-health kalitlari (GET /api/admin/stats/ai-health shularni o'qiydi).
+# Sweeper: shundan eski `new` murojaat = navbatdan tushib qolgan deb hisoblanadi
+# (worker restart, Redis flush va h.k.).
+STALE_AFTER = timedelta(minutes=10)
+
 LLM_LAST_SUCCESS_KEY = "ai:llm_last_success"
 LLM_ERROR_KEY_PREFIX = "ai:llm_err:"  # soatlik bucket: ai:llm_err:YYYYMMDDHH
+
+# CPU'da bir vaqtda BITTA inference (docs/07 §3). Global `max_jobs=1` qilib
+# bo'lmaydi — u STT'ni ham bloklardi, fuqaro esa ovoz natijasini kutib
+# turadi. Shuning uchun qulf faqat LLM ishiga qo'yiladi.
+LLM_LOCK_KEY = "ai:llm_lock"
+LLM_LOCK_TTL = 900  # inference + zaxira; worker o'lsa qulf o'zi bo'shaydi
+LLM_LOCK_RETRY_S = 30
 
 
 async def _mark_llm_success(ctx) -> None:
@@ -66,100 +70,44 @@ async def _mark_llm_error(ctx) -> None:
         pass
 
 
-async def classify_complaint(ctx, complaint_id: str) -> None:
-    """1-bosqich: keyword routing. LLM'ni KUTMAYDI — ishonchli bo'lsa murojaat
-    bir zumda bo'limga tushadi, generatsiya orqadan yetib keladi."""
+async def analyze_complaint(ctx, complaint_id: str, attempt: int = 0) -> None:
+    """LLM murojaatni to'liq hal qiladi: kategoriya + ustuvorlik + muddat +
+    bo'limga yo'naltirish + xulosa/javob drafti. Xato bo'lsa qayta urinadi."""
+    # Navbat ketma-ket: qulf band bo'lsa ish keyinroq qaytadi (bu urinish
+    # sifatida sanalmaydi — server band, xato emas).
+    got_lock = await ctx["redis"].set(LLM_LOCK_KEY, complaint_id, nx=True, ex=LLM_LOCK_TTL)
+    if not got_lock:
+        await ctx["redis"].enqueue_job(
+            "analyze_complaint", complaint_id, attempt, _defer_by=timedelta(seconds=LLM_LOCK_RETRY_S)
+        )
+        return
+
     db = SessionLocal()
     try:
         complaint = db.get(Complaint, uuid.UUID(complaint_id))
+        # Faqat hali tahlil qilinmagan murojaat (sweeper qayta urgan bo'lishi
+        # mumkin — ikki marta tahlil qilmaymiz).
         if complaint is None or complaint.status != STATUS_NEW:
             return
 
-        keyword_result = classify(db, complaint.description)
-        db.add(
-            AiAnalysis(
-                complaint_id=complaint.id,
-                engine="keyword",
-                suggested_category_id=keyword_result.category_id,
-                confidence=keyword_result.confidence,
-                confident=keyword_result.confident,
-                priority=keyword_result.priority,
-            )
-        )
-
-        complaint.category_id = keyword_result.category_id or complaint.category_id
-        complaint.ai_category_id = keyword_result.category_id
-        complaint.ai_confidence = keyword_result.confidence
-        complaint.priority = keyword_result.priority
-        # needs_review = "routing insonga muhtoj". Ishonchsiz bo'lsa hozircha
-        # true — 2-bosqichda LLM routing'ni hal qilsa false'ga tushadi.
-        complaint.needs_review = not keyword_result.confident
-        complaint.status = STATUS_AI_PROCESSED
-
-        category = db.get(Category, complaint.category_id)
-        if category is not None:
-            complaint.deadline_at = compute_deadline(complaint.created_at, category.sla_hours, complaint.priority)
-
-        db.add(
-            ComplaintEvent(
-                complaint_id=complaint.id,
-                event_type="ai_processed",
-                actor_type="ai",
-                payload={
-                    "engine": "keyword",
-                    "confidence": keyword_result.confidence,
-                    "confident": keyword_result.confident,
-                    "needs_review": complaint.needs_review,
-                },
-            )
-        )
-
-        # B6 avto-routing: keyword ishonchli va kategoriya bo'limga bog'langan
-        # bo'lsa — admin kutilmaydi (docs/03 §5 assign izohi).
-        if keyword_result.confident and category is not None and category.department_id:
-            workflow.assign(db, complaint, category.department_id, None, actor_type="ai")
-
-        db.commit()
-    finally:
-        db.close()
-
-    # 2-bosqich HAR DOIM navbatga qo'yiladi (LLM-always, docs/07 §1).
-    await ctx["redis"].enqueue_job("generate_analysis", complaint_id)
-
-
-async def generate_analysis(ctx, complaint_id: str) -> None:
-    """2-bosqich: LLM generatsiya (summary/draft/sentiment/teglar) + keyword
-    ishonchsiz bo'lgan murojaatlarda routing. Qarorlar jadvali: docs/07 §1."""
-    db = SessionLocal()
-    try:
-        complaint = db.get(Complaint, uuid.UUID(complaint_id))
-        if complaint is None or complaint.status in TERMINAL_STATUSES:
-            return
-
-        keyword_row = (
-            db.execute(
-                select(AiAnalysis)
-                .where(AiAnalysis.complaint_id == complaint.id, AiAnalysis.engine == "keyword")
-                .order_by(AiAnalysis.created_at.desc())
-            )
-            .scalars()
-            .first()
-        )
-        keyword_confident = bool(keyword_row.confident) if keyword_row else False
-
         try:
-            llm_result, latency_ms = classify_with_llm(db, complaint.description, complaint.address)
+            result, latency_ms = analyze_with_llm(db, complaint.description, complaint.address)
         except LlmError:
             await _mark_llm_error(ctx)
-            # Keyword ishonchli: routing buzilmagan — needs_review=False qoladi.
-            # Keyword ishonchsiz: 1-bosqich qo'ygan needs_review=True qoladi.
+            # Admin navbati emas — qayta urinish (docs/07 §2). Murojaat `new`
+            # holatida qoladi, ya'ni sweeper ham uni ko'radi.
+            if attempt < len(AI_RETRY_DELAYS):
+                await ctx["redis"].enqueue_job(
+                    "analyze_complaint",
+                    complaint_id,
+                    attempt + 1,
+                    _defer_by=timedelta(seconds=AI_RETRY_DELAYS[attempt]),
+                )
             return
 
         await _mark_llm_success(ctx)
 
-        category = db.execute(
-            select(Category).where(Category.code == llm_result.category_code)
-        ).scalar_one_or_none()
+        category = db.execute(select(Category).where(Category.code == result.category_code)).scalar_one_or_none()
         unknown_code = category is None
         if unknown_code:
             category = db.execute(
@@ -171,56 +119,74 @@ async def generate_analysis(ctx, complaint_id: str) -> None:
                 complaint_id=complaint.id,
                 engine="llm",
                 suggested_category_id=category.id if category else None,
-                confidence=llm_result.confidence,
-                priority=llm_result.priority,
-                sentiment=llm_result.sentiment,
-                summary=llm_result.summary_uz,
-                suggested_reply=llm_result.reply_draft_uz,
-                tags=llm_result.tags,
+                confidence=result.confidence,
+                priority=result.priority,
+                sentiment=result.sentiment,
+                summary=result.summary_uz,
+                suggested_reply=result.reply_draft_uz,
+                tags=result.tags,
                 model=settings.ollama_model,
                 latency_ms=latency_ms,
             )
         )
 
-        # Priority faqat KO'TARILADI (docs/07 §1) — deadline ham qattiqlashadi.
-        if PRIORITY_RANK.get(llm_result.priority, 0) > PRIORITY_RANK.get(complaint.priority, 0):
-            complaint.priority = llm_result.priority
-            current_category = db.get(Category, complaint.category_id)
-            if current_category is not None:
-                complaint.deadline_at = compute_deadline(
-                    complaint.created_at, current_category.sla_hours, complaint.priority
-                )
+        if category is not None:
+            complaint.category_id = category.id
+            complaint.ai_category_id = category.id
+        complaint.ai_confidence = result.confidence
+        complaint.priority = result.priority
+        # `needs_review` BLOKLAMAYDI (docs/07 §1) — bu faqat "AI o'zi
+        # ikkilandi" belgisi: admin xohlasa keyin ko'radi, murojaat esa
+        # baribir yo'naltiriladi va ijroga ketadi.
+        complaint.needs_review = unknown_code or result.confidence < settings.ai_low_confidence
+        complaint.status = STATUS_AI_PROCESSED
 
-        if keyword_confident:
-            # Routing keyword'niki. LLM boshqa kategoriya desa — biriktirish
-            # QOLADI, lekin admin Tasdiqlash navbatida tekshiradi.
-            if not unknown_code and category is not None and category.id != complaint.category_id:
-                complaint.needs_review = True
-        elif complaint.status == STATUS_AI_PROCESSED and complaint.assigned_department_id is None:
-            # Routing'ni LLM hal qiladi (1-bosqich biriktirmagan, admin ham
-            # hali aralashmagan).
-            if category is not None:
-                complaint.category_id = category.id
-                complaint.ai_category_id = category.id
-                complaint.ai_confidence = llm_result.confidence
-                complaint.needs_review = unknown_code
-                complaint.deadline_at = compute_deadline(
-                    complaint.created_at, category.sla_hours, complaint.priority
-                )
-                if not unknown_code and category.department_id:
-                    workflow.assign(db, complaint, category.department_id, None, actor_type="ai")
-        # else: admin allaqachon aralashgan (qo'lda biriktirgan/status o'zgargan)
-        # — routing'ga tegilmaydi, faqat generatsiya natijasi saqlanadi.
+        if category is not None:
+            complaint.deadline_at = compute_deadline(complaint.created_at, category.sla_hours, complaint.priority)
+
+        db.add(
+            ComplaintEvent(
+                complaint_id=complaint.id,
+                event_type="ai_processed",
+                actor_type="ai",
+                payload={
+                    "engine": "llm",
+                    "model": settings.ollama_model,
+                    "confidence": result.confidence,
+                    "needs_review": complaint.needs_review,
+                    "latency_ms": latency_ms,
+                },
+            )
+        )
+
+        # Avtomatik yo'naltirish — past ishonchda ham (yo'naltirilmagan
+        # murojaat = to'xtab qolgan murojaat).
+        if category is not None and category.department_id:
+            workflow.assign(db, complaint, category.department_id, None, actor_type="ai")
 
         db.commit()
     finally:
         db.close()
+        try:
+            await ctx["redis"].delete(LLM_LOCK_KEY)
+        except Exception:
+            pass  # TTL baribir bo'shatadi
 
 
-async def suggest_keywords_job(ctx) -> None:
+async def sweep_pending_analysis(ctx) -> None:
+    """docs/07 §2 — "uxlab qolgan murojaat qolmaydi" kafolati: navbatdan
+    tushib qolgan (worker restart, Redis tozalangan) yoki qayta urinishlari
+    tugagan murojaatlarni qaytadan navbatga qo'yadi."""
     db = SessionLocal()
     try:
-        mine_keyword_suggestions(db)
+        cutoff = datetime.now(timezone.utc) - STALE_AFTER
+        stale = (
+            db.execute(select(Complaint.id).where(Complaint.status == STATUS_NEW, Complaint.created_at < cutoff))
+            .scalars()
+            .all()
+        )
+        for complaint_id in stale:
+            await ctx["redis"].enqueue_job("analyze_complaint", str(complaint_id), 0)
     finally:
         db.close()
 
@@ -270,10 +236,13 @@ async def transcribe_audio(ctx, job_id: str) -> None:
 
 
 class WorkerSettings:
-    functions = [classify_complaint, generate_analysis, transcribe_audio]
+    functions = [analyze_complaint, transcribe_audio]
     cron_jobs = [
-        cron(suggest_keywords_job, hour=2, minute=0),
+        cron(sweep_pending_analysis, minute={0, 15, 30, 45}),
         cron(lifecycle_job, hour=3, minute=0),
-        cron(escalate_overdue_job, minute={0, 30}),
+        cron(escalate_overdue_job, minute={5, 35}),
     ]
     redis_settings = RedisSettings.from_dsn(settings.redis_url)
+    # LLM ketma-ketligi LLM_LOCK_KEY bilan ta'minlanadi (max_jobs emas —
+    # STT ishlari parallel qolishi kerak).
+    job_timeout = 1800
