@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -13,23 +13,112 @@ import {
   BarChart3,
   Inbox,
   SquareCheckBig,
+  AlertTriangle,
+  Clock,
+  MessageCircleQuestion,
+  ScrollText,
+  Download,
 } from "lucide-react";
+import { apiGet } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Sidebar, type NavItem } from "@/components/layout/Sidebar";
+import type { QueueStats } from "@/lib/types";
+import { Sidebar, type NavGroup, type NavItem } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 
-const ADMIN_NAV: (NavItem & { roles?: string[] })[] = [
-  { href: "/admin/navbatim", label: "Navbatim", icon: Inbox, roles: ["department_staff"] },
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: ["admin"] },
-  { href: "/admin/tasdiqlash", label: "AI nazorati", icon: SquareCheckBig, roles: ["admin"] },
-  { href: "/admin/murojaatlar", label: "Murojaatlar", icon: ClipboardList },
-  { href: "/admin/xarita", label: "Xarita", icon: Map, roles: ["admin"] },
-  { href: "/admin/kpi", label: "KPI", icon: BarChart3, roles: ["admin"] },
-  { href: "/admin/bolimlar", label: "Bo'limlar", icon: Building2, roles: ["admin"] },
-  { href: "/admin/xodimlar", label: "Xodimlar", icon: Users, roles: ["admin"] },
-  { href: "/admin/kategoriyalar", label: "Kategoriyalar", icon: Tags, roles: ["admin"] },
-  { href: "/admin/qr", label: "QR kodlar", icon: QrCode, roles: ["admin"] },
+type GatedItem = NavItem & { roles?: string[]; countKey?: keyof QueueStats };
+type GatedGroup = { title: string; items: GatedItem[] };
+
+/**
+ * Menyu 5 guruhga bo'lingan (docs/10-ui-ux.md §10.2).
+ *
+ * Avval 9 ta element tekis ro'yxatda turardi va `QR kodlar`,
+ * `Kategoriyalar` kunda bir marta ochilmaydigan bo'limlar `Murojaatlar`
+ * bilan bir qatorda edi — kunlik ish uchun shovqin.
+ *
+ * `countKey` — `stats/queues` dagi maydon nomi; hisoblagich shu yerdan
+ * keladi va 0 bo'lsa ko'rsatilmaydi.
+ */
+const ADMIN_NAV: GatedGroup[] = [
+  {
+    title: "Operatsion navbat",
+    items: [
+      { href: "/admin", label: "Bosh ekran", icon: LayoutDashboard, roles: ["admin"] },
+      { href: "/admin/navbatim", label: "Navbatim", icon: Inbox, roles: ["department_staff"] },
+      {
+        href: "/admin/murojaatlar?queue=unassigned",
+        label: "Biriktirilmagan",
+        icon: ClipboardList,
+        roles: ["admin"],
+        countKey: "unassigned",
+      },
+      {
+        href: "/admin/tasdiqlash",
+        label: "AI nazorati",
+        icon: SquareCheckBig,
+        roles: ["admin"],
+        countKey: "ai_exceptions",
+      },
+      { href: "/admin/murojaatlar?queue=sla_risk", label: "SLA xavfi", icon: Clock, countKey: "sla_risk" },
+      {
+        href: "/admin/murojaatlar?queue=overdue",
+        label: "Muddati o'tgan",
+        icon: AlertTriangle,
+        countKey: "overdue",
+        danger: true,
+      },
+      {
+        href: "/admin/murojaatlar?queue=need_info",
+        label: "Ma'lumot kutilmoqda",
+        icon: MessageCircleQuestion,
+        countKey: "awaiting_info",
+      },
+    ],
+  },
+  {
+    title: "Murojaatlar",
+    items: [
+      { href: "/admin/murojaatlar", label: "Barcha murojaatlar", icon: ClipboardList },
+      { href: "/admin/murojaatlar?export=1", label: "Eksport", icon: Download, roles: ["admin"] },
+    ],
+  },
+  {
+    title: "Monitoring",
+    items: [
+      { href: "/admin/kpi", label: "KPI", icon: BarChart3, roles: ["admin"] },
+      { href: "/admin/xarita", label: "Xarita", icon: Map, roles: ["admin"] },
+    ],
+  },
+  {
+    title: "Sozlamalar",
+    items: [
+      { href: "/admin/bolimlar", label: "Bo'limlar", icon: Building2, roles: ["admin"] },
+      { href: "/admin/xodimlar", label: "Xodimlar", icon: Users, roles: ["admin"] },
+      { href: "/admin/kategoriyalar", label: "Kategoriyalar", icon: Tags, roles: ["admin"] },
+    ],
+  },
+  {
+    title: "Vositalar",
+    items: [
+      { href: "/admin/qr", label: "QR kodlar", icon: QrCode, roles: ["admin"] },
+      { href: "/admin/audit", label: "Audit log", icon: ScrollText, roles: ["admin"] },
+    ],
+  },
 ];
+
+function visibleGroups(role: string, queues: QueueStats | null): NavGroup[] {
+  return ADMIN_NAV.map((group) => ({
+    title: group.title,
+    items: group.items
+      .filter((item) => !item.roles || item.roles.includes(role))
+      .map((item) => ({
+        href: item.href,
+        label: item.label,
+        icon: item.icon,
+        danger: item.danger,
+        count: item.countKey && queues ? (queues[item.countKey] as number) : undefined,
+      })),
+  })).filter((group) => group.items.length > 0); // bo'sh guruh render qilinmaydi
+}
 
 export function AppShell({
   title,
@@ -43,13 +132,28 @@ export function AppShell({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [queues, setQueues] = useState<QueueStats | null>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!user || user.kind !== "staff") {
       router.replace("/login");
+      return;
+    }
+    // v1.4: standart parol bilan ishlab ketishga yo'l qo'yilmaydi.
+    if (user.must_change_password) {
+      router.replace("/parol");
     }
   }, [user, loading, router]);
+
+  // Navbat hisoblagichlari faqat adminda — `stats/queues` admin-only
+  // (department_staff uchun 403 bo'lardi).
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    apiGet<QueueStats>("/api/admin/stats/queues")
+      .then(setQueues)
+      .catch(() => setQueues(null));
+  }, [user?.role]);
 
   if (loading || !user || user.kind !== "staff") {
     return (
@@ -57,12 +161,12 @@ export function AppShell({
     );
   }
 
-  const items = ADMIN_NAV.filter((item) => !item.roles || item.roles.includes(user.role ?? ""));
+  const groups = visibleGroups(user.role ?? "", queues);
   const forbidden = requireRoles && !requireRoles.includes(user.role ?? "");
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar items={items} />
+      <Sidebar groups={groups} />
       <div className="flex-1 flex flex-col gap-6 p-4 md:p-6 min-w-0">
         <Topbar title={title} />
         <main className="flex-1 flex flex-col gap-6 min-w-0">

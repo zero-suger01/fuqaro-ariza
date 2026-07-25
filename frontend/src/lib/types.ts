@@ -13,6 +13,8 @@ export interface AuthUser {
   role: StaffRole | null;
   department_id: string | null;
   department_name: string | null;
+  /** v1.4 — `true` bo'lsa boshqa hech qayerga o'tmasdan parol almashtiriladi. */
+  must_change_password?: boolean;
 }
 
 // --- Admin API (docs/03-kontraktlar.md §5) ---
@@ -106,6 +108,33 @@ export interface ComplaintListItem {
   needs_review: boolean;
   ai: AiListBrief | null;
   description_snippet: string;
+  // v1.4 — navbat «Mening ishlarim» / «Bo'lim navbati» ga bo'linishi uchun
+  assigned_user_id: string | null;
+  assigned_user_name: string | null;
+  info_requested_at: string | null;
+}
+
+// v1.4 — fuqarodan kelgan qo'shimcha ma'lumot (docs/03 §3.5)
+export interface CitizenMessage {
+  id: string;
+  text: string;
+  source: "web" | "telegram" | "manual";
+  recorded_by: string | null;
+  recorded_by_name: string | null;
+  created_at: string;
+}
+
+// v1.4 — idoralararo topshiriq (docs/03 §5)
+export interface Subtask {
+  id: string;
+  department_id: string;
+  department_name: string;
+  assigned_user_id: string | null;
+  status: "open" | "done" | "cancelled";
+  note: string;
+  deadline_at: string | null;
+  created_at: string;
+  closed_at: string | null;
 }
 
 export interface ComplaintDetail {
@@ -134,6 +163,17 @@ export interface ComplaintDetail {
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
+  // v1.4 (docs/03 §5 detail qatori)
+  assigned_user_name: string | null;
+  accepted_at: string | null;
+  info_requested_at: string | null;
+  info_provided_at: string | null;
+  /** Xodim `need_info` da so'ragan savol — fuqaro ko'radigan matn bilan bir xil. */
+  info_request_text: string | null;
+  citizen_messages: CitizenMessage[];
+  subtasks: Subtask[];
+  satisfaction: boolean | null;
+  reopened_count: number;
 }
 
 export interface Page<T> {
@@ -167,6 +207,42 @@ export interface DashboardStats {
   draft_reply_share_7d: number | null;
   avg_first_action_hours_7d: number | null;
   resolved_with_reply_7d: number | null;
+}
+
+// GET /api/admin/audit-logs (docs/03 §5)
+export interface AuditLogItem {
+  id: string;
+  user_id: string;
+  user_fullname: string | null;
+  action: string;
+  entity: string;
+  entity_id: string;
+  meta: Record<string, unknown> | null;
+  ip: string | null;
+  created_at: string;
+}
+
+// v1.4 — GET /api/admin/stats/queues (docs/03 §5, docs/10 §10.1)
+export interface DepartmentQueueRow {
+  department_id: string;
+  department_name: string;
+  new: number;
+  in_progress: number;
+  sla_risk: number;
+  overdue: number;
+  unowned: number;
+  wip_limit: number | null;
+  over_limit: boolean;
+}
+
+export interface QueueStats {
+  unassigned: number;
+  ai_exceptions: number;
+  sla_risk: number;
+  overdue: number;
+  awaiting_info: number;
+  stuck_ai: number;
+  by_department: DepartmentQueueRow[];
 }
 
 // R0/Q4 — GET /api/admin/stats/ai-health
@@ -309,6 +385,26 @@ export interface TrackResponse {
   timeline: TimelineStep[];
   reply_text: string | null;
   rejected_reason: string | null;
+  // v1.4 (docs/03 §3.2/§3.5/§3.6)
+  /** Xodimning savoli — fuqaro nima yuborishi kerakligini bilishi uchun. */
+  info_request_text: string | null;
+  info_provided: boolean;
+  can_give_feedback: boolean;
+  satisfaction: boolean | null;
+}
+
+// v1.4 — POST /api/public/complaints/info javobi
+export interface CitizenInfoResponse {
+  status_simple: TrackResponse["status_simple"];
+  need_info: boolean;
+  /** `true` — murojaat avtomatik «Ijroda» ga qaytdi. */
+  accepted: boolean;
+}
+
+// v1.4 — POST /api/public/complaints/feedback javobi
+export interface FeedbackResponse {
+  status_simple: TrackResponse["status_simple"];
+  reopened: boolean;
 }
 
 export interface SttJobCreated {

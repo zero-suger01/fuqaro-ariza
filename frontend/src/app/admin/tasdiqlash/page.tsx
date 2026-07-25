@@ -6,9 +6,19 @@ import { Check, Pencil, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Label, Select } from "@/components/ui/Input";
+import { Label, Select, Textarea } from "@/components/ui/Input";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
 import type { CategoryAdmin, ComplaintListItem, DepartmentAdmin, Page } from "@/lib/types";
+
+/** docs/03 §5 — `POST .../review` `reason` qiymatlari. */
+type ReviewReason = "ok" | "wrong_category" | "wrong_department" | "wrong_priority" | "other";
+
+const REVIEW_REASON_OPTIONS: [ReviewReason, string][] = [
+  ["wrong_category", "Noto'g'ri kategoriya"],
+  ["wrong_department", "Noto'g'ri bo'lim"],
+  ["wrong_priority", "Noto'g'ri muhimlik"],
+  ["other", "Boshqa sabab"],
+];
 
 /** v1.3 — «AI nazorati»: AI o'zi ikkilanib (past ishonch bilan) yo'naltirgan
  * murojaatlar. MUHIM: bu navbat EMAS — murojaatlar allaqachon bo'limga
@@ -22,6 +32,10 @@ export default function TasdiqlashPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [editCategory, setEditCategory] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
+  // v1.4: tuzatish sababi majburiy — usiz AI sifatini o'lchab bo'lmasdi,
+  // faqat «admin nimanidir o'zgartirdi» degan fakt qolardi (docs/03 §5).
+  const [editReason, setEditReason] = useState<ReviewReason>("wrong_category");
+  const [editReasonText, setEditReasonText] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,7 +52,10 @@ export default function TasdiqlashPage() {
     apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => {});
   }, []);
 
-  async function accept(c: ComplaintListItem, body: { category_code?: string; department_id?: string }) {
+  async function accept(
+    c: ComplaintListItem,
+    body: { category_code?: string; department_id?: string; reason: ReviewReason; reason_text?: string }
+  ) {
     setBusy(c.id);
     setError(null);
     try {
@@ -56,6 +73,8 @@ export default function TasdiqlashPage() {
     setEditing(c.id);
     setEditCategory(c.ai?.suggested_category?.code ?? c.category.code);
     setEditDepartment("");
+    setEditReason("wrong_category");
+    setEditReasonText("");
   }
 
   return (
@@ -111,7 +130,7 @@ export default function TasdiqlashPage() {
 
                   {!isEditing ? (
                     <div className="flex gap-2 shrink-0">
-                      <Button onClick={() => accept(c, {})} disabled={busy === c.id}>
+                      <Button onClick={() => accept(c, { reason: "ok" })} disabled={busy === c.id}>
                         <Check className="h-4 w-4" /> To&apos;g&apos;ri
                       </Button>
                       <Button variant="secondary" onClick={() => startEdit(c)} disabled={busy === c.id}>
@@ -119,37 +138,62 @@ export default function TasdiqlashPage() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex flex-col sm:flex-row gap-2 shrink-0 sm:items-end">
+                    <div className="flex flex-col gap-2 shrink-0 md:w-[380px]">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label>Kategoriya</Label>
+                          <Select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
+                            {categories.map((cat) => (
+                              <option key={cat.id} value={cat.code}>
+                                {cat.names.uz ?? cat.code}
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Bo&apos;lim (ixtiyoriy)</Label>
+                          <Select value={editDepartment} onChange={(e) => setEditDepartment(e.target.value)}>
+                            <option value="">Kategoriya bo&apos;limi</option>
+                            {departments.map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.names.uz ?? d.code}
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
+                      </div>
                       <div>
-                        <Label>Kategoriya</Label>
-                        <Select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
-                          {categories.map((cat) => (
-                            <option key={cat.id} value={cat.code}>
-                              {cat.names.uz ?? cat.code}
+                        <Label>AI nimani xato qildi? (majburiy)</Label>
+                        <Select
+                          value={editReason}
+                          onChange={(e) => setEditReason(e.target.value as ReviewReason)}
+                        >
+                          {REVIEW_REASON_OPTIONS.map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
                             </option>
                           ))}
                         </Select>
                       </div>
-                      <div>
-                        <Label>Bo&apos;lim (ixtiyoriy)</Label>
-                        <Select value={editDepartment} onChange={(e) => setEditDepartment(e.target.value)}>
-                          <option value="">Kategoriya bo&apos;limi</option>
-                          {departments.map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {d.names.uz ?? d.code}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
+                      {editReason === "other" && (
+                        <Textarea
+                          rows={2}
+                          value={editReasonText}
+                          onChange={(e) => setEditReasonText(e.target.value)}
+                          placeholder="Qisqa izoh (majburiy)"
+                        />
+                      )}
                       <div className="flex gap-2">
                         <Button
                           onClick={() =>
                             accept(c, {
                               category_code: editCategory || undefined,
                               department_id: editDepartment || undefined,
+                              reason: editReason,
+                              reason_text: editReasonText.trim() || undefined,
                             })
                           }
-                          disabled={busy === c.id}
+                          disabled={busy === c.id || (editReason === "other" && !editReasonText.trim())}
                         >
                           <Check className="h-4 w-4" /> Saqlash
                         </Button>

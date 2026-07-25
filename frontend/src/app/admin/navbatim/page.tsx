@@ -117,26 +117,33 @@ export default function NavbatimPage() {
     return new Date(a.deadline_at).getTime() - new Date(b.deadline_at).getTime();
   };
 
-  const fresh = useMemo(
-    () => items.filter((c) => c.status === "assigned" || c.status === "accepted").sort(byDeadline),
-    [items]
-  );
-  const inWork = useMemo(() => items.filter((c) => c.status === "in_progress").sort(byDeadline), [items]);
-  const waiting = useMemo(() => items.filter((c) => c.status === "need_info").sort(byDeadline), [items]);
+  // v1.4: navbat ikkiga bo'linadi. Avval bo'limdagi BARCHA ish
+  // «Ijrodagi ishlarim» deb ko'rsatilardi — bir bo'limda bitta odam
+  // bo'lganda sezilmasdi, lekin zaxira xodim yoki smena qo'shilganda
+  // mas'uliyat butunlay noaniq bo'lib qolardi (docs/03 §5 egalik).
+  const mine = useMemo(() => items.filter((c) => c.assigned_user_id === user?.id), [items, user?.id]);
+  const departmentPool = useMemo(() => items.filter((c) => c.assigned_user_id == null), [items]);
+  const othersCount = items.length - mine.length - departmentPool.length;
+
+  const myFresh = useMemo(() => mine.filter((c) => c.status === "accepted").sort(byDeadline), [mine]);
+  const myInWork = useMemo(() => mine.filter((c) => c.status === "in_progress").sort(byDeadline), [mine]);
+  const myWaiting = useMemo(() => mine.filter((c) => c.status === "need_info").sort(byDeadline), [mine]);
+  const unowned = useMemo(() => departmentPool.slice().sort(byDeadline), [departmentPool]);
+
   const isOverdue = (c: ComplaintListItem) => !!c.deadline_at && new Date(c.deadline_at).getTime() < now;
   const overdueCount = now === 0 ? 0 : items.filter(isOverdue).length;
 
   const today = now === 0 ? "" : formatUzDayLong(now);
 
   return (
-    <AppShell title="Navbatim">
+    <AppShell title="Navbatim" requireRoles={["department_staff"]}>
       <div className="flex items-baseline justify-between flex-wrap gap-2">
         <p className="text-sm text-text-secondary">
           {today}
           {user?.department_name ? ` · ${user.department_name}` : ""}
         </p>
         <p className="text-sm text-text-muted">
-          {fresh.length} yangi ish
+          Menda {mine.length} ish · bo&apos;lim navbatida {unowned.length}
           {overdueCount > 0 && <span className="text-danger font-semibold"> · {overdueCount} ta muddati o&apos;tgan</span>}
         </p>
       </div>
@@ -144,37 +151,64 @@ export default function NavbatimPage() {
       {loading ? (
         <div className="py-10 text-center text-text-muted text-sm">Yuklanmoqda...</div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-          <QueueColumn
-            title="Yangi biriktirilgan"
-            icon={Inbox}
-            items={fresh}
-            countColor="gold"
-            empty="Yangi ish yo'q — barakalla!"
-            now={now}
-          />
-          <QueueColumn
-            title="Ijrodagi ishlarim"
-            icon={Clock3}
-            items={inWork}
-            countColor={inWork.some(isOverdue) ? "red" : "grey"}
-            empty="Ijroda ish yo'q"
-            now={now}
-          />
-          <QueueColumn
-            title="Ma'lumot kutilmoqda"
-            icon={MessageCircleQuestion}
-            items={waiting}
-            countColor="grey"
-            empty="Kutilayotgan javob yo'q"
-            now={now}
-          />
-        </div>
+        <>
+          <Card className={unowned.length > 0 ? "border border-accent/40" : undefined}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Inbox className="h-4 w-4 text-accent" />
+                <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wide">
+                  Bo&apos;lim navbati — egasi yo&apos;q
+                </h2>
+              </div>
+              <span className="text-xs font-mono font-bold rounded-pill px-2 py-0.5 bg-accent-soft text-accent">
+                {unowned.length}
+              </span>
+            </div>
+            <p className="text-sm text-text-muted mb-3">
+              Murojaatni ochib «Qabul qilaman» bosganingizda u sizga biriktiriladi.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+              {unowned.length === 0 ? (
+                <p className="text-sm text-text-muted py-4">Egasiz ish yo&apos;q — hammasi taqsimlangan</p>
+              ) : (
+                unowned.map((c) => <QueueItem key={c.id} c={c} now={now} />)
+              )}
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+            <QueueColumn
+              title="Qabul qilganlarim"
+              icon={Inbox}
+              items={myFresh}
+              countColor="gold"
+              empty="Qabul qilingan, hali boshlanmagan ish yo'q"
+              now={now}
+            />
+            <QueueColumn
+              title="Ijrodagi ishlarim"
+              icon={Clock3}
+              items={myInWork}
+              countColor={myInWork.some(isOverdue) ? "red" : "grey"}
+              empty="Ijroda ish yo'q"
+              now={now}
+            />
+            <QueueColumn
+              title="Ma'lumot kutilmoqda"
+              icon={MessageCircleQuestion}
+              items={myWaiting}
+              countColor="grey"
+              empty="Kutilayotgan javob yo'q"
+              now={now}
+            />
+          </div>
+        </>
       )}
 
       <p className="text-xs text-text-muted">
-        Murojaatni ochsangiz — AI tayyorlagan javob bilan birga ochiladi; «Bo&apos;lim qabul qildi» belgisi avtomatik
-        qo&apos;yiladi. To&apos;liq ro&apos;yxat va filtrlar:{" "}
+        Murojaatni ochish holatni o&apos;zgartirmaydi — ishni olish uchun «Qabul qilaman» tugmasini bosasiz.
+        {othersCount > 0 && ` Bo'limdagi boshqa xodimlarda ${othersCount} ta ish bor.`} To&apos;liq ro&apos;yxat va
+        filtrlar:{" "}
         <Link href="/admin/murojaatlar" className="text-accent hover:underline">
           Murojaatlar
         </Link>

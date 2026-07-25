@@ -26,7 +26,10 @@ export const STATUS_COLORS: Record<ComplaintStatus, string> = {
   archived: "var(--text-muted)",
 };
 
-// docs/03-kontraktlar.md §2.1 allowed transitions
+// docs/03-kontraktlar.md §2.1 allowed transitions.
+// `resolved`/`closed` -> `in_progress` bu yerda YO'Q: u faqat fuqaro
+// e'tirozi bilan bajariladi (backend `CITIZEN_ONLY_TRANSITIONS`), xodim
+// uchun tugma ko'rinmasligi kerak.
 export const STATUS_TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
   new: ["ai_processed", "rejected"],
   ai_processed: ["assigned", "rejected"],
@@ -38,6 +41,20 @@ export const STATUS_TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
   rejected: [],
   closed: ["archived"],
   archived: [],
+};
+
+// v1.4 — idoralararo topshiriq holati (docs/03 §5)
+export const SUBTASK_STATUS_LABELS: Record<string, string> = {
+  open: "Ochiq",
+  done: "Bajarildi",
+  cancelled: "Bekor qilindi",
+};
+
+// v1.4 — fuqaro javob kanali (docs/03 §3.5, [04] citizen_messages)
+export const CITIZEN_INFO_SOURCE_LABELS: Record<string, string> = {
+  web: "Sayt orqali",
+  telegram: "Telegram orqali",
+  manual: "Xodim yozib qo'ydi",
 };
 
 export const PRIORITY_LABELS: Record<Priority, string> = {
@@ -78,6 +95,15 @@ export const EVENT_LABELS: Record<string, string> = {
   sms_sent: "SMS yuborildi",
   telegram_sent: "Telegram xabar yuborildi",
   escalated: "Eskalatsiya qilindi",
+  sla_warning: "SLA ogohlantirishi",
+  reviewed: "AI nazoratdan o'tdi",
+  // v1.4 (docs/03 §8)
+  info_provided: "Fuqaro ma'lumot yubordi",
+  claimed: "Xodim qabul qildi",
+  reopened: "Fuqaro e'tirozi bilan qayta ochildi",
+  feedback_received: "Fuqaro baho berdi",
+  subtask_created: "Idoralararo topshiriq berildi",
+  subtask_closed: "Idoralararo topshiriq yopildi",
 };
 
 export const ACTOR_LABELS: Record<string, string> = {

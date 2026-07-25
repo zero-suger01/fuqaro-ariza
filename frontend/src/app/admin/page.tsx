@@ -3,59 +3,84 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  ClipboardList,
-  Building2,
-  Users,
   AlertTriangle,
-  Clock,
   ArrowRight,
-  Route,
-  Wrench,
+  ClipboardList,
+  Clock,
   Cpu,
-  BotMessageSquare,
+  MessageCircleQuestion,
+  SquareCheckBig,
+  ZapOff,
+  type LucideIcon,
 } from "lucide-react";
+import { clsx } from "clsx";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Table, type Column } from "@/components/ui/Table";
 import { apiGet } from "@/lib/api";
-import type { AiHealth, ComplaintListItem, DashboardStats, Page } from "@/lib/types";
-import { PRIORITY_COLORS, PRIORITY_LABELS, STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
+import type { AiHealth, ComplaintListItem, DepartmentQueueRow, Page, QueueStats } from "@/lib/types";
+import { STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
 
-function StatCard({ label, value, danger }: { label: string; value: number; danger?: boolean }) {
-  return (
-    <Card className="flex-1 min-w-[140px]">
-      <p className="text-sm text-text-secondary">{label}</p>
-      <p className={`text-3xl font-semibold mt-2 font-mono ${danger && value > 0 ? "text-danger" : "text-text-primary"}`}>
-        {value}
-      </p>
-    </Card>
-  );
-}
-
-/** R0 §8 avtomatlashtirish KPI kartasi — ulush (0–1) yoki soat, maqsad bilan. */
-function KpiCard({
+/**
+ * Navbat kartasi — bosh ekranning asosiy elementi (docs/10 §10.1).
+ *
+ * Raqam va ochiladigan ro'yxat bitta backend shartidan chiqadi
+ * (`services/queues.py`), shuning uchun karta bosilganda ko'rinadigan
+ * ro'yxat soni doim mos keladi.
+ *
+ * Nol bo'lgan karta muted — bo'sh navbat diqqatni tortmasligi kerak.
+ */
+function QueueCard({
   label,
+  hint,
   value,
-  target,
-  format,
+  href,
+  icon: Icon,
+  danger,
 }: {
   label: string;
-  value: number | null;
-  target: string;
-  format: "percent" | "hours";
+  hint: string;
+  value: number | undefined;
+  href: string;
+  icon: LucideIcon;
+  danger?: boolean;
 }) {
-  const display =
-    value == null ? "—" : format === "percent" ? `${Math.round(value * 100)}%` : `${value} soat`;
+  const count = value ?? 0;
+  const empty = count === 0;
+  const alarming = !empty && danger;
+
   return (
-    <Card className="flex-1 min-w-[160px]">
-      <p className="text-sm text-text-secondary">{label}</p>
-      <p className="text-3xl font-semibold mt-2 font-mono text-text-primary">{display}</p>
-      <p className="text-xs text-text-muted mt-1">Maqsad: {target}</p>
-    </Card>
+    <Link
+      href={href}
+      aria-disabled={empty}
+      className={clsx(
+        "flex-1 min-w-[168px] rounded-card border bg-bg-surface px-5 py-4 shadow-sm transition",
+        empty
+          ? "border-border opacity-60 hover:opacity-100"
+          : alarming
+            ? "border-danger/60 hover:border-danger"
+            : "border-border hover:border-accent"
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <Icon className={clsx("h-4 w-4 shrink-0", alarming ? "text-danger" : "text-accent")} />
+        <p className="text-sm font-medium text-text-primary">{label}</p>
+      </div>
+      <p
+        className={clsx(
+          "mt-2 text-4xl font-semibold font-mono tabular-nums",
+          alarming ? "text-danger" : empty ? "text-text-muted" : "text-text-primary"
+        )}
+      >
+        {count}
+      </p>
+      <p className="mt-1 text-xs text-text-muted">{hint}</p>
+    </Link>
   );
 }
 
-/** R1/Q4 — AI salomatlik indikatori: LLM jim o'lishi endi ko'rinadigan hodisa. */
+/** R1/Q4 — AI salomatlik indikatori: LLM jim o'lishi ko'rinadigan hodisa. */
 function AiHealthStrip({ health }: { health: AiHealth | null }) {
   if (!health) return null;
   const lastText = health.last_llm_success_at
@@ -91,204 +116,164 @@ function AiHealthStrip({ health }: { health: AiHealth | null }) {
   );
 }
 
+const DEPARTMENT_COLUMNS: Column<DepartmentQueueRow>[] = [
+  {
+    key: "department",
+    header: "Bo'lim",
+    render: (row) => (
+      <Link
+        href={`/admin/murojaatlar?department_id=${row.department_id}`}
+        className="font-medium text-text-primary hover:text-accent"
+      >
+        {row.department_name}
+      </Link>
+    ),
+  },
+  { key: "new", header: "Yangi", numeric: true, render: (row) => row.new },
+  { key: "in_progress", header: "Ijroda", numeric: true, render: (row) => row.in_progress },
+  {
+    key: "sla_risk",
+    header: "SLA xavfi",
+    numeric: true,
+    render: (row) => <span className={row.sla_risk > 0 ? "text-warning font-medium" : undefined}>{row.sla_risk}</span>,
+  },
+  {
+    key: "overdue",
+    header: "Muddati o'tgan",
+    numeric: true,
+    render: (row) => <span className={row.overdue > 0 ? "text-danger font-semibold" : undefined}>{row.overdue}</span>,
+  },
+  {
+    key: "unowned",
+    header: "Egasiz",
+    numeric: true,
+    render: (row) => <span className={row.unowned > 0 ? "text-warning font-medium" : undefined}>{row.unowned}</span>,
+  },
+  {
+    key: "load",
+    header: "Yuklama",
+    numeric: true,
+    render: (row) =>
+      row.wip_limit == null ? (
+        <span className="text-text-muted">—</span>
+      ) : (
+        <span className={row.over_limit ? "text-danger font-semibold" : undefined}>
+          {row.over_limit ? `limit ${row.wip_limit} oshgan` : `limit ${row.wip_limit}`}
+        </span>
+      ),
+  },
+];
+
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [queues, setQueues] = useState<QueueStats | null>(null);
   const [health, setHealth] = useState<AiHealth | null>(null);
   const [recent, setRecent] = useState<ComplaintListItem[]>([]);
 
   useEffect(() => {
-    apiGet<DashboardStats>("/api/admin/stats/dashboard").then(setStats);
+    apiGet<QueueStats>("/api/admin/stats/queues").then(setQueues).catch(() => setQueues(null));
     apiGet<AiHealth>("/api/admin/stats/ai-health").then(setHealth).catch(() => {});
     apiGet<Page<ComplaintListItem>>("/api/admin/complaints?page=1&page_size=6").then((res) => setRecent(res.items));
   }, []);
 
-  const priorityEntries = Object.entries(stats?.by_priority ?? {}) as [string, number][];
-
   return (
-    <AppShell title="Dashboard" requireRoles={["admin"]}>
+    <AppShell title="Bosh ekran" requireRoles={["admin"]}>
       <AiHealthStrip health={health} />
 
-      <div className="flex flex-col md:flex-row gap-4 flex-wrap">
-        <StatCard label="Bugungi murojaatlar" value={stats?.today ?? 0} />
-        <StatCard label="Haftalik murojaatlar" value={stats?.this_week ?? 0} />
-        <StatCard label="Oy bo'yicha murojaatlar" value={stats?.this_month ?? 0} />
-        <StatCard label="Hal qilinganlar" value={stats?.resolved ?? 0} />
-        <StatCard label="Jarayondagilar" value={stats?.in_progress ?? 0} />
-        <StatCard label="Muddati o'tganlar" value={stats?.overdue ?? 0} danger />
-        <StatCard label="AI tekshiruv kerak" value={stats?.needs_review ?? 0} danger />
-      </div>
-
       <div>
-        <div className="flex items-center gap-2 mb-3">
-          <BotMessageSquare className="h-4 w-4 text-accent" />
-          <h2 className="text-base font-semibold text-text-primary">Avtomatlashtirish KPI (7 kun)</h2>
-          <p className="text-xs text-text-muted">«AI-powered» — his emas, shu to&apos;rt raqam (docs/00 §5)</p>
+        <div className="flex items-baseline gap-2 mb-3">
+          <h2 className="text-base font-semibold text-text-primary">Hozir nima qilish kerak</h2>
+          <p className="text-xs text-text-muted">
+            Raqamni bosing — aynan shu ro&apos;yxat ochiladi. Statistika va grafiklar{" "}
+            <Link href="/admin/kpi" className="text-accent hover:underline">
+              KPI
+            </Link>{" "}
+            sahifasida.
+          </p>
         </div>
         <div className="flex flex-col md:flex-row gap-4 flex-wrap">
-          <KpiCard
-            label="Zero-touch yo'naltirish"
-            value={stats?.zero_touch_7d ?? null}
-            target="≥ 70%"
-            format="percent"
+          <QueueCard
+            label="Biriktirilmagan"
+            hint="Bo'limi yoki mas'ul xodimi yo'q"
+            value={queues?.unassigned}
+            href="/admin/murojaatlar?queue=unassigned"
+            icon={ClipboardList}
           />
-          <KpiCard
-            label="AI draft asosida javoblar"
-            value={stats?.draft_reply_share_7d ?? null}
-            target="≥ 60%"
-            format="percent"
+          <QueueCard
+            label="AI istisnolari"
+            hint="Past ishonch — nazorat kerak"
+            value={queues?.ai_exceptions}
+            href="/admin/tasdiqlash"
+            icon={SquareCheckBig}
           />
-          <KpiCard
-            label="Birinchi harakatgacha"
-            value={stats?.avg_first_action_hours_7d ?? null}
-            target="≤ 4 soat"
-            format="hours"
+          <QueueCard
+            label="SLA xavfi"
+            hint="Muddatning 75% i o'tgan"
+            value={queues?.sla_risk}
+            href="/admin/murojaatlar?queue=sla_risk"
+            icon={Clock}
           />
-          <KpiCard
-            label="Javob bilan yopilgan"
-            value={stats?.resolved_with_reply_7d ?? null}
-            target="100%"
-            format="percent"
+          <QueueCard
+            label="Muddati o'tgan"
+            hint="Eskalatsiya talab qiladi"
+            value={queues?.overdue}
+            href="/admin/murojaatlar?queue=overdue"
+            icon={AlertTriangle}
+            danger
+          />
+          <QueueCard
+            label="Ma'lumot kutilmoqda"
+            hint="24 soatdan ko'p javobsiz"
+            value={queues?.awaiting_info}
+            href="/admin/murojaatlar?queue=need_info"
+            icon={MessageCircleQuestion}
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
+      {(queues?.stuck_ai ?? 0) > 0 && (
+        <Card className="border-2 border-danger">
+          <div className="flex items-start gap-3">
+            <ZapOff className="h-5 w-5 text-danger shrink-0 mt-0.5" />
             <div>
-              <h2 className="text-base font-semibold text-text-primary">Muhimlik bo&apos;yicha taqsimot</h2>
-              <p className="text-sm text-text-muted">Barcha faol murojaatlar</p>
+              <h2 className="text-base font-semibold text-text-primary">
+                AI {queues?.stuck_ai} murojaatga javob bermagan
+              </h2>
+              <p className="text-sm text-text-secondary mt-1">
+                Bu murojaatlar bir soatdan ko&apos;p tahlilsiz turgan — LLM ishlamayapti. Tizim qayta urinishda
+                davom etadi, lekin kutib o&apos;tirmasdan qo&apos;lda kategoriya va bo&apos;lim qo&apos;yish mumkin.
+              </p>
+              <Link
+                href="/admin/murojaatlar?queue=stuck_ai"
+                className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-danger hover:underline"
+              >
+                Qo&apos;lda yo&apos;naltirish <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
-          </div>
-          {priorityEntries.length === 0 ? (
-            <div className="py-16 text-center text-text-muted text-sm">Ma&apos;lumot hali mavjud emas</div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {priorityEntries.map(([priority, count]) => {
-                const max = Math.max(...priorityEntries.map(([, c]) => c), 1);
-                return (
-                  <div key={priority}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-text-primary font-medium">
-                        {PRIORITY_LABELS[priority as keyof typeof PRIORITY_LABELS] ?? priority}
-                      </span>
-                      <span className="text-text-muted font-mono">{count}</span>
-                    </div>
-                    <div className="h-2 rounded-pill bg-bg-subtle overflow-hidden">
-                      <div
-                        className="h-full rounded-pill"
-                        style={{
-                          width: `${(count / max) * 100}%`,
-                          backgroundColor: PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS] ?? "#8595ab",
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center gap-6 mt-6 pt-6 border-t border-border">
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
-                <Clock className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-text-primary font-mono">
-                  {stats?.ai_accuracy_7d != null ? `${Math.round(stats.ai_accuracy_7d * 100)}%` : "—"}
-                </p>
-                <p className="text-sm text-text-muted">AI aniqligi (oxirgi 7 kun)</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
-                <Route className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-text-primary font-mono">{stats?.ai_auto_routed_7d ?? 0}</p>
-                <p className="text-sm text-text-muted">AI avtomatik yo&apos;naltirgan (7 kun)</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
-                <Wrench className="h-5 w-5 text-warning" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-text-primary font-mono">{stats?.ai_routing_corrected_7d ?? 0}</p>
-                <p className="text-sm text-text-muted">Admin to&apos;g&apos;irlagan (7 kun)</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <h2 className="text-base font-semibold text-text-primary mb-1">Tezkor amallar</h2>
-          <p className="text-sm text-text-muted mb-4">Asosiy bo&apos;limlarga o&apos;tish</p>
-          <div className="flex flex-col gap-2">
-            <Link
-              href="/admin/murojaatlar"
-              className="flex items-center gap-3 rounded-inner border border-border px-4 py-3 text-sm font-medium text-text-primary hover:border-accent transition"
-            >
-              <ClipboardList className="h-4 w-4 text-accent" /> Murojaatlar ro&apos;yxati
-            </Link>
-            <Link
-              href="/admin/bolimlar"
-              className="flex items-center gap-3 rounded-inner border border-border px-4 py-3 text-sm font-medium text-text-primary hover:border-accent transition"
-            >
-              <Building2 className="h-4 w-4 text-accent" /> Bo&apos;limlar
-            </Link>
-            <Link
-              href="/admin/xodimlar"
-              className="flex items-center gap-3 rounded-inner border border-border px-4 py-3 text-sm font-medium text-text-primary hover:border-accent transition"
-            >
-              <Users className="h-4 w-4 text-accent" /> Xodimlar
-            </Link>
-            <Link
-              href="/admin/tasdiqlash"
-              className="flex items-center gap-3 rounded-inner border border-border px-4 py-3 text-sm font-medium text-text-primary hover:border-accent transition"
-            >
-              <AlertTriangle className="h-4 w-4 text-warning" /> Tasdiqlash navbati
-              {(stats?.needs_review ?? 0) > 0 && (
-                <span className="ml-auto text-xs font-mono font-bold rounded-pill bg-danger/10 text-danger px-2 py-0.5">
-                  {stats?.needs_review}
-                </span>
-              )}
-            </Link>
-          </div>
-        </Card>
-      </div>
-
-      {stats && stats.by_neighborhood.length > 0 && (
-        <Card>
-          <h2 className="text-base font-semibold text-text-primary mb-1">Mahalla kesimi</h2>
-          <p className="text-sm text-text-muted mb-4">Eng ko&apos;p murojaat kelgan 5 ta mahalla</p>
-          <div className="flex flex-col gap-3">
-            {stats.by_neighborhood.slice(0, 5).map((n) => {
-              const max = stats.by_neighborhood[0]?.count ?? 1;
-              return (
-                <div key={n.neighborhood_id}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-text-primary font-medium">{n.neighborhood_name}</span>
-                    <span className="text-text-muted font-mono">{n.count}</span>
-                  </div>
-                  <div className="h-2 rounded-pill bg-bg-subtle overflow-hidden">
-                    <div
-                      className="h-full rounded-pill bg-accent"
-                      style={{ width: `${(n.count / max) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </Card>
       )}
 
       <Card>
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-text-primary">Bo&apos;limlar kesimi</h2>
+          <p className="text-sm text-text-muted">Qaysi bo&apos;lim qoqilib qolgan — yuk va risk bo&apos;yicha</p>
+        </div>
+        <Table
+          columns={DEPARTMENT_COLUMNS}
+          rows={queues?.by_department ?? []}
+          rowKey={(row) => row.department_id}
+          empty="Bo'limlar hali sozlanmagan"
+          onRowClass={(row) => (row.overdue > 0 ? "bg-danger/[0.04]" : undefined)}
+        />
+      </Card>
+
+      <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-text-primary">So&apos;nggi faollik</h2>
-          <Link href="/admin/murojaatlar" className="text-sm text-accent font-medium hover:underline flex items-center gap-1">
+          <Link
+            href="/admin/murojaatlar"
+            className="text-sm text-accent font-medium hover:underline flex items-center gap-1"
+          >
             Barchasini ko&apos;rish <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -307,7 +292,7 @@ export default function AdminDashboardPage() {
                     {c.ticket_number} · {c.category.name}
                   </p>
                   <p className="text-xs text-text-muted truncate max-w-lg">
-                    {c.citizen.fullname} · {c.citizen.phone}
+                    {c.assigned_user_name ?? "egasi yo'q"} · {c.department?.name ?? "biriktirilmagan"}
                   </p>
                 </div>
                 <Badge label={STATUS_LABELS[c.status]} color={STATUS_COLORS[c.status]} />

@@ -1,9 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { AlertTriangle, CheckCircle2, Image as ImageIcon, MessageSquare, Send, Sparkles, User as UserIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  HandPlatter,
+  Image as ImageIcon,
+  MessageCircleQuestion,
+  MessageSquare,
+  Network,
+  Send,
+  Sparkles,
+  User as UserIcon,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -14,7 +25,9 @@ import { useAuth } from "@/lib/auth";
 import type { ComplaintDetail, ComplaintStatus, DepartmentAdmin } from "@/lib/types";
 import {
   ACTOR_LABELS,
+  CITIZEN_INFO_SOURCE_LABELS,
   EVENT_LABELS,
+  SUBTASK_STATUS_LABELS,
   PRIORITY_COLORS,
   PRIORITY_LABELS,
   ROLE_ALLOWED_STATUSES,
@@ -34,6 +47,12 @@ export default function AdminComplaintDetailPage() {
   const [comment, setComment] = useState("");
   const [replyText, setReplyText] = useState("");
   const [rejectReason, setRejectReason] = useState<string | null>(null);
+  // v1.4: `need_info` uchun savol matni — bo'sh bo'lsa yuborilmaydi
+  // (backend ham 422 beradi, lekin foydalanuvchi buni tugmadan biladi).
+  const [infoQuestion, setInfoQuestion] = useState<string | null>(null);
+  const [citizenInfo, setCitizenInfo] = useState("");
+  const [subtaskDept, setSubtaskDept] = useState("");
+  const [subtaskNote, setSubtaskNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,24 +69,71 @@ export default function AdminComplaintDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // R2/Q2 (docs/03 §2.1): o'z bo'limi xodimi biriktirilgan murojaatni birinchi
-  // marta ochganida `accepted` avtomatik qo'yiladi — «bo'lim ko'rdi» izi
-  // saqlanadi, tugma yo'q.
-  const autoAccepted = useRef(false);
-  useEffect(() => {
-    if (!complaint || !user || autoAccepted.current) return;
-    const ownDepartment =
-      user.role === "department_staff" &&
-      complaint.department != null &&
-      user.department_id === complaint.department.id;
-    if (ownDepartment && complaint.status === "assigned") {
-      autoAccepted.current = true;
-      apiPatch(`/api/admin/complaints/${id}/status`, { status: "accepted" })
-        .then(load)
-        .catch(() => {});
+  // v1.4: avtomatik `accepted` OLIB TASHLANDI. Sahifani ochish «ko'rdim»
+  // degani, «qabul qildim» degani emas — u SLA va birinchi-harakat
+  // ko'rsatkichini sun'iy yaxshilardi, mas'ul xodimni esa aniqlamasdi
+  // (docs/03 §2.1). O'rniga pastdagi «Qabul qilaman» tugmasi.
+  async function handleClaim() {
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPost(`/api/admin/complaints/${id}/claim`, {});
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+    } finally {
+      setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [complaint, user]);
+  }
+
+  async function handleCreateSubtask(e: React.FormEvent) {
+    e.preventDefault();
+    if (!subtaskDept || !subtaskNote.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPost(`/api/admin/complaints/${id}/subtasks`, {
+        department_id: subtaskDept,
+        note: subtaskNote,
+      });
+      setSubtaskDept("");
+      setSubtaskNote("");
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCloseSubtask(subtaskId: string) {
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPatch(`/api/admin/subtasks/${subtaskId}`, { status: "done" });
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRecordCitizenInfo(e: React.FormEvent) {
+    e.preventDefault();
+    if (!citizenInfo.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPost(`/api/admin/complaints/${id}/citizen-info`, { text: citizenInfo });
+      setCitizenInfo("");
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   // R2/Q2: asosiy harakat — javobni tasdiqlab, hal qilindi (bitta bosish).
   // assigned/accepted'dan avval in_progress'ga o'tiladi (state machine),
@@ -95,6 +161,7 @@ export default function AdminComplaintDetailPage() {
     try {
       await apiPatch(`/api/admin/complaints/${id}/status`, { status, note });
       setRejectReason(null);
+      setInfoQuestion(null);
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
@@ -158,13 +225,21 @@ export default function AdminComplaintDetailPage() {
   const roleAllowed = ROLE_ALLOWED_STATUSES[user?.role ?? ""];
   const allowedTargets = (STATUS_TRANSITIONS[complaint.status] ?? [])
     .filter((s) => s !== "assigned") // assignment happens via the biriktirish card, not a raw status button
-    .filter((s) => s !== "accepted") // R2: avto-qabul — sahifa ochilganda o'zi qo'yiladi
+    .filter((s) => s !== "accepted") // v1.4: alohida «Qabul qilaman» tugmasi orqali
     .filter((s) => s !== "resolved") // R2: hal qilish faqat AI kartadagi asosiy tugma orqali (javob majburiy)
     .filter((s) => roleAllowed === null || roleAllowed === undefined || roleAllowed.includes(s));
 
   const canResolve =
     ["assigned", "accepted", "in_progress"].includes(complaint.status) &&
     (roleAllowed == null || roleAllowed.includes("resolved"));
+
+  // «Qabul qilaman» faqat o'z bo'limi xodimiga va faqat hali qabul
+  // qilinmagan murojaatga ko'rinadi (docs/03 §2.1).
+  const isOwnDepartment =
+    user?.role === "department_staff" && complaint.department != null && user.department_id === complaint.department.id;
+  const canClaim = isOwnDepartment && complaint.status === "assigned" && complaint.assigned_user_id == null;
+  const isMine = complaint.assigned_user_id != null && complaint.assigned_user_id === user?.id;
+  const openSubtasks = complaint.subtasks.filter((s) => s.status === "open");
 
   const images = complaint.files.filter((f) => f.kind === "image");
   const otherFiles = complaint.files.filter((f) => f.kind !== "image");
@@ -289,6 +364,69 @@ export default function AdminComplaintDetailPage() {
             </div>
           </Card>
 
+          {/* v1.4 — `need_info` sikli. Avval bu oqim bir tomonlama edi:
+              xodim «ma'lumot kutilmoqda» qo'yardi, fuqaro esa javob
+              qaytara olmasdi va murojaat shu ustunda qolib ketardi. */}
+          <Card className={complaint.status === "need_info" ? "border-2 border-warning" : undefined}>
+            <div className="flex items-center gap-2 mb-4">
+              <MessageCircleQuestion className="h-4 w-4 text-accent" />
+              <h2 className="text-base font-semibold text-text-primary">Fuqaro bilan ma&apos;lumot almashish</h2>
+            </div>
+
+            {complaint.status === "need_info" && (
+              <div className="rounded-inner bg-warning/10 px-4 py-3 mb-4">
+                <p className="text-xs font-semibold text-warning uppercase">So&apos;ralgan ma&apos;lumot</p>
+                <p className="text-sm text-text-primary mt-1">
+                  {complaint.info_request_text ?? "(savol matni saqlanmagan)"}
+                </p>
+                {complaint.info_requested_at && (
+                  <p className="text-xs text-text-muted mt-1">
+                    {new Date(complaint.info_requested_at).toLocaleString("uz-UZ")} dan beri kutilmoqda
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              {complaint.citizen_messages.length === 0 ? (
+                <p className="text-sm text-text-muted">Fuqarodan hozircha qo&apos;shimcha ma&apos;lumot kelmagan</p>
+              ) : (
+                complaint.citizen_messages
+                  .slice()
+                  .reverse()
+                  .map((m) => (
+                    <div key={m.id} className="rounded-inner bg-bg-subtle px-4 py-3">
+                      <p className="text-sm text-text-primary whitespace-pre-wrap">{m.text}</p>
+                      <p className="text-xs text-text-muted mt-1">
+                        {CITIZEN_INFO_SOURCE_LABELS[m.source] ?? m.source}
+                        {m.recorded_by_name ? ` (${m.recorded_by_name})` : ""} ·{" "}
+                        {new Date(m.created_at).toLocaleString("uz-UZ")}
+                      </p>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            {!["closed", "rejected", "archived"].includes(complaint.status) && (
+              <form onSubmit={handleRecordCitizenInfo} className="mt-4 pt-4 border-t border-border flex flex-col gap-2">
+                <Label>Fuqaro telefonda aytganini yozib qo&apos;yish</Label>
+                <Textarea
+                  rows={2}
+                  value={citizenInfo}
+                  onChange={(e) => setCitizenInfo(e.target.value)}
+                  placeholder="Fuqaro bilan gaplashdim: uy raqami 12, muammo uch kundan beri..."
+                />
+                <p className="text-xs text-text-muted">
+                  Bu holatni o&apos;zgartirmaydi — fuqaro javob berganiga siz guvoh bo&apos;lganingiz uchun
+                  «Ijroda» ga qaytarishni ham o&apos;zingiz bosasiz.
+                </p>
+                <Button type="submit" variant="secondary" disabled={saving || !citizenInfo.trim()} className="self-start">
+                  <Send className="h-4 w-4" /> Yozib qo&apos;yish
+                </Button>
+              </form>
+            )}
+          </Card>
+
           <Card>
             <h2 className="text-base font-semibold text-text-primary mb-4">Voqealar tarixi</h2>
             <div className="flex flex-col gap-3">
@@ -335,6 +473,21 @@ export default function AdminComplaintDetailPage() {
                 <dt className="text-text-muted">Yaratilgan</dt>
                 <dd className="text-text-primary font-medium">{new Date(complaint.created_at).toLocaleString("uz-UZ")}</dd>
               </div>
+              {/* v1.4: mas'ul xodim doim ko'rinadi — «kim javobgar»
+                  savoliga javob bermaydigan navbat boshqarilmaydi. */}
+              <div className="flex justify-between">
+                <dt className="text-text-muted">Mas&apos;ul xodim</dt>
+                <dd className={complaint.assigned_user_name ? "text-text-primary font-medium" : "text-warning font-medium"}>
+                  {complaint.assigned_user_name ?? "Egasi yo'q"}
+                  {isMine && " (siz)"}
+                </dd>
+              </div>
+              {complaint.reopened_count > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-text-muted">Qayta ochilgan</dt>
+                  <dd className="text-danger font-medium">{complaint.reopened_count} marta</dd>
+                </div>
+              )}
               {complaint.rejected_reason && (
                 <div>
                   <dt className="text-text-muted">Rad etish sababi</dt>
@@ -343,10 +496,55 @@ export default function AdminComplaintDetailPage() {
               )}
             </dl>
 
+            {canClaim && (
+              <div className="pt-3 border-t border-border">
+                <Button className="w-full" disabled={saving} onClick={handleClaim}>
+                  <HandPlatter className="h-4 w-4" /> Qabul qilaman
+                </Button>
+                <p className="text-xs text-text-muted mt-2">
+                  Murojaat sizga biriktiriladi va «Bo&apos;lim qabul qildi» holatiga o&apos;tadi.
+                </p>
+              </div>
+            )}
+
+            {openSubtasks.length > 0 && (
+              <p className="mt-3 text-xs text-warning">
+                {openSubtasks.length} ta idoralararo topshiriq ochiq — ular yopilmaguncha murojaatni hal
+                qilindi deb belgilash mumkin emas.
+              </p>
+            )}
+
             {allowedTargets.length > 0 && (
               <div className="flex flex-col gap-2 pt-3 border-t border-border">
                 {allowedTargets.map((target) =>
-                  target === "rejected" ? (
+                  target === "need_info" ? (
+                    <div key={target} className="flex flex-col gap-2">
+                      {infoQuestion !== null ? (
+                        <>
+                          <Textarea
+                            rows={3}
+                            value={infoQuestion}
+                            onChange={(e) => setInfoQuestion(e.target.value)}
+                            placeholder="Fuqarodan nima kerak? Masalan: uy raqamini va muammo qachondan boshlanganini yozing"
+                          />
+                          <p className="text-xs text-text-muted">
+                            Bu matn fuqaroga SMS/Telegram orqali yuboriladi va holat sahifasida ko&apos;rinadi.
+                          </p>
+                          <Button
+                            variant="secondary"
+                            disabled={saving || !infoQuestion.trim()}
+                            onClick={() => changeStatus("need_info", infoQuestion)}
+                          >
+                            Savolni yuborish
+                          </Button>
+                        </>
+                      ) : (
+                        <Button variant="secondary" disabled={saving} onClick={() => setInfoQuestion("")}>
+                          {STATUS_LABELS.need_info}
+                        </Button>
+                      )}
+                    </div>
+                  ) : target === "rejected" ? (
                     <div key={target} className="flex flex-col gap-2">
                       {rejectReason !== null ? (
                         <>
@@ -503,6 +701,72 @@ export default function AdminComplaintDetailPage() {
             </Card>
           )}
 
+          {/* S2 — idoralararo topshiriqlar: bitta murojaat, bir necha
+              bajaruvchi, fuqaroga esa BITTA umumiy javob (docs/03 §5). */}
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <Network className="h-4 w-4 text-accent" />
+              <h2 className="text-base font-semibold text-text-primary">Idoralararo topshiriqlar</h2>
+            </div>
+
+            {complaint.subtasks.length === 0 ? (
+              <p className="text-sm text-text-muted">Topshiriq berilmagan</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {complaint.subtasks.map((s) => (
+                  <div key={s.id} className="rounded-inner border border-border px-4 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-text-primary">{s.department_name}</span>
+                      <Badge
+                        label={SUBTASK_STATUS_LABELS[s.status]}
+                        color={s.status === "open" ? "var(--warning)" : "var(--success)"}
+                      />
+                    </div>
+                    <p className="text-sm text-text-secondary mt-1">{s.note}</p>
+                    {s.status === "open" && (user?.role === "admin" || user?.department_id === s.department_id) && (
+                      <Button
+                        variant="secondary"
+                        className="mt-2"
+                        disabled={saving}
+                        onClick={() => handleCloseSubtask(s.id)}
+                      >
+                        Bajarildi
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {user?.role === "admin" && !["closed", "rejected", "archived"].includes(complaint.status) && (
+              <form onSubmit={handleCreateSubtask} className="mt-4 pt-4 border-t border-border flex flex-col gap-2">
+                <Label>Qo&apos;shimcha bo&apos;lim</Label>
+                <Select value={subtaskDept} onChange={(e) => setSubtaskDept(e.target.value)}>
+                  <option value="">Tanlanmagan</option>
+                  {departments
+                    .filter((d) => d.id !== complaint.department?.id)
+                    .map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.names.uz ?? d.code}
+                      </option>
+                    ))}
+                </Select>
+                <Textarea
+                  rows={2}
+                  value={subtaskNote}
+                  onChange={(e) => setSubtaskNote(e.target.value)}
+                  placeholder="Nima qilinishi kerak? Masalan: drenaj quvurini tekshirish"
+                />
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  disabled={saving || !subtaskDept || !subtaskNote.trim()}
+                >
+                  Topshiriq berish
+                </Button>
+              </form>
+            )}
+          </Card>
         </div>
       </div>
     </AppShell>

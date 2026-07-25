@@ -12,5 +12,7 @@ export function proxy(request: Parameters<typeof intlMiddleware>[0]) {
 
 export const config = {
   // Skip admin/auth (not locale-prefixed), API proxying, static assets.
-  matcher: ["/((?!api|admin|login|register|_next|.*\\..*).*)"],
+  // `parol` — majburiy parol almashtirish sahifasi (v1.4), xodimlar uchun,
+  // shu sabab u ham locale prefiksisiz.
+  matcher: ["/((?!api|admin|login|register|parol|_next|.*\\..*).*)"],
 };

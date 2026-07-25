@@ -25,7 +25,12 @@ export default function LoginPage() {
       const user = await login(loginValue, password);
       // R1: department_staff dashboardga kira olmaydi (admin-only) — uni
       // to'g'ridan-to'g'ri ish navbatiga olib boramiz (premortem X1).
-      const staffHome = user.role === "admin" ? "/admin" : "/admin/navbatim";
+      // v1.4: vaqtinchalik parol bilan kirgan xodim avval uni almashtiradi.
+      const staffHome = user.must_change_password
+        ? "/parol"
+        : user.role === "admin"
+          ? "/admin"
+          : "/admin/navbatim";
       router.push(user.kind === "staff" ? staffHome : "/");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");

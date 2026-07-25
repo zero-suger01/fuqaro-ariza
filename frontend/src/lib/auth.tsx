@@ -16,6 +16,9 @@ interface AuthContextValue {
   login: (login: string, password: string) => Promise<AuthUser>;
   register: (data: { first_name: string; last_name?: string; phone: string; password: string; language?: string }) => Promise<AuthUser>;
   logout: () => void;
+  /** Serverdan `me` ni qayta o'qiydi — parol almashtirilgandan keyin
+   *  `must_change_password` bayrog'i yangilanishi uchun (v1.4). */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -55,8 +58,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/login");
   }, [router]);
 
+  const refresh = useCallback(async () => {
+    try {
+      setUser(await apiGet<AuthUser>("/api/auth/me"));
+    } catch {
+      setUser(null);
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh }}>{children}</AuthContext.Provider>
   );
 }
 
