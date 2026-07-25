@@ -2,12 +2,23 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ClipboardList, Building2, Users, AlertTriangle, Clock, ArrowRight, Route, Wrench } from "lucide-react";
+import {
+  ClipboardList,
+  Building2,
+  Users,
+  AlertTriangle,
+  Clock,
+  ArrowRight,
+  Route,
+  Wrench,
+  Cpu,
+  BotMessageSquare,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { apiGet } from "@/lib/api";
-import type { ComplaintListItem, DashboardStats, Page } from "@/lib/types";
+import type { AiHealth, ComplaintListItem, DashboardStats, Page } from "@/lib/types";
 import { PRIORITY_COLORS, PRIORITY_LABELS, STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
 
 function StatCard({ label, value, danger }: { label: string; value: number; danger?: boolean }) {
@@ -21,12 +32,70 @@ function StatCard({ label, value, danger }: { label: string; value: number; dang
   );
 }
 
+/** R0 §8 avtomatlashtirish KPI kartasi — ulush (0–1) yoki soat, maqsad bilan. */
+function KpiCard({
+  label,
+  value,
+  target,
+  format,
+}: {
+  label: string;
+  value: number | null;
+  target: string;
+  format: "percent" | "hours";
+}) {
+  const display =
+    value == null ? "—" : format === "percent" ? `${Math.round(value * 100)}%` : `${value} soat`;
+  return (
+    <Card className="flex-1 min-w-[160px]">
+      <p className="text-sm text-text-secondary">{label}</p>
+      <p className="text-3xl font-semibold mt-2 font-mono text-text-primary">{display}</p>
+      <p className="text-xs text-text-muted mt-1">Maqsad: {target}</p>
+    </Card>
+  );
+}
+
+/** R1/Q4 — AI salomatlik indikatori: LLM jim o'lishi endi ko'rinadigan hodisa. */
+function AiHealthStrip({ health }: { health: AiHealth | null }) {
+  if (!health) return null;
+  const lastText = health.last_llm_success_at
+    ? new Date(health.last_llm_success_at).toLocaleString("uz-UZ")
+    : "hali javob yo'q";
+  return (
+    <Card className={health.ollama_ok ? "border border-success/40" : "border-2 border-danger"}>
+      <div className="flex items-center gap-3 flex-wrap text-sm">
+        <span className="flex items-center gap-2 font-semibold text-text-primary">
+          <Cpu className={`h-4 w-4 ${health.ollama_ok ? "text-success" : "text-danger"}`} />
+          AI dvigatel ({health.model}):
+          <span className={health.ollama_ok ? "text-success" : "text-danger"}>
+            {health.ollama_ok ? "ishlayapti" : "JAVOB BERMAYAPTI"}
+          </span>
+        </span>
+        <span className="text-text-muted">Oxirgi LLM javobi: {lastText}</span>
+        <span className="text-text-muted">Navbatda: {health.llm_queue_depth} ish</span>
+        {health.llm_errors_1h > 0 && (
+          <span className="text-warning font-medium">Oxirgi soatda {health.llm_errors_1h} xato</span>
+        )}
+        {!health.stt_ok && <span className="text-warning font-medium">STT oxirgi ishi xato</span>}
+      </div>
+      {!health.ollama_ok && (
+        <p className="text-xs text-danger mt-2">
+          Ollama ishlamayapti — murojaatlar kategoriyalanadi (kalit so&apos;z), lekin AI xulosa/javob draftlari
+          yaratilmayapti. Serverda <code className="font-mono">ollama serve</code> va model nomini tekshiring.
+        </p>
+      )}
+    </Card>
+  );
+}
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [health, setHealth] = useState<AiHealth | null>(null);
   const [recent, setRecent] = useState<ComplaintListItem[]>([]);
 
   useEffect(() => {
     apiGet<DashboardStats>("/api/admin/stats/dashboard").then(setStats);
+    apiGet<AiHealth>("/api/admin/stats/ai-health").then(setHealth).catch(() => {});
     apiGet<Page<ComplaintListItem>>("/api/admin/complaints?page=1&page_size=6").then((res) => setRecent(res.items));
   }, []);
 
@@ -34,6 +103,8 @@ export default function AdminDashboardPage() {
 
   return (
     <AppShell title="Dashboard" requireRoles={["admin"]}>
+      <AiHealthStrip health={health} />
+
       <div className="flex flex-col md:flex-row gap-4 flex-wrap">
         <StatCard label="Bugungi murojaatlar" value={stats?.today ?? 0} />
         <StatCard label="Haftalik murojaatlar" value={stats?.this_week ?? 0} />
@@ -42,6 +113,40 @@ export default function AdminDashboardPage() {
         <StatCard label="Jarayondagilar" value={stats?.in_progress ?? 0} />
         <StatCard label="Muddati o'tganlar" value={stats?.overdue ?? 0} danger />
         <StatCard label="AI tekshiruv kerak" value={stats?.needs_review ?? 0} danger />
+      </div>
+
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <BotMessageSquare className="h-4 w-4 text-accent" />
+          <h2 className="text-base font-semibold text-text-primary">Avtomatlashtirish KPI (7 kun)</h2>
+          <p className="text-xs text-text-muted">«AI-powered» — his emas, shu to&apos;rt raqam (docs/00 §5)</p>
+        </div>
+        <div className="flex flex-col md:flex-row gap-4 flex-wrap">
+          <KpiCard
+            label="Zero-touch yo'naltirish"
+            value={stats?.zero_touch_7d ?? null}
+            target="≥ 70%"
+            format="percent"
+          />
+          <KpiCard
+            label="AI draft asosida javoblar"
+            value={stats?.draft_reply_share_7d ?? null}
+            target="≥ 60%"
+            format="percent"
+          />
+          <KpiCard
+            label="Birinchi harakatgacha"
+            value={stats?.avg_first_action_hours_7d ?? null}
+            target="≤ 4 soat"
+            format="hours"
+          />
+          <KpiCard
+            label="Javob bilan yopilgan"
+            value={stats?.resolved_with_reply_7d ?? null}
+            target="100%"
+            format="percent"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -137,10 +242,15 @@ export default function AdminDashboardPage() {
               <Users className="h-4 w-4 text-accent" /> Xodimlar
             </Link>
             <Link
-              href="/admin/murojaatlar?needs_review=1"
+              href="/admin/tasdiqlash"
               className="flex items-center gap-3 rounded-inner border border-border px-4 py-3 text-sm font-medium text-text-primary hover:border-accent transition"
             >
-              <AlertTriangle className="h-4 w-4 text-warning" /> AI tekshiruv kerak bo&apos;lganlar
+              <AlertTriangle className="h-4 w-4 text-warning" /> Tasdiqlash navbati
+              {(stats?.needs_review ?? 0) > 0 && (
+                <span className="ml-auto text-xs font-mono font-bold rounded-pill bg-danger/10 text-danger px-2 py-0.5">
+                  {stats?.needs_review}
+                </span>
+              )}
             </Link>
           </div>
         </Card>

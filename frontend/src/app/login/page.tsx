@@ -23,7 +23,10 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const user = await login(loginValue, password);
-      router.push(user.kind === "staff" ? "/admin" : "/");
+      // R1: department_staff dashboardga kira olmaydi (admin-only) — uni
+      // to'g'ridan-to'g'ri ish navbatiga olib boramiz (premortem X1).
+      const staffHome = user.role === "admin" ? "/admin" : "/admin/navbatim";
+      router.push(user.kind === "staff" ? staffHome : "/");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
     } finally {

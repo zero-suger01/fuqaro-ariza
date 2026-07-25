@@ -75,7 +75,8 @@
       "screenshotNote": "Bu raqamni rasmga olib qo'ying.",
       "smsNote": "SMS ham yubordik.",
       "checkStatusButton": "Holatini tekshirish",
-      "homeButton": "Bosh sahifa"
+      "homeButton": "Bosh sahifa",
+      "aiNote": "Sun'iy intellekt murojaatingizni o'qib, mas'ul bo'limga yo'naltiradi."
     },
     "error": {
       "generic": "Xatolik yuz berdi. Qaytadan urinib ko'ring.",
@@ -100,7 +101,8 @@
     "rejectedTitle": "Rad etildi",
     "needInfoTitle": "Qo'shimcha ma'lumot kerak",
     "needInfoText": "Sizdan qo'shimcha ma'lumot kutilmoqda — telefoningizga qo'ng'iroq qilinadi yoki SMS keladi",
-    "deadlineLabel": "Muddat"
+    "deadlineLabel": "Muddat",
+    "departmentLabel": "Mas'ul bo'lim"
   },
   "go": {
     "orgName": "Uychi tumani hokimligi",

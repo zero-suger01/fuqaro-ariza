@@ -75,7 +75,8 @@
       "screenshotNote": "Please take a screenshot of this number.",
       "smsNote": "We also sent it by SMS.",
       "checkStatusButton": "Check status",
-      "homeButton": "Home"
+      "homeButton": "Home",
+      "aiNote": "AI reads your complaint and routes it to the responsible department."
     },
     "error": {
       "generic": "Something went wrong. Please try again.",
@@ -100,7 +101,8 @@
     "rejectedTitle": "Rejected",
     "needInfoTitle": "More information needed",
     "needInfoText": "We're waiting for more information from you — you'll get a call or SMS",
-    "deadlineLabel": "Deadline"
+    "deadlineLabel": "Deadline",
+    "departmentLabel": "Responsible department"
   },
   "go": {
     "orgName": "Uychi District Administration",

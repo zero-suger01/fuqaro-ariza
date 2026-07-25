@@ -31,7 +31,7 @@ export const STATUS_TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
   new: ["ai_processed", "rejected"],
   ai_processed: ["assigned", "rejected"],
   assigned: ["accepted", "in_progress", "need_info", "rejected"],
-  accepted: ["in_progress", "need_info"],
+  accepted: ["in_progress", "need_info", "rejected"],
   in_progress: ["need_info", "resolved"],
   need_info: ["in_progress"],
   resolved: ["closed"],
