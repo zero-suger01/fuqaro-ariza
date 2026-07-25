@@ -46,6 +46,9 @@ export function SuccessScreen({ ticketNumber }: { ticketNumber: string }) {
         <p>{t("smsNote")}</p>
       </div>
 
+      {/* R0/Q5 — fuqaro AI ishlayotganini biladi (murojaat 1 daqiqada bo'limda) */}
+      <p className="w-full rounded-card bg-bg-subtle px-4 py-3 text-base text-text-secondary">{t("aiNote")}</p>
+
       <div className="flex w-full flex-col gap-3">
         <GuestLinkButton href={`/holat?ticket=${encodeURIComponent(ticketNumber)}`} variant="primary">
           <Search className="h-6 w-6" aria-hidden />

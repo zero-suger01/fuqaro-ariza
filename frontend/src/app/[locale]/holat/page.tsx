@@ -2,7 +2,8 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatDate } from "@/lib/formatDate";
 import { GuestShell } from "@/components/guest/GuestShell";
 import { GuestButton } from "@/components/guest/GuestButton";
 import { GuestTimeline } from "@/components/guest/GuestTimeline";
@@ -12,6 +13,7 @@ import type { TrackResponse } from "@/lib/types";
 
 function StatusForm() {
   const t = useTranslations("status");
+  const locale = useLocale();
   const searchParams = useSearchParams();
 
   const [ticket, setTicket] = useState(searchParams.get("ticket") ?? "");
@@ -83,6 +85,24 @@ function StatusForm() {
           </div>
 
           <GuestTimeline timeline={result.timeline} />
+
+          {/* R0/Q5: fuqaro "murojaatim QAYERDA va QACHONGACHA" savoliga javob oladi */}
+          {(result.department || result.deadline_at) && (
+            <div className="rounded-card bg-bg-subtle p-4 flex flex-col gap-1.5">
+              {result.department && (
+                <p className="text-base text-text-secondary">
+                  {t("departmentLabel")}:{" "}
+                  <strong className="text-text-primary">{result.department.name}</strong>
+                </p>
+              )}
+              {result.deadline_at && (
+                <p className="text-base text-text-secondary">
+                  {t("deadlineLabel")}:{" "}
+                  <strong className="text-text-primary">{formatDate(result.deadline_at, locale)}</strong>
+                </p>
+              )}
+            </div>
+          )}
 
           {result.need_info && (
             <div className="rounded-card border-2 border-warning bg-warning/10 p-4">

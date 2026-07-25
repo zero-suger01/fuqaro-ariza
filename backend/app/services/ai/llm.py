@@ -26,9 +26,6 @@ summary_uz (o'zbek lotin, max 2 gap), reply_draft_uz (rasmiy, xushmuomala javob 
 loyihasi, 2-3 gap, "Hurmatli fuqaro" bilan boshlansin), tags (3-6 ta qisqa teg).
 Javobni FAQAT JSON obyekt sifatida qaytar, boshqa hech qanday matn yozma."""
 
-MAX_ATTEMPTS = 2
-
-
 class LlmError(Exception):
     pass
 
@@ -64,7 +61,8 @@ def _category_catalog(db: Session) -> str:
 
 
 def classify_with_llm(db: Session, text: str, address: str | None = None) -> tuple[LlmResult, int]:
-    """Returns (result, latency_ms). Raises LlmError after MAX_ATTEMPTS failures."""
+    """Returns (result, latency_ms). Raises LlmError after `llm_max_attempts`
+    failures — caller (generate_analysis worker) tushiradi, pipeline to'xtamaydi."""
     payload = {
         "model": settings.ollama_model,
         "messages": [
@@ -78,10 +76,12 @@ def classify_with_llm(db: Session, text: str, address: str | None = None) -> tup
     }
 
     last_error: Exception | None = None
-    for _ in range(MAX_ATTEMPTS):
+    for _ in range(settings.llm_max_attempts):
         started = time.monotonic()
         try:
-            response = httpx.post(f"{settings.ollama_url}/api/chat", json=payload, timeout=120.0)
+            response = httpx.post(
+                f"{settings.ollama_url}/api/chat", json=payload, timeout=settings.llm_timeout_s
+            )
             response.raise_for_status()
             content = response.json()["message"]["content"]
             result = LlmResult.model_validate(json.loads(content))
@@ -91,4 +91,7 @@ def classify_with_llm(db: Session, text: str, address: str | None = None) -> tup
         except Exception as exc:  # pydantic ValidationError et al.
             last_error = exc
 
-    raise LlmError(f"Ollama {MAX_ATTEMPTS} urinishdan keyin ham javob bermadi: {last_error}") from last_error
+    raise LlmError(
+        f"Ollama {settings.llm_max_attempts} urinishdan keyin ham javob bermadi "
+        f"(timeout {settings.llm_timeout_s:.0f}s, model {settings.ollama_model}): {last_error}"
+    ) from last_error

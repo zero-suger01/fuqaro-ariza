@@ -19,6 +19,7 @@ from app.schemas.public import (
     CategoryBrief,
     CategoryOut,
     ComplaintSubmitOut,
+    DepartmentPublic,
     NeighborhoodOut,
     QrLandingOut,
     SttJobCreatedOut,
@@ -124,6 +125,15 @@ def track_complaint(request: Request, ticket: str, phone: str, db: Session = Dep
         status_simple=STATUS_SIMPLE_MAP[complaint.status],
         need_info=complaint.status == "need_info",
         category=CategoryBrief(code=complaint.category.code, name=complaint.category.name(complaint.language)),
+        # R0/Q5 (docs/03 §3.2): mas'ul bo'lim — kategoriya bilan bir xil til qoidasida
+        department=(
+            DepartmentPublic(
+                code=complaint.assigned_department.code,
+                name=complaint.assigned_department.name(complaint.language),
+            )
+            if complaint.assigned_department
+            else None
+        ),
         created_at=complaint.created_at,
         deadline_at=complaint.deadline_at,
         timeline=_build_timeline(complaint),

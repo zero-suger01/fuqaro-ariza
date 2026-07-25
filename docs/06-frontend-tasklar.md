@@ -51,6 +51,25 @@ Mavjud admin sahifalar saqlanadi, yangi sxema/endpointlarga moslanadi:
 
 **Muhim topilma (F4.1 paytida aniqlandi, F1.4'dan beri bor edi):** wizard (`Step2Location.tsx`) va yangi xarita komponentining "Uychi markazi" standart koordinatasi (`40.9856, 71.1533`) **noto'g'ri edi** — bu aslida Chust tumaniga to'g'ri kelardi (~70km g'arbda), Uychi tumaniga emas. To'g'irlandi: `41.0294, 71.8483` (Uychi shahri, tuman markazi — [Wikipedia](https://en.wikipedia.org/wiki/Uychi)). Ikkala joyda ham tuzatildi va izoh qoldirildi. Bu wizard xaritasining boshlang'ich markazigagina ta'sir qiladi (fuqaro xaritada bosib to'g'ri joyni tanlagan bo'lsa muammo yo'q edi) — lekin default markazning o'zi noto'g'ri bo'lgani birinchi ochilishda chalkashlik keltirib chiqarishi mumkin edi.
 
+## R1–R2 — Navbat-markazli UI (premortem asosida)
+
+Sabab: interfeys "ma'lumot ko'rsatardi", "ish boshqarmasdi" — xodimning haqiqiy savoli «hozir nima qilishim kerak?» edi, lekin navbat/ustuvorlik tushunchasi UI'da yo'q edi; bildirishnoma APIsi backendda bor, frontendda ulanmagan edi.
+
+- [x] **R1.7 (M)** `components/layout/NotificationBell.tsx`: o'qilmagan soni (qizil belgi), dropdown, "hammasini o'qildi", 60 s poll, bosilganda murojaatga o'tadi va o'qilgan deb belgilanadi. Topbar'dagi eski `onClick`siz bezak tugma almashtirildi.
+- [x] **R1.8 (S)** Login redirect: `department_staff` → `/admin/navbatim` (avval `/admin` dashboardga tushib "Bu sahifa uchun ruxsatingiz yetarli emas" ekranini ko'rardi — birinchi taassurot buzilardi).
+- [x] **R2.5 (M)** `app/admin/navbatim/page.tsx`: 3 guruh (yangi biriktirilgan / ijrodagi / ma'lumot kutilmoqda), deadline bo'yicha saralash, har qatorda AI xulosasi va muddat holati (o'tgan — qizil, 24 soatdan kam — sariq). Bitta `GET /complaints` so'rovi (bo'lim cheklovi backendda), guruhlash clientda.
+- [x] **R2.6 (M)** Tafsilot approve-first: sahifa ochilganda o'z bo'limi xodimi uchun `accepted` avtomatik (`useRef` guard bilan bir marta); AI kartasi o'ng ustunda birinchi (`order-first`) va javob maydonini o'z ichiga oladi; asosiy tugma **«Javobni tasdiqlab, hal qilindi»** — kerak bo'lsa avval `in_progress`, keyin `resolved`+`reply_text`. Status tugmalaridan `accepted` va `resolved` olib tashlandi (birinchisi avtomatik, ikkinchisi javob bilan birga).
+- [x] **R2.7 (M)** `app/admin/tasdiqlash/page.tsx` (admin): needs_review ro'yxati AI taklifi bilan, «Qabul» (bo'sh body → AI taklifi) yoki «O'zgartirish» (kategoriya + ixtiyoriy bo'lim). Sidebar'ga qo'shildi, dashboarddan ham havola (sanagich bilan).
+- [x] **R2.8 (S)** Dashboard: AI salomatlik chizig'i (ollama_ok yashil/qizil, model, navbat, xatolar) + 4 avtomatlashtirish KPI kartasi maqsad qiymatlari bilan.
+- [x] **R2.9 (S)** `/holat`: mas'ul bo'lim + muddat kartasi; `SuccessScreen`da AI jumlasi. 4 tilga `status.departmentLabel` va `wizard.success.aiNote` qo'shildi.
+
+**Yo'l-yo'lakay tuzatilgan ikki texnik qarz:**
+
+1. `lib/useNow.ts` — React Compiler render ichida `Date.now()`ni taqiqlaydi (`react-hooks/purity`), effekt ichida `setState` ham man qilinadi. Yechim: soat `useSyncExternalStore` orqali tashqi manba sifatida (snapshot daqiqaga yaxlitlangan, aks holda cheksiz render). Yon foyda: sahifa soatlab ochiq tursa "muddat o'tdi" belgilari o'zi yangilanadi.
+2. `lib/formatDate.ts` — admin panelda `toLocaleDateString("uz-UZ")` ishlatilgan edi va **"M07 25, Sat"** chiqardi (Intl'ning uz-UZ ma'lumoti to'liq emas — bu muammo fuqaro sahifalarida F1'da hal qilingan, lekin admin uni takrorlagan). `formatUzDayLong`/`formatUzDateTime` qo'shildi: "25-iyul, shanba" / "28-iyul, 01:57".
+
+**Brauzerda real backend bilan sinovdan o'tkazildi:** admin (dashboard KPI/health → tasdiqlash navbatida bir bosishli qabul), `department_staff` (login → navbatim → tafsilot avto-qabul → bir bosishli hal qilish), fuqaro `/holat` (bo'lim + muddat) uz va en tillarida. `npm run lint && i18n:check && build` toza.
+
 ## F5 — Sayqal (P3)
 
 - [ ] **F5.1 (S)** Accessibility audit: [10](10-ui-ux.md) §8 checklist (kontrast, focus, aria, 200% zoom).

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { AlertTriangle, Image as ImageIcon, MessageSquare, Send, Sparkles, User as UserIcon } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Image as ImageIcon, MessageSquare, Send, Sparkles, User as UserIcon } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -50,6 +50,45 @@ export default function AdminComplaintDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // R2/Q2 (docs/03 §2.1): o'z bo'limi xodimi biriktirilgan murojaatni birinchi
+  // marta ochganida `accepted` avtomatik qo'yiladi — «bo'lim ko'rdi» izi
+  // saqlanadi, tugma yo'q.
+  const autoAccepted = useRef(false);
+  useEffect(() => {
+    if (!complaint || !user || autoAccepted.current) return;
+    const ownDepartment =
+      user.role === "department_staff" &&
+      complaint.department != null &&
+      user.department_id === complaint.department.id;
+    if (ownDepartment && complaint.status === "assigned") {
+      autoAccepted.current = true;
+      apiPatch(`/api/admin/complaints/${id}/status`, { status: "accepted" })
+        .then(load)
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [complaint, user]);
+
+  // R2/Q2: asosiy harakat — javobni tasdiqlab, hal qilindi (bitta bosish).
+  // assigned/accepted'dan avval in_progress'ga o'tiladi (state machine),
+  // keyin resolved + reply_text bitta so'rovda (backend javobni ham yozadi).
+  async function handleResolveWithReply() {
+    if (!complaint || !replyText.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      if (complaint.status === "assigned" || complaint.status === "accepted") {
+        await apiPatch(`/api/admin/complaints/${id}/status`, { status: "in_progress" });
+      }
+      await apiPatch(`/api/admin/complaints/${id}/status`, { status: "resolved", reply_text: replyText });
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function changeStatus(status: ComplaintStatus, note?: string) {
     setSaving(true);
     setError(null);
@@ -94,8 +133,7 @@ export default function AdminComplaintDetailPage() {
     }
   }
 
-  async function handleReply(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleReply() {
     if (!replyText.trim()) return;
     setSaving(true);
     setError(null);
@@ -120,7 +158,13 @@ export default function AdminComplaintDetailPage() {
   const roleAllowed = ROLE_ALLOWED_STATUSES[user?.role ?? ""];
   const allowedTargets = (STATUS_TRANSITIONS[complaint.status] ?? [])
     .filter((s) => s !== "assigned") // assignment happens via the biriktirish card, not a raw status button
+    .filter((s) => s !== "accepted") // R2: avto-qabul — sahifa ochilganda o'zi qo'yiladi
+    .filter((s) => s !== "resolved") // R2: hal qilish faqat AI kartadagi asosiy tugma orqali (javob majburiy)
     .filter((s) => roleAllowed === null || roleAllowed === undefined || roleAllowed.includes(s));
+
+  const canResolve =
+    ["assigned", "accepted", "in_progress"].includes(complaint.status) &&
+    (roleAllowed == null || roleAllowed.includes("resolved"));
 
   const images = complaint.files.filter((f) => f.kind === "image");
   const otherFiles = complaint.files.filter((f) => f.kind !== "image");
@@ -336,26 +380,33 @@ export default function AdminComplaintDetailPage() {
             )}
           </Card>
 
-          {complaint.ai && (
-            <Card className={complaint.needs_review ? "border-2 border-warning" : undefined}>
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="h-4 w-4 text-accent" />
-                <h2 className="text-base font-semibold text-text-primary">AI tahlili</h2>
-                {complaint.needs_review && (
-                  <span className="inline-flex items-center gap-1 text-xs text-warning ml-auto">
-                    <AlertTriangle className="h-3.5 w-3.5" /> tekshiruv kerak
-                  </span>
+          {/* R2/Q2 — asosiy ish kartasi: AI xulosasi + tayyor javob + bir
+              bosishli hal qilish. order-first — o'ng ustunda eng tepada. */}
+          <Card className={`order-first ${complaint.needs_review ? "border-2 border-warning" : "border border-accent/40"}`}>
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-4 w-4 text-accent" />
+              <h2 className="text-base font-semibold text-text-primary">AI xulosasi va javob</h2>
+              {complaint.needs_review && (
+                <span className="inline-flex items-center gap-1 text-xs text-warning ml-auto">
+                  <AlertTriangle className="h-3.5 w-3.5" /> tekshiruv kerak
+                </span>
+              )}
+            </div>
+
+            {complaint.ai ? (
+              <dl className="flex flex-col gap-3 text-sm mb-4">
+                {complaint.ai.summary && (
+                  <div>
+                    <dt className="text-text-muted mb-1">Qisqacha mazmun</dt>
+                    <dd className="text-text-primary">{complaint.ai.summary}</dd>
+                  </div>
                 )}
-              </div>
-              <dl className="flex flex-col gap-3 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-text-muted">Dvigatel</dt>
-                  <dd className="text-text-primary font-medium">{complaint.ai.engine === "llm" ? "LLM" : "Kalit so'z"}</dd>
-                </div>
                 {complaint.ai.confidence != null && (
                   <div>
                     <div className="flex justify-between mb-1">
-                      <dt className="text-text-muted">Ishonch darajasi</dt>
+                      <dt className="text-text-muted">
+                        Ishonch ({complaint.ai.engine === "llm" ? "LLM" : "Kalit so'z"})
+                      </dt>
                       <dd className="text-text-primary font-medium">{Math.round(complaint.ai.confidence * 100)}%</dd>
                     </div>
                     <div className="h-1.5 rounded-pill bg-bg-subtle overflow-hidden">
@@ -372,12 +423,6 @@ export default function AdminComplaintDetailPage() {
                     <dd className="text-text-primary font-medium">{complaint.ai.sentiment}</dd>
                   </div>
                 )}
-                {complaint.ai.summary && (
-                  <div>
-                    <dt className="text-text-muted mb-1">Qisqacha mazmun</dt>
-                    <dd className="text-text-primary">{complaint.ai.summary}</dd>
-                  </div>
-                )}
                 {complaint.ai.tags && complaint.ai.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {complaint.ai.tags.map((tag) => (
@@ -388,8 +433,52 @@ export default function AdminComplaintDetailPage() {
                   </div>
                 )}
               </dl>
-            </Card>
-          )}
+            ) : (
+              <p className="text-sm text-text-muted mb-4">AI tahlili hali tayyor emas — javobni o&apos;zingiz yozing.</p>
+            )}
+
+            {!["closed", "rejected", "archived"].includes(complaint.status) && (
+              <div className="flex flex-col gap-3 pt-3 border-t border-border">
+                <p className="text-xs text-text-muted">
+                  {complaint.ai?.suggested_reply
+                    ? "AI tayyorlagan javob — tahrirlab tasdiqlang."
+                    : "Fuqaroga yuboriladigan rasmiy javob."}
+                </p>
+                <Textarea
+                  rows={4}
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Hurmatli fuqaro, ..."
+                />
+                {canResolve && (
+                  <Button onClick={handleResolveWithReply} disabled={saving || !replyText.trim()}>
+                    <CheckCircle2 className="h-4 w-4" /> Javobni tasdiqlab, hal qilindi
+                  </Button>
+                )}
+                {complaint.status !== "resolved" && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleReply}
+                    disabled={saving || !replyText.trim()}
+                  >
+                    <Send className="h-4 w-4" /> Faqat javobni yuborish
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {complaint.replies.length > 0 && (
+              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border">
+                <p className="text-xs font-semibold text-text-muted uppercase">Yuborilgan javoblar</p>
+                {complaint.replies.map((r) => (
+                  <div key={r.id} className="rounded-inner bg-bg-subtle px-4 py-3">
+                    <p className="text-sm text-text-primary whitespace-pre-wrap">{r.text}</p>
+                    <p className="text-xs text-text-muted mt-1">{new Date(r.sent_at).toLocaleString("uz-UZ")}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
 
           {user?.role === "admin" && (
             <Card>
@@ -414,28 +503,6 @@ export default function AdminComplaintDetailPage() {
             </Card>
           )}
 
-          <Card>
-            <h2 className="text-base font-semibold text-text-primary mb-2">Rasmiy javob</h2>
-            <p className="text-xs text-text-muted mb-3">
-              {complaint.ai?.suggested_reply ? "AI taklif qilgan javob — tahrirlab yuborishingiz mumkin." : "Fuqaroga yuboriladigan rasmiy javob."}
-            </p>
-            <form onSubmit={handleReply} className="flex flex-col gap-3">
-              <Textarea rows={4} value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Hurmatli fuqaro, ..." />
-              <Button type="submit" disabled={saving || !replyText.trim()}>
-                <Send className="h-4 w-4" /> Yuborish
-              </Button>
-            </form>
-            {complaint.replies.length > 0 && (
-              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border">
-                {complaint.replies.map((r) => (
-                  <div key={r.id} className="rounded-inner bg-bg-subtle px-4 py-3">
-                    <p className="text-sm text-text-primary whitespace-pre-wrap">{r.text}</p>
-                    <p className="text-xs text-text-muted mt-1">{new Date(r.sent_at).toLocaleString("uz-UZ")}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
         </div>
       </div>
     </AppShell>

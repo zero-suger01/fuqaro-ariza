@@ -219,6 +219,15 @@ class UserPatch(BaseModel):
         return value
 
 
+class AiListBrief(BaseModel):
+    """R2: ro'yxat qatoridagi qisqa AI ma'lumoti — Navbatim sahifasidagi xulosa
+    qatori va Tasdiqlash navbatidagi taklif uchun (docs/03 §5 list izohi)."""
+
+    summary: str | None
+    suggested_category: CategoryBrief | None
+    confidence: float | None
+
+
 class ComplaintListItem(BaseModel):
     id: uuid.UUID
     ticket_number: str
@@ -231,6 +240,9 @@ class ComplaintListItem(BaseModel):
     created_at: datetime
     deadline_at: datetime | None
     needs_review: bool
+    ai: AiListBrief | None = None
+    # R2: navbat sahifalarida matnni ochmasdan ko'rish uchun (birinchi 160 belgi)
+    description_snippet: str = ""
 
     class Config:
         from_attributes = True
@@ -270,6 +282,17 @@ class ComplaintDetail(BaseModel):
 class StatusUpdateRequest(BaseModel):
     status: str
     note: str | None = None
+    # R0/Q2: faqat status=resolved bilan — server avval javob yaratadi, keyin
+    # statusni o'tkazadi (docs/03 §5). resolved uchun javob majburiy.
+    reply_text: str | None = Field(default=None, max_length=5000)
+
+
+class ReviewRequest(BaseModel):
+    """R0/Q3 — needs_review'ni bir bosishda yopish (docs/03 §5 review qatori).
+    Ikkalasi ham ixtiyoriy: default — AI taklifi va kategoriya bo'limi."""
+
+    category_code: str | None = None
+    department_id: uuid.UUID | None = None
 
 
 class AssignRequest(BaseModel):
@@ -296,6 +319,23 @@ class DashboardStats(BaseModel):
     by_neighborhood: list[NeighborhoodStat]
     ai_auto_routed_7d: int
     ai_routing_corrected_7d: int
+    # R0 avtomatlashtirish KPI (docs/03 §5, docs/00 §Muvaffaqiyat #5)
+    zero_touch_7d: float | None
+    draft_reply_share_7d: float | None
+    avg_first_action_hours_7d: float | None
+    resolved_with_reply_7d: float | None
+
+
+class AiHealthOut(BaseModel):
+    """R0/Q4 — GET /api/admin/stats/ai-health (docs/03 §5). LLM jim o'lishi
+    (premortem X5) endi dashboard'da ko'rinadigan hodisa."""
+
+    ollama_ok: bool
+    model: str
+    last_llm_success_at: datetime | None
+    llm_queue_depth: int
+    llm_errors_1h: int
+    stt_ok: bool
 
 
 class MonthlyPoint(BaseModel):

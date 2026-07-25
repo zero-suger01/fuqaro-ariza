@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.models.ai_analysis import AiAnalysis
 from app.models.complaint import Complaint
@@ -34,6 +34,20 @@ def mine_keyword_suggestions(db: Session, since: datetime | None = None) -> int:
 
     known_keywords = {row[0] for row in db.execute(select(CategoryKeyword.keyword_norm))}
 
+    # R0 (docs/07 §5.2): LLM-always rejimida engine=llm yozuvi HAR murojaatda
+    # bor — nomzodlar faqat keyword ojiz qolgan (confident=false) murojaatlardan
+    # olinadi, aks holda lug'at allaqachon biladigan so'zlar taklifga to'ladi.
+    # confident IS NULL (M7'dan oldingi eski yozuvlar) ham kirmaydi.
+    keyword_run = aliased(AiAnalysis)
+    keyword_not_confident = (
+        select(keyword_run.id)
+        .where(
+            keyword_run.complaint_id == Complaint.id,
+            keyword_run.engine == "keyword",
+            keyword_run.confident.is_(False),
+        )
+        .exists()
+    )
     rows = db.execute(
         select(AiAnalysis, Complaint)
         .join(Complaint, AiAnalysis.complaint_id == Complaint.id)
@@ -41,6 +55,7 @@ def mine_keyword_suggestions(db: Session, since: datetime | None = None) -> int:
             AiAnalysis.engine == "llm",
             AiAnalysis.created_at >= since,
             AiAnalysis.suggested_category_id.isnot(None),
+            keyword_not_confident,
         )
     ).all()
 

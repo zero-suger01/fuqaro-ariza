@@ -85,6 +85,13 @@ export interface ReplyItem {
   sent_at: string;
 }
 
+// R2: ro'yxat qatoridagi qisqa AI ma'lumoti (Navbatim / Tasdiqlash navbati)
+export interface AiListBrief {
+  summary: string | null;
+  suggested_category: CategoryBrief | null;
+  confidence: number | null;
+}
+
 export interface ComplaintListItem {
   id: string;
   ticket_number: string;
@@ -97,6 +104,8 @@ export interface ComplaintListItem {
   created_at: string;
   deadline_at: string | null;
   needs_review: boolean;
+  ai: AiListBrief | null;
+  description_snippet: string;
 }
 
 export interface ComplaintDetail {
@@ -153,6 +162,30 @@ export interface DashboardStats {
   by_neighborhood: NeighborhoodStat[];
   ai_auto_routed_7d: number;
   ai_routing_corrected_7d: number;
+  // R0 avtomatlashtirish KPI (docs/03 §5)
+  zero_touch_7d: number | null;
+  draft_reply_share_7d: number | null;
+  avg_first_action_hours_7d: number | null;
+  resolved_with_reply_7d: number | null;
+}
+
+// R0/Q4 — GET /api/admin/stats/ai-health
+export interface AiHealth {
+  ollama_ok: boolean;
+  model: string;
+  last_llm_success_at: string | null;
+  llm_queue_depth: number;
+  llm_errors_1h: number;
+  stt_ok: boolean;
+}
+
+// R0 — /api/notifications (docs/03 §5.1)
+export interface NotificationItem {
+  id: string;
+  message: string;
+  is_read: boolean;
+  complaint_id: string | null;
+  created_at: string;
 }
 
 export interface HeatmapPoint {
@@ -286,6 +319,7 @@ export interface TrackResponse {
   status_simple: "qabul_qilindi" | "korilmoqda" | "ijroda" | "yakunlandi" | "rad_etildi";
   need_info: boolean;
   category: { code: string; name: string };
+  department: { code: string; name: string } | null; // R0/Q5 — mas'ul bo'lim
   created_at: string;
   deadline_at: string | null;
   timeline: TimelineStep[];

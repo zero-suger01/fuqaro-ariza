@@ -10,6 +10,33 @@ const OZ_MONTHS = [
   "июл", "август", "сентябр", "октябр", "ноябр", "декабр",
 ];
 
+const UZ_WEEKDAYS: Record<string, string> = {
+  Sun: "yakshanba", Mon: "dushanba", Tue: "seshanba", Wed: "chorshanba",
+  Thu: "payshanba", Fri: "juma", Sat: "shanba",
+};
+
+/** Admin paneli uchun (uz-only, docs/10-ui-ux.md §1): "25-iyul, shanba".
+ * Intl'ning uz-UZ ma'lumoti to'liq emas — "M07 25, Sat" qaytaradi, shuning
+ * uchun oy va hafta kuni qo'lda o'giriladi. */
+export function formatUzDayLong(ms: number): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Tashkent",
+      day: "numeric",
+      month: "numeric",
+      weekday: "short",
+    })
+      .formatToParts(new Date(ms))
+      .map((p) => [p.type, p.value])
+  );
+  return `${parts.day}-${UZ_MONTHS[Number(parts.month) - 1]}, ${UZ_WEEKDAYS[parts.weekday] ?? ""}`;
+}
+
+/** "28-iyul, 01:57" — sana + vaqt, Asia/Tashkent (admin, uz). */
+export function formatUzDateTime(iso: string): string {
+  return formatDate(iso, "uz");
+}
+
 function tashkentParts(iso: string) {
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Tashkent",

@@ -36,7 +36,10 @@ STATUS_TRANSITIONS: dict[str, set[str]] = {
     STATUS_NEW: {STATUS_AI_PROCESSED, STATUS_REJECTED},
     STATUS_AI_PROCESSED: {STATUS_ASSIGNED, STATUS_REJECTED},
     STATUS_ASSIGNED: {STATUS_ACCEPTED, STATUS_IN_PROGRESS, STATUS_NEED_INFO, STATUS_REJECTED},
-    STATUS_ACCEPTED: {STATUS_IN_PROGRESS, STATUS_NEED_INFO},
+    # R2: accepted endi FE tomonidan avtomatik qo'yiladi (sahifa ochilishi) —
+    # rad etish imkoni yo'qolmasligi uchun accepted'dan ham rejected mumkin
+    # (docs/03 §2.1 v1.2.1).
+    STATUS_ACCEPTED: {STATUS_IN_PROGRESS, STATUS_NEED_INFO, STATUS_REJECTED},
     STATUS_IN_PROGRESS: {STATUS_NEED_INFO, STATUS_RESOLVED},
     STATUS_NEED_INFO: {STATUS_IN_PROGRESS},
     STATUS_RESOLVED: {STATUS_CLOSED},
@@ -96,5 +99,6 @@ FILE_LIMITS = {
 EVENT_TYPES = [
     "created", "ai_processed", "status_changed", "assigned", "comment_added",
     "reply_sent", "info_requested", "sms_sent", "telegram_sent", "escalated",
+    "sla_warning", "reviewed",
 ]
 ACTOR_TYPES = ["citizen", "staff", "system", "ai"]

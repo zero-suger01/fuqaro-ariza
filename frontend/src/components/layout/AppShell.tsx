@@ -12,13 +12,17 @@ import {
   QrCode,
   Map,
   BarChart3,
+  Inbox,
+  SquareCheckBig,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Sidebar, type NavItem } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 
 const ADMIN_NAV: (NavItem & { roles?: string[] })[] = [
+  { href: "/admin/navbatim", label: "Navbatim", icon: Inbox, roles: ["department_staff"] },
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: ["admin"] },
+  { href: "/admin/tasdiqlash", label: "Tasdiqlash navbati", icon: SquareCheckBig, roles: ["admin"] },
   { href: "/admin/murojaatlar", label: "Murojaatlar", icon: ClipboardList },
   { href: "/admin/xarita", label: "Xarita", icon: Map, roles: ["admin"] },
   { href: "/admin/kpi", label: "KPI", icon: BarChart3, roles: ["admin"] },

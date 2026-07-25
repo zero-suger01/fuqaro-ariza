@@ -28,7 +28,7 @@ To'liq qoidalar: [10-ui-ux.md](10-ui-ux.md).
 | # | Modul | Tavsif | Workstream |
 |---|---|---|---|
 | 1 | Citizen Portal | Ochiq veb: murojaat wizard'i, holat tekshirish, QR landing | Frontend |
-| 2 | AI Processing Engine | Gibrid klassifikator (keyword → lokal LLM fallback), ovoz→matn, summary, javob drafti | Backend/AI |
+| 2 | AI Processing Engine | Keyword routing (millisekund, avto-biriktirish) + lokal LLM generatsiya HAR murojaatda (summary, javob drafti, kayfiyat, teglar), ovoz→matn | Backend/AI |
 | 3 | Workflow Engine | Status lifecycle, SLA/deadline, eskalatsiya, bildirishnomalar | Backend |
 | 4 | Admin Panel | Dashboard, murojaatlar jadvali/tafsiloti, javob editori, bo'limlar, keyword tasdiqlash | Frontend |
 | 5 | Analytics | Mahalla/bo'lim/xodim KPI, heatmap, AI aniqlik metrikasi | Frontend+Backend |
@@ -54,6 +54,7 @@ To'liq qoidalar: [10-ui-ux.md](10-ui-ux.md).
 ## Muvaffaqiyat mezonlari
 
 1. Fuqaro murojaatni **≤3 daqiqada**, hech qanday ro'yxatdan o'tishsiz topshiradi (jonli testda 60+ yoshli odam bilan tekshiriladi).
-2. AI kategoriya aniqligi pilot oyida ≥85% (operator to'g'rilashlari bo'yicha o'lchanadi), LLM chaqiruvlari ulushi vaqt o'tishi bilan kamayadi (keyword bazasi o'sadi).
+2. AI kategoriya aniqligi pilot oyida ≥85% (admin to'g'rilashlari bo'yicha o'lchanadi); keyword hit-rate (routing'ni keyword hal qilgan ulush) o'sib boradi — routing tezlashadi. LLM generatsiya (xulosa + javob drafti) esa HAR murojaatda ishlaydi va hech qachon «tejash» uchun o'chirilmaydi (R0).
 3. Har murojaat deadline'ga ega; kechikkanlar dashboard'da qizil ko'rinadi.
 4. Hokim/rahbar 1 sahifada bugungi manzarani ko'radi.
+5. Avtomatlashtirish KPI (dashboard, [03](03-kontraktlar.md) §5, R0): zero-touch routing ≥70%, draft-qabul ≥60%, biriktirilishdan birinchi xodim harakatigacha ≤4 soat, «resolved javob bilan» = 100%. «AI-powered» — his emas, shu to'rt raqam.

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,6 +18,10 @@ class AiAnalysis(Base):
     engine: Mapped[str] = mapped_column(String(10))
     suggested_category_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # R0/M7 — faqat engine=keyword yozuvlarida: threshold+margin qarori.
+    # O'rganish sikli (learning.py) "keyword ojiz qolgan" murojaatlarni shu
+    # belgi orqali topadi; llm yozuvlarida va eski yozuvlarda NULL.
+    confident: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     priority: Mapped[str | None] = mapped_column(String(10), nullable=True)
     sentiment: Mapped[str | None] = mapped_column(String(10), nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
