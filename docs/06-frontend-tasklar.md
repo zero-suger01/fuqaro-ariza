@@ -17,7 +17,7 @@ Sahifa spetsifikatsiyalari va matnlari: [10-ui-ux.md](10-ui-ux.md) §3–5. Fuqa
 - [x] **F1.5 (M)** `components/wizard/VoiceRecorder.tsx`: MediaRecorder (webm/opus), 120s limit+sekundlar, `/api/public/stt` + poll, natija matnga qo'shiladi. `isRecordingSupported()` bilan qurilma qo'llamasa yashiriladi.
 - [x] **F1.6 (M)** `components/wizard/SuccessScreen.tsx`: ulkan ticket, nusxalash tugmasi, eslatmalar, "Holatini tekshirish"/"Bosh sahifa". Real submit bilan sinovdan o'tkazildi.
 - [x] **F1.7 (M)** `src/app/[locale]/holat/page.tsx` + `components/guest/GuestTimeline.tsx`: vertikal 4 qadam, javob/rad/need_info kartalar, `?ticket=` prefill. Real backend bilan sinovdan o'tkazildi (sana formati `24-iyul, 16:54` — Intl'ning uz-UZ oy nomlari to'liq qo'llamagani uchun qo'lda formatlandi).
-- [ ] **F1.8 (S)** Admin uchun mobil drawer menyu — F2 doirasida (bu sessiyada admin'ga tegilmadi).
+- [x] **F1.8 (S)** Admin uchun mobil drawer menyu — F2 doirasida (bu sessiyada admin'ga tegilmadi).
 
 **F1 Acceptance (C1):** ✅ 375px va desktop'da, uz/oz/ru/en tillarida, real backend bilan (Docker) ro'yxatdan o'tmasdan murojaat yuborildi, ticket qaytdi, `/holat` orqali holat tekshirildi. `npm run build` va `npm run lint` xatosiz. Faqat ochiq qism: F1.8 (admin mobil menyu, F2 bilan birga qilinadi) va jonli 60+ yoshli foydalanuvchi sinovi (checkpoint C1/C3 talabi, real odam bilan).
 
@@ -80,25 +80,25 @@ Sabab: interfeys "ma'lumot ko'rsatardi", "ish boshqarmasdi" — xodimning haqiqi
 ## F5 — Sayqal (P3)
 
 - [ ] **F5.1 (S)** Accessibility audit: [10](10-ui-ux.md) §8 checklist (kontrast, focus, aria, 200% zoom).
-- [ ] **F5.2 (S)** PWA-lite: manifest + ikonlar ("Bosh ekranga qo'shish" uchun), meta/OG teglar, favicon.
-- [ ] **F5.3 (S)** Bo'sh/xato holatlar: offline xabar, 404, server xato sahifalari — sodda tilda.
+- [x] **F5.2 (S)** PWA-lite: manifest + ikonlar ("Bosh ekranga qo'shish" uchun), meta/OG teglar, favicon.
+- [x] **F5.3 (S)** Bo'sh/xato holatlar: offline xabar, 404, server xato sahifalari — sodda tilda.
 - [ ] **F5.4 (S)** Lighthouse mobil ≥90 (performance/a11y) public sahifalarda.
 
 ## S1 — Navbat-markazli admin va ikki tomonlama fuqaro oqimi (kontrakt v1.4)
 
-- [ ] **S1.10 (M)** Menyu 5 guruhga ([10](10-ui-ux.md) §10.2): `AppShell.tsx` `ADMIN_NAV` guruhli tuzilmaga, `Sidebar.tsx` guruh sarlavhalari + navbat hisoblagichlari; rol filtri guruh darajasida (bo'sh guruh render qilinmaydi). Shu bilan **F1.8** (mobil drawer) ham yopiladi.
-- [ ] **S1.11 (L)** Operatsion bosh ekran ([10](10-ui-ux.md) §10.1): 5 ta action-card + bo'lim jadvali (`stats/queues`); nol karta muted; hozirgi `StatCard`lar, KPI kartalari, priority taqsimoti va mahalla kesimi `/admin/kpi` ga ko'chadi; `AiHealthStrip` qoladi. Yangi `components/ui/Table.tsx` (KPI sahifasidagi xom `<table>` ham shunga o'tadi).
-- [ ] **S1.12 (M)** Tafsilot sahifasi ([10](10-ui-ux.md) §10.3): avto-accept `useEffect` **olib tashlanadi**, «Qabul qilaman» tugmasi; mas'ul xodim ko'rsatiladi; «Ma'lumot kutilmoqda» sabab textarea'sini ochadi (bo'sh yuborilmaydi); «Fuqaro javoblari» kartasi + manual kiritish formasi.
-- [ ] **S1.13 (M)** `/admin/navbatim`: «Mening ishlarim» (`mine=true`) va «Bo'lim navbati» (egasiz) ajratildi; `requireRoles` qo'yildi (hozir admin ham kira oladi).
-- [ ] **S1.14 (M)** `/holat` ([10](10-ui-ux.md) §10.4): `need_info` da statik banner o'rniga savol matni + javob formasi + rasm biriktirish, 4 tilda; yuborilgandan keyin tasdiq ekrani.
+- [x] **S1.10 (M)** Menyu 5 guruhga ([10](10-ui-ux.md) §10.2): `AppShell.tsx` `ADMIN_NAV` guruhli tuzilmaga, `Sidebar.tsx` guruh sarlavhalari + navbat hisoblagichlari; rol filtri guruh darajasida (bo'sh guruh render qilinmaydi). Shu bilan **F1.8** (mobil drawer) ham yopiladi.
+- [x] **S1.11 (L)** Operatsion bosh ekran ([10](10-ui-ux.md) §10.1): 5 ta action-card + bo'lim jadvali (`stats/queues`); nol karta muted; hozirgi `StatCard`lar, KPI kartalari, priority taqsimoti va mahalla kesimi `/admin/kpi` ga ko'chadi; `AiHealthStrip` qoladi. Yangi `components/ui/Table.tsx` (KPI sahifasidagi xom `<table>` ham shunga o'tadi).
+- [x] **S1.12 (M)** Tafsilot sahifasi ([10](10-ui-ux.md) §10.3): avto-accept `useEffect` **olib tashlanadi**, «Qabul qilaman» tugmasi; mas'ul xodim ko'rsatiladi; «Ma'lumot kutilmoqda» sabab textarea'sini ochadi (bo'sh yuborilmaydi); «Fuqaro javoblari» kartasi + manual kiritish formasi.
+- [x] **S1.13 (M)** `/admin/navbatim`: «Mening ishlarim» (`mine=true`) va «Bo'lim navbati» (egasiz) ajratildi; `requireRoles` qo'yildi (hozir admin ham kira oladi).
+- [x] **S1.14 (M)** `/holat` ([10](10-ui-ux.md) §10.4): `need_info` da statik banner o'rniga savol matni + javob formasi + rasm biriktirish, 4 tilda; yuborilgandan keyin tasdiq ekrani.
 
 ## S2 — Sayqal va operatsion yetuklik
 
-- [ ] **S2.6 (M)** `/holat` da «Muammo hal bo'ldimi? Ha/Yo'q» va qayta ochish izohi ([03](03-kontraktlar.md) §3.6).
-- [ ] **S2.7 (M)** Sub-tasklar UI: tafsilot sahifasida ro'yxat + admin uchun yaratish formasi; bo'lim navbatida o'z sub-taski.
-- [ ] **S2.8 (S)** AI nazoratida tuzatish sababi majburiy (radio + `other` uchun matn); `/admin/kpi` da sabablar taqsimoti.
-- [ ] **S2.9 (S)** `/admin/audit` sahifasi (filtr: xodim, amal, sana) + «Murojaatlar» bo'limida ko'rinadigan Excel eksport tugmasi.
-- [ ] **S2.10 (S)** Birinchi kirishda parol almashtirish sahifasi (`must_change_password`).
+- [x] **S2.6 (M)** `/holat` da «Muammo hal bo'ldimi? Ha/Yo'q» va qayta ochish izohi ([03](03-kontraktlar.md) §3.6).
+- [x] **S2.7 (M)** Sub-tasklar UI: tafsilot sahifasida ro'yxat + admin uchun yaratish formasi; bo'lim navbatida o'z sub-taski.
+- [x] **S2.8 (S)** AI nazoratida tuzatish sababi majburiy (radio + `other` uchun matn); `/admin/kpi` da sabablar taqsimoti.
+- [x] **S2.9 (S)** `/admin/audit` sahifasi (filtr: xodim, amal, sana) + «Murojaatlar» bo'limida ko'rinadigan Excel eksport tugmasi.
+- [x] **S2.10 (S)** Birinchi kirishda parol almashtirish sahifasi (`must_change_password`).
 - [ ] **F5.1–F5.4** (yuqorida) shu sprintda yopiladi.
 
 ## Doimiy qoidalar

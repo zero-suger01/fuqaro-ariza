@@ -93,6 +93,41 @@ async def list_complaints(telegram_chat_id: int) -> list[dict]:
         return resp.json()
 
 
+async def submit_info(*, telegram_chat_id: int, ticket: str, text: str) -> dict:
+    """`need_info` javobi ([03] §6, docs/08 T2.2).
+
+    Web varianti (§3.5) bilan bir xil backend yadrosiga tushadi — murojaat
+    `need_info` da bo'lsa avtomatik `in_progress` ga qaytadi.
+    """
+    async with _client() as client:
+        resp = await client.post(
+            "/api/bot/complaints/info",
+            headers=_BOT_HEADERS,
+            json={"telegram_chat_id": telegram_chat_id, "ticket": ticket, "text": text},
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
+
+async def submit_feedback(
+    *, telegram_chat_id: int, ticket: str, satisfied: bool, comment: str | None = None
+) -> dict:
+    """«Hal bo'ldimi? Ha/Yo'q» ([03] §3.6/§6, docs/08 T2.3)."""
+    async with _client() as client:
+        resp = await client.post(
+            "/api/bot/complaints/feedback",
+            headers=_BOT_HEADERS,
+            json={
+                "telegram_chat_id": telegram_chat_id,
+                "ticket": ticket,
+                "satisfied": satisfied,
+                "comment": comment,
+            },
+        )
+        _raise_for_status(resp)
+        return resp.json()
+
+
 async def get_neighborhoods() -> list[dict]:
     async with _client() as client:
         resp = await client.get("/api/public/neighborhoods")

@@ -20,6 +20,7 @@ def notify_citizen(
     complaint_id: uuid.UUID | None = None,
     *,
     sms_text: str | None = None,
+    telegram_markup: dict | None = None,
 ) -> Notification:
     notification = Notification(citizen_id=citizen.id, complaint_id=complaint_id, channel="in_app", message=message)
     db.add(notification)
@@ -50,7 +51,9 @@ def notify_citizen(
     # SMS matni Telegram uchun ham yetarli — ikkala kanal uchun alohida
     # shablon kerak emas, ikkalasi ham "qisqa status xabari" darajasida.
     if sms_text and citizen.telegram_chat_id:
-        sent = send_telegram_message(citizen.telegram_chat_id, sms_text)
+        # v1.4: `telegram_markup` bo'lsa inline tugmalar ham ketadi —
+        # fuqaro botdan chiqmasdan javob bera oladi (docs/08 T2.2–T2.3).
+        sent = send_telegram_message(citizen.telegram_chat_id, sms_text, reply_markup=telegram_markup)
         db.add(
             Notification(
                 citizen_id=citizen.id,

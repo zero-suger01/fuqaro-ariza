@@ -307,6 +307,8 @@ export interface DepartmentAdmin {
   email: string | null;
   is_external: boolean;
   is_active: boolean;
+  /** v1.4 — bir vaqtda ola oladigan aktiv ish soni. Bloklamaydi, faqat belgi. */
+  wip_limit: number | null;
 }
 
 export interface CategoryAdmin {

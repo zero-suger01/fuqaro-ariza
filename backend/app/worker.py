@@ -8,7 +8,12 @@ inson aralashuvi kutilmaydi.
 LLM javob bermasa admin navbati YO'Q: ish `AI_RETRY_DELAYS` bo'yicha qayta
 navbatga qo'yiladi va har 15 daqiqada sweeper cron tahlilsiz qolgan
 murojaatlarni qaytadan uradi (§2). Ollama tiklanganda navbat o'zi ketadi.
+
+v1.4 (§2.3): qayta urinishlar tugagach murojaat `needs_review` belgisi
+bilan `stuck_ai` navbatiga tushadi — bu tasdiqlash navbati emas, uzilish
+signali. Sukut bo'yicha bo'sh bo'lishi kerak.
 """
+import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -33,6 +38,7 @@ from app.services.escalation import escalate_overdue
 from app.services.lifecycle import auto_archive_closed, auto_close_resolved
 from app.services.storage import download_to_temp
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Ollama uzoq muddat o'chiq bo'lsa ham murojaat yo'qolmasin: 2 daq → 10 daq
@@ -102,6 +108,27 @@ async def analyze_complaint(ctx, complaint_id: str, attempt: int = 0) -> None:
                     complaint_id,
                     attempt + 1,
                     _defer_by=timedelta(seconds=AI_RETRY_DELAYS[attempt]),
+                )
+            else:
+                # v1.4 (docs/07 §2.3): qayta urinishlar tugadi — bu endi
+                # «AI ikkilanmoqda» emas, «AI umuman javob bermadi».
+                # `needs_review` belgisi qo'yiladi, murojaat `new` da
+                # qoladi va `stuck_ai` navbatida ko'rinadi. Aks holda u
+                # soatlab jim yotardi va buni hech kim bilmasdi.
+                complaint.needs_review = True
+                db.add(
+                    ComplaintEvent(
+                        complaint_id=complaint.id,
+                        event_type="ai_processed",
+                        actor_type="system",
+                        payload={"engine": "llm", "failed": True, "attempts": attempt + 1},
+                    )
+                )
+                db.commit()
+                logger.warning(
+                    "LLM %s murojaatni tahlil qila olmadi (%s urinish) — qo'lda yo'naltirish kerak",
+                    complaint.ticket_number,
+                    attempt + 1,
                 )
             return
 

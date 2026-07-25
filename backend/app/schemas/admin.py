@@ -33,6 +33,9 @@ class DepartmentOut(BaseModel):
     email: str | None
     is_external: bool
     is_active: bool
+    # v1.4: bir vaqtda ola oladigan aktiv ish soni. Bloklamaydi —
+    # oshgani dashboard jadvalida belgilanadi ([04] departments).
+    wip_limit: int | None = None
 
     class Config:
         from_attributes = True
@@ -45,6 +48,7 @@ class DepartmentIn(BaseModel):
     email: str | None = None
     is_external: bool = False
     is_active: bool = True
+    wip_limit: int | None = Field(default=None, ge=0)
 
 
 class DepartmentPatch(BaseModel):
@@ -53,6 +57,7 @@ class DepartmentPatch(BaseModel):
     email: str | None = None
     is_external: bool | None = None
     is_active: bool | None = None
+    wip_limit: int | None = Field(default=None, ge=0)
 
 
 class CategoryAdminOut(BaseModel):

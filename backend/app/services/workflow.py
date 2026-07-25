@@ -27,6 +27,7 @@ from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
 from app.models.user import User
 from app.services.notifications import notify_citizen
+from app.services.telegram import status_keyboard
 
 _STATUS_MESSAGE = {
     "ai_processed": "Murojaatingiz ko'rib chiqilmoqda",
@@ -114,7 +115,14 @@ def change_status(
             message = f"{message}: {note}"
         else:
             sms = sms_status_text(new_status, language, complaint.ticket_number)
-        notify_citizen(db, complaint.citizen, message, complaint_id=complaint.id, sms_text=sms)
+        notify_citizen(
+            db,
+            complaint.citizen,
+            message,
+            complaint_id=complaint.id,
+            sms_text=sms,
+            telegram_markup=status_keyboard(new_status, complaint.ticket_number),
+        )
 
     return complaint
 

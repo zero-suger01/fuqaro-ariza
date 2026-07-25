@@ -52,6 +52,17 @@ export default function DepartmentsPage() {
     load();
   }
 
+  /** v1.4 — yuklama limiti. Bloklamaydi: bosh ekrandagi bo'limlar
+   *  jadvalida «limit oshgan» deb belgilanadi (docs/10 §10.1). */
+  async function saveWipLimit(dept: DepartmentAdmin, raw: string) {
+    const trimmed = raw.trim();
+    const next = trimmed === "" ? null : Number(trimmed);
+    if (next !== null && (!Number.isInteger(next) || next < 0)) return;
+    if (next === dept.wip_limit) return;
+    await apiPatch(`/api/admin/departments/${dept.id}`, { wip_limit: next });
+    load();
+  }
+
   return (
     <AppShell title="Bo'limlar" requireRoles={["admin"]}>
       <Card>
@@ -100,6 +111,7 @@ export default function DepartmentsPage() {
         {departments.length === 0 ? (
           <div className="py-14 text-center text-text-muted text-sm">Bo&apos;limlar topilmadi</div>
         ) : (
+          <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {departments.map((dept) => (
               <div key={dept.id} className="flex items-center gap-3 rounded-inner border border-border px-4 py-3">
@@ -113,6 +125,18 @@ export default function DepartmentsPage() {
                     {!dept.is_active && " · nofaol"}
                   </p>
                 </div>
+                <label className="shrink-0 text-xs text-text-muted flex items-center gap-1.5">
+                  Yuklama limiti
+                  <input
+                    type="number"
+                    min={0}
+                    defaultValue={dept.wip_limit ?? ""}
+                    onBlur={(e) => saveWipLimit(dept, e.target.value)}
+                    placeholder="—"
+                    aria-label={`${dept.names.uz ?? dept.code} yuklama limiti`}
+                    className="w-16 rounded-control border border-border bg-bg-surface px-2 py-1 text-sm text-text-primary outline-none focus:border-accent"
+                  />
+                </label>
                 <button
                   type="button"
                   onClick={() => toggleActive(dept)}
@@ -123,6 +147,12 @@ export default function DepartmentsPage() {
               </div>
             ))}
           </div>
+          <p className="text-xs text-text-muted mt-4">
+            Yuklama limiti — bo&apos;lim bir vaqtda qulay olib bora oladigan aktiv ish soni. U hech narsani{" "}
+            <strong>bloklamaydi</strong>: oshib ketgani faqat bosh ekrandagi bo&apos;limlar jadvalida belgilanadi.
+            Bo&apos;sh qoldirilsa limit hisobga olinmaydi.
+          </p>
+          </>
         )}
       </Card>
     </AppShell>

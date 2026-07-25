@@ -13,9 +13,35 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
+// F5.2 — PWA-lite + ijtimoiy ulashish. `manifest` va `appleWebApp`
+// «Bosh ekranga qo'shish» uchun: qishloq foydalanuvchisi saytni ikon
+// sifatida saqlab qo'ysa, keyingi murojaatda URL yozib o'tirmaydi.
 export const metadata: Metadata = {
-  title: "Ariza — Fuqarolar murojaatlari platformasi",
-  description: "AI yordamida fuqarolar murojaatlarini qabul qilish va boshqarish platformasi",
+  title: {
+    default: "Ariza — Fuqarolar murojaatlari platformasi",
+    template: "%s · Ariza",
+  },
+  description: "Uychi tumani hokimligiga murojaat yuborish va holatini kuzatish. Ro'yxatdan o'tish shart emas.",
+  applicationName: "Ariza",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "Ariza", statusBarStyle: "default" },
+  formatDetection: { telephone: true },
+  openGraph: {
+    type: "website",
+    siteName: "Ariza",
+    title: "Ariza — murojaatingizni 3 daqiqada yuboring",
+    description: "Muammoni yozing yoki ovoz bilan aytib qoldiring. Ro'yxatdan o'tish shart emas.",
+    locale: "uz_UZ",
+  },
+  twitter: { card: "summary" },
+};
+
+export const viewport = {
+  themeColor: "#0f2744",
+  width: "device-width",
+  initialScale: 1,
+  // Keksa foydalanuvchi matnni kattalashtira olishi kerak (docs/10 §8).
+  maximumScale: 5,
 };
 
 export default function RootLayout({
