@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.core.constants import STAFF_ROLES
+from app.core.constants import REVIEW_REASONS, STAFF_ROLES, SUBTASK_STATUSES
 from app.schemas.public import CategoryBrief
 
 
@@ -218,9 +218,37 @@ class ComplaintListItem(BaseModel):
     ai: AiListBrief | None = None
     # R2: navbat sahifalarida matnni ochmasdan ko'rish uchun (birinchi 160 belgi)
     description_snippet: str = ""
+    # v1.4: navbat «Mening ishlarim» / «Bo'lim navbati» ga bo'linishi uchun
+    # egalik ro'yxat qatorida ham ko'rinishi kerak.
+    assigned_user_id: uuid.UUID | None = None
+    assigned_user_name: str | None = None
+    info_requested_at: datetime | None = None
 
     class Config:
         from_attributes = True
+
+
+class CitizenMessageOut(BaseModel):
+    """Fuqarodan kelgan qo'shimcha ma'lumot ([04] citizen_messages)."""
+
+    id: uuid.UUID
+    text: str
+    source: str
+    recorded_by: uuid.UUID | None
+    recorded_by_name: str | None
+    created_at: datetime
+
+
+class SubtaskOut(BaseModel):
+    id: uuid.UUID
+    department_id: uuid.UUID
+    department_name: str
+    assigned_user_id: uuid.UUID | None
+    status: str
+    note: str
+    deadline_at: datetime | None
+    created_at: datetime
+    closed_at: datetime | None
 
 
 class ComplaintDetail(BaseModel):
@@ -239,6 +267,7 @@ class ComplaintDetail(BaseModel):
     neighborhood_name: str | None
     department: DepartmentBrief | None
     assigned_user_id: uuid.UUID | None
+    assigned_user_name: str | None = None
     deadline_at: datetime | None
     needs_review: bool
     rejected_reason: str | None
@@ -249,6 +278,15 @@ class ComplaintDetail(BaseModel):
     created_at: datetime
     updated_at: datetime
     resolved_at: datetime | None
+    # v1.4 ([03] §5 detail qatori)
+    accepted_at: datetime | None = None
+    info_requested_at: datetime | None = None
+    info_provided_at: datetime | None = None
+    info_request_text: str | None = None
+    citizen_messages: list[CitizenMessageOut] = []
+    subtasks: list[SubtaskOut] = []
+    satisfaction: bool | None = None
+    reopened_count: int = 0
 
     class Config:
         from_attributes = True
@@ -264,15 +302,95 @@ class StatusUpdateRequest(BaseModel):
 
 class ReviewRequest(BaseModel):
     """R0/Q3 — needs_review'ni bir bosishda yopish (docs/03 §5 review qatori).
-    Ikkalasi ham ixtiyoriy: default — AI taklifi va kategoriya bo'limi."""
+    Kategoriya/bo'lim ixtiyoriy: default — AI taklifi va kategoriya bo'limi.
+
+    v1.4: `reason` MAJBURIY. Sababsiz tuzatish AI sifatini o'lchashni
+    imkonsiz qilardi — «admin nimanidir o'zgartirdi» dan boshqa hech
+    narsa bilinmasdi."""
 
     category_code: str | None = None
     department_id: uuid.UUID | None = None
+    reason: str
+    reason_text: str | None = Field(default=None, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _known_reason(cls, value: str) -> str:
+        if value not in REVIEW_REASONS:
+            raise ValueError(f"reason {REVIEW_REASONS} dan biri bo'lishi kerak")
+        return value
+
+    @model_validator(mode="after")
+    def _other_needs_text(self) -> "ReviewRequest":
+        if self.reason == "other" and not (self.reason_text or "").strip():
+            raise ValueError("reason='other' uchun reason_text majburiy")
+        return self
 
 
 class AssignRequest(BaseModel):
     department_id: uuid.UUID
+    # Berilmasa egalik o'zgarmaydi (bo'lim ham o'zgarmagan bo'lsa) —
+    # [03] §5 «Egalik qoidasi».
     assigned_user_id: uuid.UUID | None = None
+
+
+class ClaimResponse(BaseModel):
+    """`POST /complaints/{id}/claim` — «Qabul qilaman» (v1.4)."""
+
+    ok: bool = True
+
+
+class CitizenInfoIn(BaseModel):
+    """Manual kanal: xodim fuqarodan telefonda olgan ma'lumotni yozadi."""
+
+    text: str = Field(min_length=1, max_length=2000)
+
+
+class SubtaskIn(BaseModel):
+    department_id: uuid.UUID
+    note: str = Field(min_length=1, max_length=2000)
+    deadline_at: datetime | None = None
+    assigned_user_id: uuid.UUID | None = None
+
+
+class SubtaskUpdate(BaseModel):
+    status: str
+    note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("status")
+    @classmethod
+    def _known_status(cls, value: str) -> str:
+        if value not in SUBTASK_STATUSES:
+            raise ValueError(f"status {SUBTASK_STATUSES} dan biri bo'lishi kerak")
+        return value
+
+
+class DepartmentQueueRow(BaseModel):
+    department_id: uuid.UUID
+    department_name: str
+    new: int
+    in_progress: int
+    sla_risk: int
+    overdue: int
+    unowned: int
+    wip_limit: int | None
+    over_limit: bool
+
+
+class QueueStats(BaseModel):
+    """Operatsion bosh ekran ([03] §5 `stats/queues`, [10] §10.1).
+
+    Har son `GET /complaints` ning mos filtri bilan AYNAN bir xil
+    shartdan chiqadi — karta bosilganda ochiladigan ro'yxat soni bilan
+    mos kelmasligi ishonchni yo'qotadi."""
+
+    unassigned: int
+    ai_exceptions: int
+    sla_risk: int
+    overdue: int
+    awaiting_info: int
+    stuck_ai: int
+    by_department: list[DepartmentQueueRow]
 
 
 class NeighborhoodStat(BaseModel):

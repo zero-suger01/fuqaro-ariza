@@ -49,3 +49,12 @@ def enforce_stt_limit(request: Request) -> None:
 
 def enforce_track_limit(request: Request) -> None:
     _hit(f"rl:track:ip:{_client_ip(request)}", 30, 3600)
+
+
+def enforce_info_limit(request: Request) -> None:
+    """v1.4 — fuqaro qo'shimcha ma'lumot yuborishi ([03] §3.5).
+
+    `track` bilan bir xil identifikatsiya sirtiga (ticket+telefon) ega,
+    lekin YOZUV amali va fayl yuklaydi — shuning uchun limit qattiqroq.
+    """
+    _hit(f"rl:info:ip:{_client_ip(request)}", 10, 3600)

@@ -9,14 +9,29 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.core.constants import LANGUAGES, STATUS_SIMPLE_MAP
+from app.core.constants import (
+    LANGUAGES,
+    STATUS_CLOSED,
+    STATUS_NEED_INFO,
+    STATUS_RESOLVED,
+    STATUS_SIMPLE_MAP,
+)
 from app.core.errors import AppError
 from app.core.ratelimit import enforce_bot_submit_limit
 from app.database import get_db
 from app.models.citizen import Citizen
 from app.models.complaint import Complaint
-from app.schemas.bot import BotComplaintListItem, CitizenLinkIn, CitizenLinkOut
+from app.schemas.bot import (
+    BotCitizenInfoIn,
+    BotCitizenInfoOut,
+    BotComplaintListItem,
+    BotFeedbackIn,
+    BotFeedbackOut,
+    CitizenLinkIn,
+    CitizenLinkOut,
+)
 from app.schemas.public import PHONE_PATTERN, ComplaintSubmitOut
+from app.services.citizen_info import record_citizen_info, record_feedback
 from app.services.complaint_intake import create_complaint
 
 settings = get_settings()
@@ -121,4 +136,58 @@ def bot_list_complaints(telegram_chat_id: int, db: Session = Depends(get_db)):
         .scalars()
         .all()
     )
-    return [BotComplaintListItem(ticket_number=c.ticket_number, status_simple=STATUS_SIMPLE_MAP[c.status]) for c in rows]
+    return [
+        BotComplaintListItem(
+            ticket_number=c.ticket_number,
+            status_simple=STATUS_SIMPLE_MAP[c.status],
+            need_info=c.status == STATUS_NEED_INFO,
+            info_request_text=_info_request_text(c) if c.status == STATUS_NEED_INFO else None,
+            can_give_feedback=c.status in (STATUS_RESOLVED, STATUS_CLOSED) and c.satisfaction is None,
+        )
+        for c in rows
+    ]
+
+
+def _info_request_text(complaint: Complaint) -> str | None:
+    for event in reversed(complaint.events):
+        if event.event_type == "info_requested" and event.payload:
+            return event.payload.get("text")
+    return None
+
+
+def _owned_complaint(db: Session, telegram_chat_id: int, ticket: str) -> Complaint:
+    """Telegram tomonidagi identifikatsiya: ticket murojaatining fuqarosi
+    AYNAN shu chat'ga bog'langan bo'lishi shart. Bo'lmasa 404 — web
+    kanalidagi kabi, murojaat mavjudligi oshkor qilinmaydi ([03] §6)."""
+    citizen = db.execute(select(Citizen).where(Citizen.telegram_chat_id == telegram_chat_id)).scalar_one_or_none()
+    if citizen is None:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+    complaint = db.execute(
+        select(Complaint).where(Complaint.ticket_number == ticket, Complaint.citizen_id == citizen.id)
+    ).scalar_one_or_none()
+    if complaint is None:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+    return complaint
+
+
+@router.post("/complaints/info", response_model=BotCitizenInfoOut, dependencies=[Depends(verify_bot_token)])
+def bot_submit_info(payload: BotCitizenInfoIn, db: Session = Depends(get_db)):
+    """`need_info` javobining Telegram kanali ([03] §6, docs/08 T2.2).
+
+    Web varianti (§3.5) bilan bir xil yadroni chaqiradi — yon effektlar
+    ikki kanalda drift qilmasin."""
+    complaint = _owned_complaint(db, payload.telegram_chat_id, payload.ticket)
+    resumed = record_citizen_info(db, complaint, payload.text, source="telegram")
+    db.commit()
+    db.refresh(complaint)
+    return BotCitizenInfoOut(status_simple=STATUS_SIMPLE_MAP[complaint.status], accepted=resumed)
+
+
+@router.post("/complaints/feedback", response_model=BotFeedbackOut, dependencies=[Depends(verify_bot_token)])
+def bot_submit_feedback(payload: BotFeedbackIn, db: Session = Depends(get_db)):
+    """«Hal bo'ldimi? Ha/Yo'q» inline tugmalari ([03] §3.6/§6, docs/08 T2.3)."""
+    complaint = _owned_complaint(db, payload.telegram_chat_id, payload.ticket)
+    reopened = record_feedback(db, complaint, satisfied=payload.satisfied, comment=payload.comment)
+    db.commit()
+    db.refresh(complaint)
+    return BotFeedbackOut(status_simple=STATUS_SIMPLE_MAP[complaint.status], reopened=reopened)

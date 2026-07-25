@@ -32,6 +32,10 @@ class MeOut(BaseModel):
     role: str | None = None
     department_id: uuid.UUID | None = None
     department_name: str | None = None
+    # v1.4: seed'dan yaratilgan xodim standart parol bilan ishlab
+    # ketmasligi uchun — `true` bo'lsa FE parol almashtirish sahifasiga
+    # majburan yo'naltiradi ([04] §2 users).
+    must_change_password: bool = False
 
     class Config:
         from_attributes = True
@@ -41,3 +45,8 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: MeOut
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)

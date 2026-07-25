@@ -129,3 +129,54 @@ Plakat (admin generatsiya qiladi, A4 PDF): tepada gerb + "Muammoingiz bormi? Tel
 - Sana/vaqt: `24-iyul, 09:30` formati (Asia/Tashkent), ruscha locale'da `24 июля`.
 - SMS shablonlari fuqaro tilida ketadi (backend `citizens.language`).
 - Matn uzunligi: kirill/rus tarjimalar lotindan ~15% uzun — tugma matnlari sig'ishi tekshiriladi.
+
+## 10. Admin menyu va operatsion bosh ekran (v1.4)
+
+> Bu bo'lim S1 da qo'shildi. Avval admin menyu tuzilmasi hech qayerda ta'riflanmagan edi — faqat §1 dagi «navy sidebar qoladi» jumlasi bor edi, real tarkib esa task izohlarida tarqoq yotardi.
+
+### 10.1 Bosh ekran = navbat, statistika emas
+
+Admin bosh ekranining yagona savoli: **«hozir qaysi ishni olish kerak?»**. Grafiklar va o'sish ko'rsatkichlari — haftalik tahlil vositasi, ular `/admin/kpi` da yashaydi.
+
+Yuqorida **5 ta action-card**, har biri bosilganda aynan o'sha ro'yxatni ochadi (raqam va ro'yxat bir xil shartda hisoblanadi — [03](03-kontraktlar.md) §5 `stats/queues`):
+
+| Card | Nimani ko'rsatadi | Bosilganda |
+|---|---|---|
+| Biriktirilmagan | bo'limi yoki egasi yo'q, terminal emas | `?queue=unassigned` |
+| AI istisnolari | `needs_review=true` + `stuck_ai` | `/admin/tasdiqlash` |
+| SLA xavfi | muddatning ≥75% o'tgan, hali overdue emas | `?queue=sla_risk` |
+| Muddati o'tgan | `deadline_at < now`, terminal emas | `?queue=overdue` |
+| Ma'lumot kutilmoqda | `need_info` da 24 soatdan ko'p | `?queue=need_info` |
+
+Qoidalar: nol bo'lgan karta **muted** (bosiq) holatda — bo'sh navbat diqqatni tortmasin; noldan katta `overdue` va `stuck_ai` doim `danger` rangida; rang bilan birga ikon/yozuv ham bo'ladi (§8 — faqat rangga tayanilmaydi).
+
+Ostida **bo'lim jadvali**: `Bo'lim | Yangi | Ijroda | SLA xavfi | Overdue | Egasiz | Yuklama`. «Yuklama» — aktiv ish soni va `wip_limit` (oshgani belgilanadi, bloklanmaydi). Bu — rahbarning «qaysi bo'lim qoqilib qoldi» ekrani.
+
+`AiHealthStrip` tepada qoladi — `pending_analysis` va `llm_errors_1h` operatsion uzilish signali, statistika emas.
+
+### 10.2 Menyu — 5 guruh
+
+Tekis 9 elementli ro'yxat kunlik ish uchun shovqin edi: `QR kodlar` va `Kategoriyalar` `Murojaatlar` bilan bir qatorda turardi. Guruhlar:
+
+```
+Operatsion navbat  Bosh ekran · Navbatim · AI nazorati · SLA xavfi · Muddati o'tgan · Ma'lumot kutilmoqda
+Murojaatlar        Barcha murojaatlar · Eksport
+Monitoring         KPI · Xarita
+Sozlamalar         Bo'limlar · Xodimlar · Kategoriyalar
+Vositalar          QR kodlar · Audit log
+```
+
+Qoidalar: guruh sarlavhasi bosilmaydi (faqat yorliq); rol filtri **element va guruh** darajasida — barcha elementi yashiringan guruh umuman render qilinmaydi (`department_staff` faqat `Navbatim` + `Murojaatlar` ni ko'radi); navbat elementlari yonida jonli hisoblagich (0 bo'lsa hisoblagich ko'rsatilmaydi); mobil (<1024px) — hamburger + drawer (`F1.8`).
+
+### 10.3 Tafsilot sahifasidagi o'zgarishlar
+
+- **«Qabul qilaman»** — Holat kartasidagi asosiy tugma, faqat `assigned` va o'z bo'limi bo'lganda. Sahifani ochishning o'zi endi hech narsani o'zgartirmaydi ([03](03-kontraktlar.md) §2.1).
+- **Mas'ul xodim** Holat kartasida doim ko'rinadi: ism yoki «Egasi yo'q».
+- **«Ma'lumot kutilmoqda»** tugmasi sabab textarea'sini ochadi (rad etish naqshida) — bo'sh matn bilan yuborilmaydi. Bu matn fuqaroga SMS'da va `/holat` sahifasida ko'rinadi.
+- **«Fuqaro javoblari»** kartasi: `citizen_messages` ro'yxati (kanal belgisi bilan — web/Telegram/manual) va manual kiritish formasi «Fuqaro telefonda aytdi...».
+
+### 10.4 `/holat` — fuqaro javob qaytaradi
+
+`need_info` holatida statik banner o'rniga **haqiqiy forma**: xodimning savoli katta matn bilan, ostida `Textarea` + rasm biriktirish + bitta katta tugma. §2 qoidalari to'liq amal qiladi (matn ≥18px, tugma ≥56px, bitta ekran — bitta savol, xatolar maydon yonida). Yuborilgandan keyin — tasdiq ekrani va murojaat avtomatik «Ijroda» ga qaytgani haqida sodda jumla.
+
+`yakunlandi` bosqichida: **«Muammo hal bo'ldimi?» [Ha] [Yo'q]** ([03](03-kontraktlar.md) §3.6). «Yo'q» → qisqa izoh maydoni, murojaat qayta ochiladi. Bu — fuqaro uchun yagona e'tiroz kanali, shuning uchun u ko'rinmas joyda turmasin.

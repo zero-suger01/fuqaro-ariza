@@ -46,6 +46,37 @@ class TrackOut(BaseModel):
     timeline: list[TimelineStep]
     reply_text: str | None
     rejected_reason: str | None
+    # v1.4: xodim so'ragan savolning O'ZI — usiz fuqaro nima
+    # yuborishi kerakligini bilmasdi va sikl shu yerda uzilardi.
+    info_request_text: str | None = None
+    # Fuqaro allaqachon nima yuborganini ko'rsin (takror yubormasin).
+    info_provided: bool = False
+    # Baho berish/qayta ochish tugmalarini ko'rsatish uchun ([03] §3.6).
+    can_give_feedback: bool = False
+    satisfaction: bool | None = None
+
+
+class CitizenInfoOut(BaseModel):
+    """`POST /api/public/complaints/info` javobi ([03] §3.5)."""
+
+    status_simple: str
+    need_info: bool
+    # `true` — murojaat avtomatik «Ijroda» ga qaytdi.
+    accepted: bool
+
+
+class FeedbackIn(BaseModel):
+    """`POST /api/public/complaints/feedback` ([03] §3.6)."""
+
+    ticket: str
+    phone: str = Field(pattern=PHONE_PATTERN)
+    satisfied: bool
+    comment: str | None = Field(default=None, max_length=2000)
+
+
+class FeedbackOut(BaseModel):
+    status_simple: str
+    reopened: bool
 
 
 class CategoryOut(BaseModel):

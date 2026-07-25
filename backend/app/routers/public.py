@@ -5,9 +5,19 @@ from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.constants import LANGUAGES, SOURCES, STATUS_NEW, STATUS_REJECTED, STATUS_SIMPLE_MAP, STATUS_SIMPLE_STEPS
+from app.core.constants import (
+    LANGUAGES,
+    SOURCES,
+    STATUS_CLOSED,
+    STATUS_NEED_INFO,
+    STATUS_NEW,
+    STATUS_REJECTED,
+    STATUS_RESOLVED,
+    STATUS_SIMPLE_MAP,
+    STATUS_SIMPLE_STEPS,
+)
 from app.core.errors import AppError
-from app.core.ratelimit import enforce_stt_limit, enforce_submit_limits, enforce_track_limit
+from app.core.ratelimit import enforce_info_limit, enforce_stt_limit, enforce_submit_limits, enforce_track_limit
 from app.database import get_db
 from app.models.category import Category
 from app.models.complaint import Complaint
@@ -18,8 +28,11 @@ from app.schemas.public import (
     PHONE_PATTERN,
     CategoryBrief,
     CategoryOut,
+    CitizenInfoOut,
     ComplaintSubmitOut,
     DepartmentPublic,
+    FeedbackIn,
+    FeedbackOut,
     NeighborhoodOut,
     QrLandingOut,
     SttJobCreatedOut,
@@ -28,6 +41,7 @@ from app.schemas.public import (
     TrackOut,
 )
 from app.services.captcha import verify_captcha
+from app.services.citizen_info import record_citizen_info, record_feedback
 from app.services.complaint_intake import create_complaint
 from app.services.queue import enqueue
 from app.services.storage import upload_file, validate_file
@@ -110,13 +124,33 @@ def _build_timeline(complaint: Complaint) -> list[TimelineStep]:
     ]
 
 
+def _find_by_ticket_and_phone(db: Session, ticket: str, phone: str) -> Complaint:
+    """Fuqaroni ticket+telefon juftligi bo'yicha aniqlash — track, info va
+    feedback uchun yagona qoida ([03] §3.2/§3.5/§3.6).
+
+    Ticket mavjud bo'lib telefon mos kelmasa ham AYNAN shu 404 qaytadi:
+    aks holda javob farqi ticket raqamlarini taxminlash uchun oracle
+    bo'lib qolardi.
+    """
+    complaint = db.execute(select(Complaint).where(Complaint.ticket_number == ticket)).scalar_one_or_none()
+    if complaint is None or complaint.citizen.phone != phone:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+    return complaint
+
+
+def _info_request_text(complaint: Complaint) -> str | None:
+    """Xodim `need_info` da so'ragan savol — oxirgi `info_requested`
+    eventidan. Admin paneldagi matn bilan bir xil manba."""
+    for event in reversed(complaint.events):
+        if event.event_type == "info_requested" and event.payload:
+            return event.payload.get("text")
+    return None
+
+
 @router.get("/complaints/track", response_model=TrackOut)
 def track_complaint(request: Request, ticket: str, phone: str, db: Session = Depends(get_db)):
     enforce_track_limit(request)
-    complaint = db.execute(select(Complaint).where(Complaint.ticket_number == ticket)).scalar_one_or_none()
-    if complaint is None or complaint.citizen.phone != phone:
-        # Enumeration protection: never reveal whether the ticket exists.
-        raise AppError(404, "not_found", "Murojaat topilmadi")
+    complaint = _find_by_ticket_and_phone(db, ticket, phone)
 
     latest_reply = complaint.replies[-1] if complaint.replies else None
 
@@ -139,7 +173,57 @@ def track_complaint(request: Request, ticket: str, phone: str, db: Session = Dep
         timeline=_build_timeline(complaint),
         reply_text=latest_reply.text if latest_reply else None,
         rejected_reason=complaint.rejected_reason if complaint.status == STATUS_REJECTED else None,
+        info_request_text=_info_request_text(complaint) if complaint.status == STATUS_NEED_INFO else None,
+        info_provided=bool(complaint.citizen_messages),
+        can_give_feedback=complaint.status in (STATUS_RESOLVED, STATUS_CLOSED) and complaint.satisfaction is None,
+        satisfaction=complaint.satisfaction,
     )
+
+
+@router.post("/complaints/info", response_model=CitizenInfoOut)
+def submit_citizen_info(
+    request: Request,
+    ticket: str = Form(...),
+    phone: str = Form(..., pattern=PHONE_PATTERN),
+    text: str = Form(..., min_length=1, max_length=2000),
+    images: list[UploadFile] = File(default=[]),
+    db: Session = Depends(get_db),
+):
+    """Fuqaro qo'shimcha ma'lumot yuboradi ([03] §3.5).
+
+    Avval `need_info` bir tomonlama edi: xodim «ma'lumot kutilmoqda»
+    deb qo'yardi, fuqaro esa `/holat` da faqat banner ko'rardi va javob
+    qaytarish yo'li umuman yo'q edi — murojaat shu ustunda cheksiz
+    qolib ketishi mumkin edi.
+    """
+    enforce_info_limit(request)
+    complaint = _find_by_ticket_and_phone(db, ticket, phone)
+
+    resumed = record_citizen_info(db, complaint, text, source="web", images=images)
+    db.commit()
+    db.refresh(complaint)
+
+    return CitizenInfoOut(
+        status_simple=STATUS_SIMPLE_MAP[complaint.status],
+        need_info=complaint.status == STATUS_NEED_INFO,
+        accepted=resumed,
+    )
+
+
+@router.post("/complaints/feedback", response_model=FeedbackOut)
+def submit_feedback(request: Request, payload: FeedbackIn, db: Session = Depends(get_db)):
+    """Fuqaro bahosi va qayta ochish ([03] §3.6) — fuqaroning yagona
+    e'tiroz kanali. Usiz «hal qilindi» yorlig'i oxirgi so'z bo'lib
+    qolar, norozi fuqaroga esa yangi murojaat yozishdan boshqa yo'l
+    qolmasdi (yangi ticket, uzilgan tarix)."""
+    enforce_info_limit(request)
+    complaint = _find_by_ticket_and_phone(db, payload.ticket, payload.phone)
+
+    reopened = record_feedback(db, complaint, satisfied=payload.satisfied, comment=payload.comment)
+    db.commit()
+    db.refresh(complaint)
+
+    return FeedbackOut(status_simple=STATUS_SIMPLE_MAP[complaint.status], reopened=reopened)
 
 
 @router.get("/categories", response_model=list[CategoryOut])

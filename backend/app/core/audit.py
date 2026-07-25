@@ -31,6 +31,13 @@ from app.models.audit_log import AuditLog
 _MUTATION_METHODS = {"POST", "PATCH", "PUT", "DELETE"}
 _METHOD_ACTION = {"POST": "create", "PATCH": "update", "PUT": "update", "DELETE": "delete"}
 
+# Middleware `Depends(get_db)` dan foydalana olmaydi (u so'rov ishlovchisidan
+# tashqarida ishlaydi), shuning uchun sessiyani o'zi ochadi. Bu esa
+# `app.dependency_overrides` ni chetlab o'tadi — testlar bazani almashtirsa
+# audit baribir `DATABASE_URL` ga yozib, FK xatosi berardi. `session_factory`
+# ana shu yagona almashtirish nuqtasi (`tests/conftest.py`).
+session_factory = SessionLocal
+
 
 def _is_uuid(value: str) -> bool:
     try:
@@ -105,7 +112,7 @@ async def audit_log_middleware(request: Request, call_next):
     except (json.JSONDecodeError, UnicodeDecodeError):
         meta = None
 
-    db = SessionLocal()
+    db = session_factory()
     try:
         db.add(
             AuditLog(

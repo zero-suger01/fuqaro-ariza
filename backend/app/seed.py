@@ -1,7 +1,17 @@
 """Seed categories, departments, an admin user and default settings.
 
-Run with: python -m app.seed
+Run with: `python -m app.seed` (kataloglar) yoki `python -m app.seed --demo`
+(qo'shimcha sinov xodimlari — PRODUCTION'DA EMAS).
+
+**Admin hisobi (v1.4):** faqat `ADMIN_SEED_PHONE` va `ADMIN_SEED_PASSWORD`
+muhit o'zgaruvchilari BERILGANDA yaratiladi. Avval bu yerda hardcode
+qilingan `+998900000000 / admin123` har safar yaratilardi — bunday hisob
+production'ga o'zgarishsiz chiqib ketishi mumkin edi. Yaratilgan hisobga
+`must_change_password=True` qo'yiladi ([04] §5, [11] §1.2).
 """
+import argparse
+import os
+
 from app.core.security import hash_password
 from app.database import SessionLocal
 from app.models.category import Category
@@ -51,7 +61,73 @@ DEFAULT_SETTINGS = {
 }
 
 
-def run() -> None:
+def _seed_admin(db) -> None:
+    """Admin faqat env berilganda yaratiladi ([04] §5, [11] §1.2)."""
+    phone = (os.getenv("ADMIN_SEED_PHONE") or "").strip()
+    password = os.getenv("ADMIN_SEED_PASSWORD") or ""
+
+    if not phone or not password:
+        print(
+            "Admin SEED QILINMADI: ADMIN_SEED_PHONE va ADMIN_SEED_PASSWORD berilmagan.\n"
+            "  Admin yaratish uchun: ADMIN_SEED_PHONE=+998XXXXXXXXX ADMIN_SEED_PASSWORD=<kuchli-parol> python -m app.seed"
+        )
+        return
+    if len(password) < 8:
+        raise SystemExit("ADMIN_SEED_PASSWORD kamida 8 belgidan iborat bo'lishi kerak")
+
+    if db.query(User).filter(User.phone == phone).first():
+        print(f"Admin allaqachon mavjud: {phone}")
+        return
+
+    db.add(
+        User(
+            first_name="Admin",
+            last_name="",
+            phone=phone,
+            password_hash=hash_password(password),
+            role="admin",
+            # Birinchi kirishda parol almashtirish majburiy — seed
+            # paroli uzoq muddat ishlab qolmasin.
+            must_change_password=True,
+        )
+    )
+    print(f"Admin yaratildi: {phone} (birinchi kirishda parol almashtirish majburiy)")
+
+
+# Demo xodimlar — FAQAT `--demo` bilan. Har bo'limga bitta sinov xodimi,
+# oqimni uchdan-uchga tekshirish uchun. Production seed'ida bo'lmasligi
+# kerak: QA tekshiruvida aynan shunday yozuvlar muhitda qolib ketgan edi.
+DEMO_STAFF = [
+    ("sanitariya", "+998900000101", "Sanitariya", "Xodimov"),
+    ("suvsoz", "+998900000102", "Suvsoz", "Xodimov"),
+    ("yolxojaligi", "+998900000103", "Yo'l", "Xodimov"),
+]
+DEMO_PASSWORD = "demo12345"
+
+
+def _seed_demo_staff(db, departments_by_code: dict[str, Department]) -> None:
+    created = 0
+    for dept_code, phone, first_name, last_name in DEMO_STAFF:
+        department = departments_by_code.get(dept_code)
+        if department is None or db.query(User).filter(User.phone == phone).first():
+            continue
+        db.add(
+            User(
+                first_name=first_name,
+                last_name=last_name,
+                phone=phone,
+                password_hash=hash_password(DEMO_PASSWORD),
+                role="department_staff",
+                department_id=department.id,
+                must_change_password=True,
+            )
+        )
+        created += 1
+    if created:
+        print(f"DEMO xodimlar yaratildi: {created} ta (parol: {DEMO_PASSWORD}) — PRODUCTION'DA O'CHIRING")
+
+
+def run(demo: bool = False) -> None:
     db = SessionLocal()
     try:
         departments_by_code: dict[str, Department] = {}
@@ -85,19 +161,9 @@ def run() -> None:
             categories_by_code[code] = category
         print(f"Categories ready: {len(categories_by_code)}")
 
-        admin_phone = "+998900000000"
-        if not db.query(User).filter(User.phone == admin_phone).first():
-            db.add(
-                User(
-                    first_name="Admin",
-                    last_name="Adminov",
-                    phone=admin_phone,
-                    email="admin@ariza.uz",
-                    password_hash=hash_password("admin123"),
-                    role="admin",
-                )
-            )
-            print(f"Seeded admin user: {admin_phone} / admin123")
+        _seed_admin(db)
+        if demo:
+            _seed_demo_staff(db, departments_by_code)
 
         for key, value in DEFAULT_SETTINGS.items():
             if not db.get(Setting, key):
@@ -110,4 +176,11 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser(description="Kataloglarni (bo'lim, kategoriya, settings) va ixtiyoriy adminni seed qiladi")
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="Sinov ma'lumotlarini ham qo'shadi (demo bo'lim xodimlari). PRODUCTION'DA ISHLATILMAYDI.",
+    )
+    args = parser.parse_args()
+    run(demo=args.demo)

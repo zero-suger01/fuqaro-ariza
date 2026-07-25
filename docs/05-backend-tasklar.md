@@ -104,6 +104,28 @@ Sabab (foydalanuvchi): «uxlaganda AI modeli avtomatik o'zi saralasin hamma muro
 
 **Real sinovdan o'tkazildi (2026-07-25):** (1) Ollama o'lik manzilga qaratilib murojaat yuborildi → murojaat `new` holatida saqlanib qoldi, tahlil YO'QOLMADI, qayta urinish navbatga tushdi. (2) Worker to'g'ri Ollama bilan qayta ishga tushirildi → 120 s dan keyin kechiktirilgan ish o'zi ishga tushdi va murojaatni to'liq hal qildi: kategoriya `suv` (to'g'ri), prioritet `high` (LLM ko'tardi), «Suvsoz» bo'limiga avtomatik biriktirildi, o'zbekcha xulosa + javob drafti yozildi, `needs_review=false`. (3) Sweeper cron qolgan murojaatlarni ham o'zi tozaladi. `pytest -m smoke` 5/5.
 
+## S1 — QA tekshiruvidan chiqqan P0 nuqsonlar (kontrakt v1.4)
+
+Sabab: `QA-TEST` murojaati fuqarodan yopilgungacha yurgizildi. Asosiy oqim ishladi, lekin `need_info` bir tomonlama edi, «Bo'lim qabul qildi» sahifa ochilishidan qo'yilardi, mas'ul xodim aniqlanmasdi, seed production uchun xavfli edi va testlar jonli bazaga yozardi.
+
+- [ ] **S1.1 (M)** M9 migratsiya: `complaints` ga `accepted_at`/`info_requested_at`/`info_provided_at`/`satisfaction`/`reopened_count`, `departments.wip_limit`, `users.must_change_password`, `citizen_messages` va `complaint_subtasks` jadvallari, yangi indekslar. `accepted_at` backfill — `status_changed → accepted` eventidan ([04](04-database.md) §4 M9).
+- [ ] **S1.2 (S)** `constants.py`: yangi eventlar (`info_provided`, `claimed`, `reopened`, `feedback_received`, `subtask_created`, `subtask_closed`); `AI_ENGINES` dan `keyword` va `KEYWORD_SOURCES` olib tashlanadi (v1.3 qoldig'i, kontrakt bilan zid); modul doc-string'idagi «migratsiyasiz status qo'shish mumkin» da'vosi to'g'irlanadi — `m5_indexes_checks.py` dagi CHECK buni bloklaydi.
+- [ ] **S1.3 (M)** `workflow.py`: `need_info` ga o'tishda `note` majburiy (bo'sh → 422) + `info_requested_at` + `info_requested` event + SMS'ga savol matni; yangi `claim()`; `assign()` bo'lim o'zgarmasa `assigned_user_id` ni saqlaydi (hozir AI/review uni `None` ga qaytarib, adminning tayinlagan xodimini yo'qotadi).
+- [ ] **S1.4 (M)** Yangi `services/citizen_info.py` — `record_citizen_info()`: uchala kanal (web/telegram/manual) uchun yagona kirish nuqtasi, `citizen_messages` + `info_provided` event + fayllar + bo'limga bildirishnoma; web/telegram'da `need_info → in_progress` avtomatik.
+- [ ] **S1.5 (M)** Endpointlar: `POST /api/public/complaints/info` (+ rate limit `rl:info:*`), `POST /api/bot/complaints/info`, `POST /api/admin/complaints/{id}/claim`, `POST /api/admin/complaints/{id}/citizen-info`; `AssignRequest.assigned_user_id` validatsiyasi (mavjud, aktiv, o'sha bo'limda).
+- [ ] **S1.6 (M)** `GET /api/admin/stats/queues` + `GET /complaints` navbat filtrlari (`unassigned`, `sla_risk`, `need_info_over_hours`, `mine`, `stuck_ai`). Karta raqami va ro'yxat **bitta shartdan** hisoblanadi; `SLA_WARNING_RATIO` `escalation.py` dan qayta ishlatiladi.
+- [ ] **S1.7 (S)** `complaint_intake.py` da boshlang'ich `deadline_at` (`compute_deadline`) — LLM ishlamasa murojaat SLA/eskalatsiya radaridan tushib qolmasin.
+- [ ] **S1.8 (M)** Seed xavfsizligi: default admin faqat `ADMIN_SEED_PHONE`+`ADMIN_SEED_PASSWORD` bilan, `must_change_password=true`, login javobida bayroq; `--demo` bayrog'i; [11](11-devops.md) §1.2 cheklisti.
+- [ ] **S1.9 (M)** Alohida test bazasi: `TEST_DATABASE_URL`, `conftest.py` da `get_db` override + per-test rollback + alembic/seed, `DATABASE_URL` bilan bir xil bo'lsa to'xtash; yangi `test_info_loop.py`, `test_ownership.py`, `test_queues.py`; `test_smoke.py` deterministik (worker mock).
+
+## S2 — Operatsion yetuklik (kontrakt v1.4)
+
+- [ ] **S2.1 (L)** Idoralararo sub-tasklar: `POST /complaints/{id}/subtasks`, `PATCH /subtasks/{id}`; ochiq sub-task bilan `resolved` → 422 `subtasks_open`; sub-task bo'lim navbatida ko'rinadi.
+- [ ] **S2.2 (M)** Fuqaro bahosi va qayta ochish: `POST /api/public/complaints/feedback` + bot varianti; `resolved→in_progress`, `closed→in_progress` o'tishlari (faqat fuqaro e'tirozi); `reopened_count`, `feedback_received`/`reopened` eventlari.
+- [ ] **S2.3 (S)** AI manual fallback: `stuck_ai` navbati ([07](07-ai-layer.md) §2.3) — `status=new` va 1 soatdan oshganlar admin ekranida ko'rinadi.
+- [ ] **S2.4 (S)** `POST .../review` uchun `reason` majburiy (`ok`/`wrong_category`/`wrong_department`/`wrong_priority`/`other`) — AI sifatini o'lchash uchun.
+- [ ] **S2.5 (S)** `departments.wip_limit` + `stats/kpi?group_by=department` ga `active_load`/`wip_limit`/`over_limit`. Bloklamaydi, faqat ko'rsatkich.
+
 ## Doimiy qoidalar (har taskda)
 
 - Har endpoint Pydantic schema bilan (`app/schemas/`), Swagger'da ko'rinadi, [03](03-kontraktlar.md) dagi shaklga AYNAN mos.

@@ -1,8 +1,14 @@
 """Canonical enum values — must mirror docs/03-kontraktlar.md §2 EXACTLY.
 
-Values live as plain strings in the DB (varchar, not native Postgres ENUM) so
-new codes can be added without a migration. This module is the single place
-that encodes the contract's allowed values and transitions.
+Values live as plain strings in the DB (varchar, not native Postgres ENUM).
+This module is the single place that encodes the contract's allowed values
+and transitions.
+
+NOTE: yangi **status** qo'shish uchun migratsiya baribir kerak —
+`m5_indexes_checks.py` dagi `ck_complaints_status` CHECK 10 qiymatni
+sanaydi. Migratsiyasiz qo'shsa bo'ladigan narsa — yangi **o'tish**
+(`STATUS_TRANSITIONS`), yangi event turi va boshqa ilova darajasidagi
+enumlar.
 """
 
 # 2.1 ComplaintStatus
@@ -36,16 +42,26 @@ STATUS_TRANSITIONS: dict[str, set[str]] = {
     STATUS_NEW: {STATUS_AI_PROCESSED, STATUS_REJECTED},
     STATUS_AI_PROCESSED: {STATUS_ASSIGNED, STATUS_REJECTED},
     STATUS_ASSIGNED: {STATUS_ACCEPTED, STATUS_IN_PROGRESS, STATUS_NEED_INFO, STATUS_REJECTED},
-    # R2: accepted endi FE tomonidan avtomatik qo'yiladi (sahifa ochilishi) —
-    # rad etish imkoni yo'qolmasligi uchun accepted'dan ham rejected mumkin
-    # (docs/03 §2.1 v1.2.1).
+    # accepted'dan ham rejected mumkin — qabul qilgan xodim ishni ko'rib
+    # chiqib rad etishi mumkin (docs/03 §2.1).
     STATUS_ACCEPTED: {STATUS_IN_PROGRESS, STATUS_NEED_INFO, STATUS_REJECTED},
     STATUS_IN_PROGRESS: {STATUS_NEED_INFO, STATUS_RESOLVED},
     STATUS_NEED_INFO: {STATUS_IN_PROGRESS},
-    STATUS_RESOLVED: {STATUS_CLOSED},
+    # v1.4: resolved/closed'dan in_progress'ga qaytish — FAQAT fuqaro
+    # e'tirozi bilan (CITIZEN_ONLY_TRANSITIONS, pastga qarang).
+    STATUS_RESOLVED: {STATUS_CLOSED, STATUS_IN_PROGRESS},
     STATUS_REJECTED: set(),
-    STATUS_CLOSED: {STATUS_ARCHIVED},
+    STATUS_CLOSED: {STATUS_ARCHIVED, STATUS_IN_PROGRESS},
     STATUS_ARCHIVED: set(),
+}
+
+# v1.4 — bu o'tishlarni FAQAT fuqaro boshlashi mumkin (`actor_type="citizen"`,
+# [03] §3.6 feedback). Xodim yopilgan murojaatni o'zicha qayta ocha olmaydi:
+# aks holda «hal qilindi» ko'rsatkichini qo'lda tuzatish yo'li ochilib
+# qolardi. Xodim uchun yagona yo'l — fuqaro e'tiroz bildirishi.
+CITIZEN_ONLY_TRANSITIONS: set[tuple[str, str]] = {
+    (STATUS_RESOLVED, STATUS_IN_PROGRESS),
+    (STATUS_CLOSED, STATUS_IN_PROGRESS),
 }
 
 # Holatlar bu yerga yetgach murojaat endi "overdue"/eskalatsiya kandidati
@@ -74,10 +90,19 @@ SENTIMENTS = ["negative", "neutral", "positive"]
 SOURCES = ["web", "telegram", "qr", "operator"]
 FILE_KINDS = ["image", "video", "audio", "document"]
 STAFF_ROLES = ["department_staff", "admin"]
-AI_ENGINES = ["keyword", "llm"]
+AI_ENGINES = ["llm"]  # v1.3: keyword dvigateli olib tashlandi ([03] §2.3)
 NOTIFICATION_CHANNELS = ["in_app", "sms", "telegram", "email"]
-KEYWORD_SOURCES = ["seed", "admin", "auto"]
 LANGUAGES = ["uz", "oz", "ru", "en"]
+
+# v1.4 — fuqaro qo'shimcha ma'lumotni qaysi kanaldan yubordi ([04] citizen_messages).
+# web/telegram statusni avtomatik `in_progress` ga qaytaradi, manual — yo'q.
+CITIZEN_INFO_SOURCES = ["web", "telegram", "manual"]
+AUTO_RESUME_INFO_SOURCES = {"web", "telegram"}
+
+# v1.4 — AI nazoratida tuzatish sababi ([03] §5 review).
+REVIEW_REASONS = ["ok", "wrong_category", "wrong_department", "wrong_priority", "other"]
+
+SUBTASK_STATUSES = ["open", "done", "cancelled"]
 
 CATEGORY_CODES = [
     "chiqindi", "yol", "transport", "elektr", "gaz", "suv", "kommunal",
@@ -100,5 +125,8 @@ EVENT_TYPES = [
     "created", "ai_processed", "status_changed", "assigned", "comment_added",
     "reply_sent", "info_requested", "sms_sent", "telegram_sent", "escalated",
     "sla_warning", "reviewed",
+    # v1.4 ([03] §8)
+    "info_provided", "claimed", "reopened", "feedback_received",
+    "subtask_created", "subtask_closed",
 ]
 ACTOR_TYPES = ["citizen", "staff", "system", "ai"]

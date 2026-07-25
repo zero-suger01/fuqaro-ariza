@@ -42,6 +42,9 @@ LLM yagona dvigatel bo'lgani uchun Ollama'ning ishlashi kritik. Ikki qatlamli hi
 
 1. **Job darajasida qayta urinish.** `analyze_complaint` xato bersa, ish `AI_RETRY_DELAYS` (standart `120, 600, 1800, 7200, 21600` soniya) bo'yicha qayta navbatga qo'yiladi. Ya'ni Ollama 6 soatgacha o'chiq bo'lsa ham murojaat oxir-oqibat tahlil qilinadi.
 2. **Sweeper cron (har 15 daqiqada).** Qayta urinishlar tugagan yoki worker qayta ishga tushib navbat yo'qolgan holatlar uchun: `status='new'` va yaratilganiga 10 daqiqadan oshgan murojaatlar qayta navbatga qo'yiladi. Bu — "uxlab qolgan murojaat qolmaydi" kafolati.
+3. **Manual fallback navbati (v1.4).** Yuqoridagi ikkalasi ham **avtomatlashtirish** himoyasi — lekin ular hech qachon taslim bo'lmasa, Ollama uzoq muddat ishlamaganda murojaat soatlab `new` da jim yotadi va buni hech kim ko'rmaydi. Shuning uchun: `status='new'` va 1 soatdan oshgan murojaatlar **`stuck_ai` navbatiga** tushadi va admin bosh ekranida karta sifatida ko'rinadi ([03](03-kontraktlar.md) §5 `stats/queues`). Admin `/admin/tasdiqlash` da kategoriya va bo'limni qo'lda qo'yib, murojaatni AI'siz yo'lga soladi (mavjud `POST .../review`).
+
+> **Nega bu «admin navbati YO'Q» qoidasiga zid emas:** qoida — *odam AI natijasini tasdiqlaguncha murojaat kutib turmasin* degani, va u kuchda qoladi (past ishonch hech narsani bloklamaydi). `stuck_ai` esa AI **umuman javob bermagan** holat: bu tasdiqlash navbati emas, uzilish signali. Sukut bo'yicha bo'sh bo'lishi kerak — ichida yozuv paydo bo'lishi server muammosi haqida ogohlantiradi.
 
 Server holati `GET /api/admin/stats/ai-health` da: `ollama_ok`, oxirgi muvaffaqiyat vaqti, navbat chuqurligi, soatlik xatolar soni, **`pending_analysis`** (tahlil kutayotgan murojaatlar soni). Dashboard'da doimiy indikator.
 

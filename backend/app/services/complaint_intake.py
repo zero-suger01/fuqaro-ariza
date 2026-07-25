@@ -5,6 +5,7 @@ sabab validatsiya/klassifikatsiya/fayl/SMS mantig'i ikki joyda drift
 qilmaydi.
 """
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import UploadFile
 from sqlalchemy import select
@@ -19,6 +20,7 @@ from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
 from app.models.complaint_file import ComplaintFile
 from app.models.neighborhood import Neighborhood
+from app.services.deadline import compute_deadline
 from app.services.notifications import notify_citizen
 from app.services.queue import enqueue
 from app.services.storage import upload_file, validate_file
@@ -88,6 +90,13 @@ def create_complaint(
         if category is None:
             raise AppError(500, "server_error", "Standart kategoriya topilmadi (seed ishga tushirilmagan?)")
 
+    # v1.4: boshlang'ich muddat SHU YERDA qo'yiladi. Avval `deadline_at`
+    # faqat LLM tahlilidan keyin yozilardi — Ollama ishlamasa murojaat
+    # `deadline_at IS NULL` bo'lib qolardi va SLA ogohlantirishi,
+    # eskalatsiya hamda "muddati o'tgan" hisoblari (hammasi
+    # `deadline_at IS NOT NULL` shartini talab qiladi) uni butunlay
+    # ko'rmasdi. LLM javob berganda `worker.py` buni qayta hisoblaydi.
+    now = datetime.now(timezone.utc)
     complaint = Complaint(
         ticket_number=next_ticket_number(db),
         citizen_id=citizen.id,
@@ -100,6 +109,7 @@ def create_complaint(
         longitude=longitude,
         address=address,
         neighborhood_id=neighborhood_id,
+        deadline_at=compute_deadline(now, category.sla_hours, "medium"),
     )
     db.add(complaint)
     db.flush()

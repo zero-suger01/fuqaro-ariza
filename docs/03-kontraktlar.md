@@ -2,7 +2,7 @@
 
 > **QOIDA:** Bu fayldagi biror narsani o'zgartirmasdan turib kodda enum/endpoint/format o'zgartirish TAQIQLANADI. O'zgarish tartibi: shu faylga PR → ikkinchi sherik "OK" → kod. AI coder'lar bu faylni faqat O'QIYDI.
 >
-> Versiya: **v1.3** (2026-07-25). O'zgarishlar pastdagi "Changelog" ga yoziladi.
+> Versiya: **v1.4** (2026-07-25). O'zgarishlar pastdagi "Changelog" ga yoziladi.
 
 ## 1. Umumiy formatlar
 
@@ -40,9 +40,15 @@
 | `closed` | Yopildi (fuqaro tasdig'i yoki 7 kun sukut) | tizim/operator | P2 |
 | `archived` | Arxivlandi | tizim | P3 |
 
-Ruxsat etilgan o'tishlar: `new→ai_processed→assigned→(accepted)→in_progress→resolved→closed→archived`; `rejected` — `new/ai_processed/assigned/accepted` dan (v1.2.1: `accepted` avtomatik qo'yilgani uchun rad etish imkoni saqlanadi); `need_info` — `assigned/accepted/in_progress` dan va qaytishi `in_progress` ga. Boshqa o'tish = 422 `invalid_transition`.
+Ruxsat etilgan o'tishlar: `new→ai_processed→assigned→(accepted)→in_progress→resolved→closed→archived`; `rejected` — `new/ai_processed/assigned/accepted` dan; `need_info` — `assigned/accepted/in_progress` dan va qaytishi `in_progress` ga; **`resolved→in_progress` va `closed→in_progress` — faqat fuqaro e'tirozi bilan** (§3.6 feedback, `reopened` event; xodim bu o'tishni qo'lda qila olmaydi). Boshqa o'tish = 422 `invalid_transition`.
 
-**`accepted` avtomatik (R0/Q2):** biriktirilgan murojaatni o'z bo'limi xodimi tafsilot sahifasida BIRINCHI marta ochganida FE avtomatik `PATCH status=accepted` yuboradi (actor — o'sha xodim). Alohida tugma UI'dan olib tashlanadi; qo'lda bosish shart emas. «Bo'lim qachon ko'rdi» audit izi saqlanadi, ortiqcha bosish yo'qoladi.
+**`accepted` — «Qabul qilaman» (v1.4, avvalgi avto-accept BEKOR):** biriktirilgan murojaatni o'z bo'limi xodimi ko'rgach **«Qabul qilaman» tugmasini bosadi** → `POST /complaints/{id}/claim` (§5): `assigned_user_id` o'sha xodimga yoziladi, `accepted_at` belgilanadi, status `accepted` bo'ladi, `claimed` event yoziladi. Sahifani ochish hech qanday holatni o'zgartirMAYDI.
+
+> **Nega o'zgardi (v1.2 → v1.4):** avto-accept «ko'rdim»ni «qabul qildim» bilan tenglashtirardi — SLA va `avg_first_action_hours_7d` sun'iy yaxshi ko'rinardi, mas'ul xodim esa aniqlanmasdi. Sahifa ochilishi FE'da bo'lgani uchun bot/mobil/boshqa klient bu bosqichni butunlay o'tkazib yuborardi. Endi bosqich serverda va egalik bilan birga qo'yiladi.
+
+**`need_info` uchun sabab MAJBURIY:** `need_info` ga o'tishda `note` bo'sh bo'lsa → 422 `validation_error`. `note` matni `info_requested` eventiga yoziladi, fuqaroga SMS/Telegram orqali **savolning o'zi** yuboriladi va `/holat` sahifasida ko'rsatiladi. Fuqaro javob berishi (§3.5) `need_info → in_progress` o'tishini avtomatik bajaradi.
+
+**`need_info` javob kanallari (v1.4, uchtasi teng):** web (§3.5), Telegram (§6), va manual (§5 `POST .../citizen-info`, xodim fuqaro bilan telefonda gaplashib yozib qo'yadi). Web va Telegram statusni avtomatik `in_progress` ga qaytaradi; manualda xodim statusni o'zi qaytaradi (fuqaro rostdan javob berganini faqat xodim biladi).
 
 ### 2.2 Fuqaro uchun soddalashtirilgan status (`status_simple`)
 
@@ -134,6 +140,28 @@ Javob `202`: `{"job_id": "..."}`. Keyin `GET /api/public/stt/{job_id}` → `{"st
 - `GET /api/public/neighborhoods` → `[{"id": "...", "name": "Bog'ishamol MFY"}, ...]`.
 - `GET /api/public/qr/{qr_code}` → `{"neighborhood_id": "...", "neighborhood_name": "..."}` (QR landing prefill uchun; topilmasa 404).
 
+### 3.5 `POST /api/public/complaints/info` — fuqaro qo'shimcha ma'lumot yuboradi (v1.4, multipart/form-data)
+
+Maydonlar: `ticket` (str, majburiy), `phone` (E.164, majburiy), `text` (str, 1–2000), `images` (fayl[], ixtiyoriy — §2.4 limitlari).
+
+Identifikatsiya §3.2 bilan **aynan bir xil**: ticket+telefon juftligi mos kelmasa 404 `not_found` (enumeration himoyasi, murojaat mavjudligi oshkor qilinmaydi). Rate limit: 10/soat/IP → 429 `rate_limited`.
+
+Javob `200`:
+
+```json
+{ "status_simple": "ijroda", "need_info": false, "accepted": true }
+```
+
+Yon effektlar: `citizen_messages` yozuvi (`source=web`), `info_provided` event (`actor_type=citizen`), fayllar murojaatga biriktiriladi, mas'ul bo'lim xodimlariga bildirishnoma. **Agar murojaat `need_info` holatida bo'lsa — avtomatik `in_progress` ga qaytadi** (`accepted: true`). Boshqa holatda ma'lumot baribir saqlanadi va xodimga ko'rinadi, lekin status o'zgarmaydi (`accepted: false`). Terminal statuslarda (`rejected`/`archived`) → 422 `validation_error`.
+
+### 3.6 `POST /api/public/complaints/feedback` — fuqaro bahosi va qayta ochish (v1.4)
+
+Body: `{"ticket": "...", "phone": "+998...", "satisfied": true|false, "comment": "...?"}`. Identifikatsiya §3.5 bilan bir xil. Faqat `resolved`/`closed` holatida qabul qilinadi, aks holda 422 `validation_error`; bitta murojaatga qayta baho berilsa 409 `already_submitted`.
+
+Javob `200`: `{"status_simple": "...", "reopened": true|false}`.
+
+`satisfied=false` → murojaat `in_progress` ga qaytadi (`reopened` event, `reopened_count += 1`), bo'lim xodimlariga bildirishnoma. `satisfied=true` → `feedback_received` event, `resolved` bo'lsa `closed` ga o'tadi (7 kun kutilmaydi).
+
 ## 4. Auth API (xodimlar + ixtiyoriy fuqaro kabineti)
 
 Mavjud `/api/auth/register|login|me` saqlanadi. `register` endi **fuqaro kabineti** uchun (telefon+parol; xodimni faqat admin yaratadi). `me` javobiga `kind: "citizen"|"staff"` va staff uchun `role`, `department_id`, `department_name` (B6, bor bo'lsa — UI'da bo'lim nomini ko'rsatish uchun) qo'shiladi. Kabinet P2'da — P1'da FE login sahifasini faqat xodimlar uchun ko'rsatadi.
@@ -144,23 +172,29 @@ Mavjud endpointlar saqlanadi, quyidagilar o'zgaradi/qo'shiladi (— bilan belgil
 
 | Metod va yo'l | Nima | Kim | Faza |
 |---|---|---|---|
-| `GET /api/admin/complaints` — **pagination envelope'ga o'tadi** + yangi filtrlar: `priority`, `department_id`, `assigned_user_id`, `source`, `overdue=true`, `needs_review=true`, `q` (ticket/telefon/matn); har bir qatorda `department` (B6, biriktirilgan bo'lim) | ro'yxat | department_staff+ | P1 |
-| `GET /api/admin/complaints/{id}` — javobga `ticket_number`, `citizen`, `priority`, `deadline_at`, `ai` (oxirgi tahlil), `files`, `events`, `replies`, `department`, `assigned_user` qo'shiladi | tafsilot | department_staff+ | P1 |
+| `GET /api/admin/complaints` — **pagination envelope'ga o'tadi** + filtrlar: `priority`, `department_id`, `assigned_user_id`, `source`, `overdue=true`, `needs_review=true`, `q` (ticket/telefon/matn); **v1.4 navbat filtrlari:** `unassigned=true` (bo'limi yoki egasi yo'q, terminal emas), `sla_risk=true` (muddatning ≥75% o'tgan, hali overdue emas), `need_info_over_hours=24` (shu soatdan ko'p `need_info` da turgan), `mine=true` (`assigned_user_id` = so'rovchi xodim), `stuck_ai=true` (`status=new` va 1 soatdan ko'p — LLM ishlamagan); har bir qatorda `department` (B6) va `assigned_user` | ro'yxat | department_staff+ | P1 |
+| `GET /api/admin/complaints/{id}` — javobga `ticket_number`, `citizen`, `priority`, `deadline_at`, `ai` (oxirgi tahlil), `files`, `events`, `replies`, `department`, `assigned_user` qo'shiladi; **v1.4:** `accepted_at`, `info_requested_at`, `info_provided_at`, `citizen_messages: [{id,text,source,recorded_by,created_at}]`, `subtasks`, `satisfaction`, `reopened_count` | tafsilot | department_staff+ | P1 |
+| `POST /api/admin/complaints/{id}/claim` (v1.4, body yo'q) — «Qabul qilaman»: `assigned_user_id` = so'rovchi xodim, `accepted_at` = hozir, status `assigned→accepted`, `claimed` event. Boshqa bo'lim xodimi → 403 `forbidden`; egasi allaqachon boshqa xodim → 409 `already_claimed` (admin `assign` bilan majburan qayta biriktira oladi) | qabul qilish | department_staff+ | S1 |
+| `POST /api/admin/complaints/{id}/citizen-info` (v1.4) body: `{"text": "..."}` — manual kanal: xodim fuqaro bilan telefonda/jonli gaplashib olgan ma'lumotni yozib qo'yadi. `citizen_messages` (`source=manual`, `recorded_by`) + `info_provided` event (`actor_type=staff`). **Statusni o'zgartirMAYDI** — xodim `in_progress` ga o'zi qaytaradi | manual javob | department_staff+ | S1 |
+| `POST /api/admin/complaints/{id}/subtasks` (v1.4) body: `{"department_id": "...", "note": "...", "deadline_at": "...?"}` → idoralararo topshiriq. `PATCH /api/admin/subtasks/{id}` body: `{"status": "open\|done\|cancelled", "note": "...?"}` — o'z bo'limi topshirig'ini xodim yopadi, admin hammasini. Ota murojaat ochiq sub-task bilan `resolved` ga o'ta olmaydi → 422 `subtasks_open`. Fuqaroga sub-tasklar KO'RINMAYDI — javob bitta va umumiy | sub-tasklar | yaratish: admin; yopish: department_staff+ | S2 |
 | `PATCH /api/admin/complaints/{id}/status` body: `{"status": "...", "note": "...?", "reply_text": "...?"}` — o'tish qoidalari tekshiriladi; `rejected` uchun `note` majburiy. **R0/Q2:** `reply_text` faqat `status=resolved` bilan qabul qilinadi — berilsa server AVVAL rasmiy javob yaratadi (`POST .../replies` bilan bir xil yon effektlar), KEYIN statusni o'tkazadi (bitta tranzaksiya). `resolved` uchun javob MAJBURIY: yo shu so'rovda `reply_text`, yo murojaatda oldin yuborilgan javob — aks holda 422 `reply_required` (telefonda hal bo'lsa ham 1–2 jumlalik yakun yoziladi) | status | roliga qarab | P1 |
 | `POST /api/admin/complaints/{id}/assign` body: `{"department_id": "...", "assigned_user_id": "...?"}` — B6: AI ishonchli bo'lganda (`needs_review=false`) `classify_complaint` worker shu mantiqni o'zi (`actor_type=ai`) chaqiradi; bu endpoint endi faqat admin uchun — ishonchsiz/yo'naltirilmagan murojaatlarni qo'lda yo'naltirish yoki AI xato yo'naltirsa qayta yo'naltirish (tuzatish) uchun | biriktirish/qayta yo'naltirish | admin | P1 |
-| `POST /api/admin/complaints/{id}/review` body: `{"category_code": "...?", "department_id": "...?"}` (ikkalasi ixtiyoriy) — AI past ishonch bilan yo'naltirgan murojaatni bir bosishda **tasdiqlash** (bo'sh body — "AI to'g'ri qilgan") yoki to'g'irlash: kategoriya/bo'lim o'rnatiladi, kerak bo'lsa qayta biriktiriladi, `needs_review=false`, `reviewed` event. **v1.3:** bu hech narsani bloklamaydi — murojaat allaqachon yo'naltirilgan va ijroda; bu faqat nazorat vositasi | AI nazorati | admin | R2 |
+| `POST /api/admin/complaints/{id}/review` body: `{"category_code": "...?", "department_id": "...?", "reason": "..."}` — AI past ishonch bilan yo'naltirgan murojaatni bir bosishda **tasdiqlash** (faqat `reason=ok`) yoki to'g'irlash: kategoriya/bo'lim o'rnatiladi, kerak bo'lsa qayta biriktiriladi, `needs_review=false`, `reviewed` event. **v1.3:** bu hech narsani bloklamaydi — murojaat allaqachon yo'naltirilgan va ijroda; bu faqat nazorat vositasi. **v1.4: `reason` MAJBURIY** — `ok` \| `wrong_category` \| `wrong_department` \| `wrong_priority` \| `other` (`other` bilan `reason_text` ham majburiy); sababsiz tuzatish AI sifatini o'lchashni imkonsiz qiladi. Bo'sh `reason` → 422 `validation_error` | AI nazorati | admin | R2 |
 | `POST /api/admin/complaints/{id}/replies` body: `{"text": "..."}` → SMS/telegram/status sahifaga chiqadi; javob eventga yoziladi. **R0:** server javob yaratilayotgan paytdagi AI draftini (murojaatning oxirgi `ai_analyses.suggested_reply`) `replies.ai_draft`ga snapshot qiladi — draft-qabul KPI shu ustundan hisoblanadi, client hech narsa yubormaydi | rasmiy javob | department_staff+ | P2 |
 | `GET/POST/PATCH /api/admin/departments` | bo'limlar CRUD | admin (GET — department_staff+) | P1 |
 | `GET/POST/PATCH /api/admin/categories` (+ `sla_hours`, `department_id`, `names`, `is_active`) | kategoriya CRUD | admin (GET — department_staff+) | P2 |
 | `GET/POST/PATCH /api/admin/users` (staff CRUD, rol, bo'lim) | xodimlar | admin | P2 |
 | `GET /api/admin/stats/dashboard` — javobga `overdue`, `needs_review`, `by_priority`, `ai_accuracy_7d`, `by_neighborhood: [{neighborhood_id,neighborhood_name,count}]`, `ai_auto_routed_7d`, `ai_routing_corrected_7d` (B6, AI qancha avtomatik yo'naltirdi va admin qanchasini to'g'irladi); **R0:** `zero_touch_7d` (0–1: 7 kunda yaratilganlardan AI biriktirgan va admin qayta yo'naltirMAgan ulush), `draft_reply_share_7d` (0–1: `ai_draft`i bor javoblar ichida `text` o'sha draft bilan ≥50% o'xshash — difflib ratio — bo'lganlari ulushi), `avg_first_action_hours_7d` (biriktirilishdan xodimning birinchi harakatigacha — status/reply/comment, actor=staff — o'rtacha soat; ma'lumot bo'lmasa null), `resolved_with_reply_7d` (0–1: 7 kunda resolved bo'lganlardan javob matni ham yuborilganlari ulushi) qo'shiladi | dashboard | admin | P2 |
+| `GET /api/admin/stats/queues` (v1.4) — **operatsion bosh ekran uchun**: `{"unassigned": int, "ai_exceptions": int, "sla_risk": int, "overdue": int, "awaiting_info": int, "stuck_ai": int, "by_department": [{"department_id","department_name","new","in_progress","sla_risk","overdue","unowned","wip_limit","over_limit"}]}`. Har karta `GET /complaints` ning mos filtri bilan bir xil shartda hisoblanadi — raqam bosilganda aynan o'sha ro'yxat ochiladi. `awaiting_info` — `need_info` da 24 soatdan ko'p turganlar; `stuck_ai` — `status=new` va 1 soatdan ko'p (LLM ishlamagan, [07](07-ai-layer.md) §2) | operatsion navbat | admin | S1 |
 | `GET /api/admin/stats/heatmap?date_from=&date_to=` → `[{lat, lng, weight}]` (koordinatalar ~11m aniqlikda guruhlanadi) | xarita | admin | P3 |
 | `GET /api/admin/stats/kpi?group_by=department\|user\|neighborhood\|category&date_from=&date_to=` → `[{key,label,total,resolved,avg_first_response_hours,avg_resolution_hours,sla_percent}]` | KPI | admin | P3 |
 | `GET /api/admin/stats/ai-health` → `{"ollama_ok": bool, "model": "...", "last_llm_success_at": ISO\|null, "llm_queue_depth": int, "llm_errors_1h": int, "pending_analysis": int, "stt_ok": bool}` — `ollama_ok`: oxirgi 10 daqiqada muvaffaqiyatli LLM javobi bor YOKI sinov ping o'tdi; `pending_analysis` (v1.3): hali tahlil qilinmagan (`status=new`) murojaatlar soni — LLM yagona dvigatel bo'lgani uchun bu eng muhim signal. Dashboard'da doimiy indikator | AI salomatligi | admin | R1 |
 | `GET /api/admin/audit-logs` | audit | admin | P3 |
 | `GET /api/admin/qr-codes` / `POST /api/admin/qr-codes` (mahallaga QR yaratish, PNG/PDF url qaytadi) | QR | admin | P3 |
 
-RBAC matritsasi (B6, 2 rol): `department_staff` — bitta `department_id`ga bog'langan, faqat o'z bo'limiga tushgan (AI avtomatik yoki admin qo'lda biriktirgan) murojaatlarni ko'radi, status o'zgartiradi (in_progress/need_info/resolved/rejected/closed), javob yozadi, ichki izoh qoldiradi; boshqa bo'limga qayta yo'naltira olmaydi. `admin` — hammasi: tizim boshqaruvi (bo'lim/kategoriya/keyword/xodim CRUD), barcha murojaatlarni ko'rish/statusini o'zgartirish, bo'limga biriktirish/qayta yo'naltirish, dashboard/heatmap/KPI/AI-trend/Excel eksport (workflow va AI yo'naltirish monitoringi). Buzilsa 403 `forbidden`.
+RBAC matritsasi (B6, 2 rol): `department_staff` — bitta `department_id`ga bog'langan, faqat o'z bo'limiga tushgan (AI avtomatik yoki admin qo'lda biriktirgan) murojaatlarni ko'radi, **o'ziga qabul qiladi (`claim`)**, status o'zgartiradi (accepted/in_progress/need_info/resolved/rejected/closed), javob yozadi, ichki izoh qoldiradi, fuqaro javobini manual yozib qo'yadi, o'z bo'limi sub-taskini yopadi; boshqa bo'limga qayta yo'naltira olmaydi va sub-task yarata olmaydi. `admin` — hammasi: tizim boshqaruvi (bo'lim/kategoriya/xodim CRUD), barcha murojaatlarni ko'rish/statusini o'zgartirish, bo'limga biriktirish/qayta yo'naltirish, majburan qayta biriktirish, sub-task yaratish, dashboard/queues/heatmap/KPI/AI-trend/Excel eksport/audit-logs. Buzilsa 403 `forbidden`.
+
+**Egalik qoidasi (v1.4):** `assigned_user_id` — murojaatning yagona mas'ul xodimi. `assign` chaqirilganda **bo'lim o'zgarmasa mavjud egasi saqlanadi**, bo'lim o'zgarsa egasi tozalanadi (yangi bo'limda u xodim ishlamaydi). AI avto-routing va `review` egasini hech qachon o'chirmaydi — avval bu `None` yozib, adminning qo'lda tayinlagan xodimini yo'qotardi. `assign` bilan `assigned_user_id` berilsa: xodim mavjud, `is_active` va **o'sha bo'limga tegishli** bo'lishi tekshiriladi, aks holda 422 `validation_error`.
 
 ### 5.1 Staff bildirishnomalari (`/api/notifications`, staff JWT) — R0
 
@@ -176,9 +210,11 @@ Eskalatsiya, SLA ogohlantirishi va biriktirish xabarlari shu yerga tushadi; R1'd
 |---|---|
 | `POST /api/bot/citizens/link` `{"phone": "+998...", "telegram_chat_id": 123, "first_name": "...", "language": "uz"}` | Kontakt ulashilganda fuqaroni bog'laydi (telefon Telegramdan verified keladi) |
 | `POST /api/bot/complaints` | 3.1 bilan bir xil maydonlar + `telegram_chat_id`; source=telegram |
-| `GET /api/bot/complaints?telegram_chat_id=123` | Shu chat yuborgan murojaatlar (ticket, status_simple) |
+| `GET /api/bot/complaints?telegram_chat_id=123` | Shu chat yuborgan murojaatlar (ticket, status_simple, **v1.4:** `need_info`, `info_request_text`) |
+| `POST /api/bot/complaints/info` (v1.4) `{"telegram_chat_id": 123, "ticket": "...", "text": "..."}` | §3.5 ning Telegram kanali. Identifikatsiya: ticket murojaatining fuqarosi shu `telegram_chat_id` ga bog'langan bo'lishi shart, aks holda 404 `not_found`. Yon effektlar §3.5 bilan bir xil (`source=telegram`, `need_info` da avtomatik `in_progress`) |
+| `POST /api/bot/complaints/feedback` (v1.4) `{"telegram_chat_id": 123, "ticket": "...", "satisfied": bool, "comment": "...?"}` | §3.6 ning Telegram kanali, inline tugmalar orqali |
 
-Bildirishnomalar: backend worker statusi o'zgarganda `citizens.telegram_chat_id` bo'lsa Telegram Bot API orqali xabar yuboradi (bot protsessi shart emas).
+Bildirishnomalar: backend worker statusi o'zgarganda `citizens.telegram_chat_id` bo'lsa Telegram Bot API orqali xabar yuboradi (bot protsessi shart emas). **v1.4:** `need_info` xabariga savol matni qo'shiladi, `resolved` xabariga «Hal bo'ldimi? Ha/Yo'q» inline tugmalari ilashadi.
 
 ## 7. i18n kontrakti
 
@@ -189,15 +225,20 @@ Bildirishnomalar: backend worker statusi o'zgarganda `citizens.telegram_chat_id`
 
 ## 8. Eventlar (`complaint_events.event_type`)
 
-`created`, `ai_processed`, `status_changed` (payload: from, to, note), `assigned` (payload: department_id, user_id), `comment_added` (ichki izoh), `reply_sent`, `info_requested`, `sms_sent`, `telegram_sent`, `escalated`, `sla_warning` (R0 — payload: deadline_at, percent; muddatning ~75% o'tganda, terminal bo'lmagan statusda, murojaat boshiga BIR marta; eskalatsiya croni yozadi), `reviewed` (R0 — payload: category_code, department_id; admin needs_review'ni yopganda). `actor_type`: `citizen` | `staff` | `system` | `ai`.
+`created`, `ai_processed`, `status_changed` (payload: from, to, note), `assigned` (payload: department_id, user_id), `comment_added` (ichki izoh), `reply_sent`, `info_requested` (payload: text — xodim so'ragan ma'lumot matni; `need_info` ga o'tishda yoziladi), `sms_sent`, `telegram_sent`, `escalated`, `sla_warning` (R0 — payload: deadline_at, percent; muddatning ~75% o'tganda, terminal bo'lmagan statusda, murojaat boshiga BIR marta; eskalatsiya croni yozadi), `reviewed` (R0 — payload: category_code, department_id, reason, reason_text; admin needs_review'ni yopganda).
+
+**v1.4 qo'shilganlar:** `info_provided` (payload: source `web|telegram|manual`, text; `actor_type` — web/telegram'da `citizen`, manualda `staff`), `claimed` (payload: user_id), `reopened` (payload: comment; fuqaro javobdan norozi bo'lganda), `feedback_received` (payload: satisfied, comment), `subtask_created` (payload: subtask_id, department_id), `subtask_closed` (payload: subtask_id, status).
+
+`actor_type`: `citizen` | `staff` | `system` | `ai`.
 
 ## 9. Muhit o'zgaruvchilari (kontraktga kiruvchi nomlar)
 
-Backend: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `TICKET_PREFIX=UY`, `S3_*` (mavjud), `OLLAMA_URL=http://localhost:11434`, `OLLAMA_MODEL=gemma3:12b`, `LLM_TIMEOUT_S=300`, `LLM_MAX_ATTEMPTS=2` ([07](07-ai-layer.md) §3 o'lchovlari), `AI_LOW_CONFIDENCE=0.6` (v1.3 — shundan past ishonchda `needs_review` belgisi qo'yiladi, lekin yo'naltirish bajariladi), `STT_PROVIDER=whisper|mohirai`, `STT_WHISPER_MODEL=medium`, `MOHIRAI_API_KEY`, `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `BOT_API_TOKEN`, `PUBLIC_BASE_URL`, `TURNSTILE_SECRET_KEY` (B4.7, bo'sh = captcha o'chirilgan).
+Backend: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `TICKET_PREFIX=UY`, `S3_*` (mavjud), `OLLAMA_URL=http://localhost:11434`, `OLLAMA_MODEL=gemma3:12b`, `LLM_TIMEOUT_S=300`, `LLM_MAX_ATTEMPTS=2` ([07](07-ai-layer.md) §3 o'lchovlari), `AI_LOW_CONFIDENCE=0.6` (v1.3 — shundan past ishonchda `needs_review` belgisi qo'yiladi, lekin yo'naltirish bajariladi), `STT_PROVIDER=whisper|mohirai`, `STT_WHISPER_MODEL=medium`, `MOHIRAI_API_KEY`, `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `BOT_API_TOKEN`, `PUBLIC_BASE_URL`, `TURNSTILE_SECRET_KEY` (B4.7, bo'sh = captcha o'chirilgan), **v1.4:** `ADMIN_SEED_PHONE` / `ADMIN_SEED_PASSWORD` (seed default adminni FAQAT ikkalasi berilganda yaratadi; yaratilgan hisobda birinchi kirishda parol almashtirish majburiy), `TEST_DATABASE_URL` (faqat testlar uchun — `DATABASE_URL` dan boshqa baza bo'lishi SHART).
 Frontend: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` (F3.1, bo'sh = `/go`dagi Telegram tugmasi "tez orada" holatida). Bot: `TELEGRAM_BOT_TOKEN`, `BACKEND_URL`, `BOT_API_TOKEN`.
 
 ## Changelog
 
+- **v1.4** (2026-07-25, S1+S2 — QA tekshiruvi asosida) — (1) **Breaking: avto-`accepted` bekor qilindi**, o'rniga `POST /complaints/{id}/claim` («Qabul qilaman») — `assigned_user_id` va `accepted_at` shu yerda qo'yiladi (§2.1). (2) **Breaking: `need_info` ga o'tishda `note` majburiy**, matn `info_requested` eventiga va fuqaroga SMS'ga tushadi. (3) `need_info` sikli yopildi — uchta teng kanal: `POST /api/public/complaints/info` (§3.5), `POST /api/bot/complaints/info` (§6), `POST /api/admin/complaints/{id}/citizen-info` (manual); web va Telegram statusni avtomatik `in_progress` ga qaytaradi. (4) Fuqaro bahosi va qayta ochish: `POST /api/public/complaints/feedback` (§3.6) + yangi `resolved→in_progress`, `closed→in_progress` o'tishlari. (5) Egalik qoidasi: `assign` bo'lim o'zgarmasa egasini saqlaydi, `assigned_user_id` validatsiyasi qo'shildi (§5). (6) Yangi `GET /api/admin/stats/queues` (operatsion bosh ekran) + `GET /complaints` navbat filtrlari (`unassigned`, `sla_risk`, `need_info_over_hours`, `mine`, `stuck_ai`). (7) Idoralararo sub-tasklar: `POST /complaints/{id}/subtasks`, `PATCH /subtasks/{id}`, ochiq sub-task bilan `resolved` → 422 `subtasks_open`. (8) `POST .../review` uchun `reason` majburiy. (9) Yangi eventlar: `info_provided`, `claimed`, `reopened`, `feedback_received`, `subtask_created`, `subtask_closed` (§8). (10) Env: `ADMIN_SEED_PHONE`/`ADMIN_SEED_PASSWORD`/`TEST_DATABASE_URL` (§9). (11) DB: M9 — [04](04-database.md) §4.
 - **v1.0** (2026-07-24) — dastlabki kontrakt. Eski `ComplaintStatus`/kategoriya enum'laridan migratsiya xaritasi: [04-database.md](04-database.md) §4.
 - **v1.1** (2026-07-24, B6) — **breaking:** `StaffRole` 4 tadan 2 taga tushirildi (`operator`+`employee`+`manager` → `department_staff`, `admin` saqlanadi). `POST /api/admin/complaints/{id}/assign` endi admin-only (AI ishonchli bo'lganda avtomatik biriktiradi). `stats/dashboard`, `stats/heatmap`, `stats/kpi` endi admin-only (avval operator/manager ham kira olardi). `/api/auth/me` javobiga `department_name` qo'shildi. `stats/dashboard`ga `ai_auto_routed_7d`/`ai_routing_corrected_7d` qo'shildi. Migratsiya: `alembic/versions/m6_role_model_v2.py`.
 - **v1.3** (2026-07-25) — **breaking: keyword dvigateli butunlay olib tashlandi.** LLM yagona qaror qabul qiluvchi: har murojaatni o'zi kategoriyalaydi, ustuvorlik beradi, bo'limga yo'naltiradi va javob drafti yozadi — **inson aralashuvi kutilmaydi** ([07](07-ai-layer.md) §1). O'zgarishlar: (1) `AiEngine` enum `llm`ga qisqardi, `KeywordSource` olib tashlandi. (2) `GET/POST/DELETE /api/admin/categories/{id}/keywords` va `GET /api/admin/keyword-suggestions` + approve/reject endpointlari **o'chirildi**. (3) `POST .../review` endi bloklovchi navbat emas, nazorat vositasi — `needs_review` faqat belgi. (4) `ai-health`ga `pending_analysis` qo'shildi. (5) `AI_CONFIDENCE_THRESHOLD` → `AI_LOW_CONFIDENCE` (ma'nosi teskari: past ishonch belgisi chegarasi). (6) DB: `category_keywords`, `keyword_suggestions` jadvallari va `ai_analyses.confident` ustuni tashlandi — migratsiya `m8_llm_only.py` ([04](04-database.md) §4). (7) LLM xato bersa admin navbati emas, avtomatik qayta urinish + sweeper cron ([07](07-ai-layer.md) §2).

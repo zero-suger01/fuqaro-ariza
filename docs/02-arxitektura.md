@@ -52,14 +52,12 @@ E-murojaat/
 ## 3. Murojaat hayot oqimi (asosiy data flow)
 
 1. **Qabul.** Fuqaro (veb wizard / bot / QR→ikkisidan biri) yuboradi → `POST /api/public/complaints` → DB'ga `status=new`, ticket raqam beriladi → fuqaroga darhol ticket ko'rsatiladi (kutish yo'q).
-2. **AI (async).** Submit tranzaksiyasi worker'ga `classify_complaint` ishini qo'yadi:
-   - normalizatsiya (kirill→lotin, apostroflar, kichik harf) → **keyword klassifikator** (DB'dagi keywordlar);
-   - confidence past bo'lsa → **Ollama/Gemma** JSON javob: kategoriya, priority, sentiment, summary, javob drafti, teglar;
-   - natija `ai_analyses` ga yoziladi, murojaatga kategoriya/priority/deadline qo'yiladi, `status=ai_processed`, event log.
-3. **Operator.** Admin panelda ko'radi: AI xulosasi + draft. Tasdiqlaydi yoki to'g'rilaydi → bo'limga biriktiradi (`assigned`). Operator to'g'rilagani `ai_analyses` bilan solishtirilib AI aniqligi KPI bo'ladi.
-4. **Ijro.** Bo'lim xodimi `in_progress` / `need_info` / `resolved`. Javob editorida AI draftini tahrir qilib yuboradi → fuqaroga SMS/Telegram/status sahifada ko'rinadi.
-5. **Monitoring.** SLA deadline o'tsa dashboard'da qizil + eskalatsiya bildirishnomasi. Hamma o'tishlar `complaint_events` da.
-6. **O'rganish sikli.** Har kecha cron: LLM'gacha borgan (keyword topolmagan) murojaatlardan nomzod keywordlar → admin tasdiqlaydi → keyword bazasi o'sadi → LLM chaqiruvi kamayadi. ([07](07-ai-layer.md) §4)
+2. **AI (async, v1.3 — LLM yagona dvigatel).** Submit tranzaksiyasi worker'ga `analyze_complaint` ishini qo'yadi: **Ollama/Gemma** bitta yugurishda JSON qaytaradi — kategoriya, priority, sentiment, summary, javob drafti, teglar. Natija `ai_analyses` ga yoziladi, murojaatga kategoriya/priority/deadline qo'yiladi, `status=ai_processed`, so'ng kategoriyaning bo'limiga **avtomatik biriktiriladi** (`assigned`, `actor_type=ai`). Past ishonch hech narsani bloklamaydi — faqat `needs_review` belgisi qo'yiladi. LLM javob bermasa: qayta urinish zanjiri + har 15 daqiqada sweeper, 1 soatdan oshsa `stuck_ai` navbatiga ([07](07-ai-layer.md) §2).
+3. **Qabul qilish (v1.4).** Bo'lim xodimi murojaatni ko'rib **«Qabul qilaman»** ni bosadi → `assigned_user_id` o'ziga yoziladi, `accepted_at` belgilanadi, `status=accepted`. Sahifani ochishning o'zi hech narsani o'zgartirmaydi. Admin AI xato yo'naltirganini `review`/`assign` bilan to'g'irlaydi — bu tuzatishlar `ai_analyses` bilan solishtirilib AI aniqligi KPI bo'ladi.
+4. **Ijro.** Xodim `in_progress` / `need_info` / `resolved`. Javob editorida AI draftini tahrir qilib yuboradi → fuqaroga SMS/Telegram/status sahifada ko'rinadi.
+5. **Ma'lumot sikli (v1.4).** `need_info` ga o'tishda savol matni majburiy va fuqaroga yetkaziladi. Fuqaro javobni **uch kanalning istalganidan** qaytaradi: `/holat` formasi, Telegram bot, yoki xodimga telefonda aytadi (xodim manual yozib qo'yadi). Web va Telegram murojaatni avtomatik `in_progress` ga qaytaradi.
+6. **Yakun va e'tiroz (v1.4).** `resolved` javobsiz mumkin emas. Fuqaro `/holat` yoki botda «Hal bo'ldimi?» ga javob beradi: «Ha» → yopiladi, «Yo'q» → murojaat `in_progress` ga qayta ochiladi (`reopened`).
+7. **Monitoring.** SLA muddatining 75% da ogohlantirish, o'tsa eskalatsiya (bo'lim → 24 soatdan keyin admin). Admin bosh ekrani — operatsion navbat kartalari ([10](10-ui-ux.md) §10). Hamma o'tishlar `complaint_events` da.
 
 ## 4. Muhitlar
 

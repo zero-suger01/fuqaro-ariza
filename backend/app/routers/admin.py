@@ -32,8 +32,10 @@ from app.models.ai_analysis import AiAnalysis
 from app.models.audit_log import AuditLog
 from app.models.category import Category
 from app.models.citizen import Citizen
+from app.models.citizen_message import CitizenMessage  # noqa: F401  (relationship yuklanishi uchun)
 from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
+from app.models.complaint_subtask import ComplaintSubtask
 from app.models.department import Department
 from app.models.neighborhood import Neighborhood
 from app.models.qr_code import QrCode
@@ -49,6 +51,8 @@ from app.schemas.admin import (
     CategoryIn,
     CategoryPatch,
     CitizenBrief,
+    CitizenInfoIn,
+    CitizenMessageOut,
     CommentIn,
     ComplaintDetail,
     ComplaintListItem,
@@ -56,6 +60,7 @@ from app.schemas.admin import (
     DepartmentBrief,
     DepartmentIn,
     DepartmentOut,
+    DepartmentQueueRow,
     AiTrendPoint,
     DepartmentPatch,
     EventOut,
@@ -66,19 +71,23 @@ from app.schemas.admin import (
     NeighborhoodStat,
     QrCodeIn,
     QrCodeOut,
+    QueueStats,
     ReplyIn,
     ReplyOut,
     ReviewRequest,
     StatusUpdateRequest,
+    SubtaskIn,
+    SubtaskOut,
+    SubtaskUpdate,
     UserAdminOut,
     UserIn,
     UserPatch,
 )
 from app.schemas.common import Page
 from app.schemas.public import CategoryBrief
-from app.services import workflow
+from app.services import citizen_info, queues, workflow
 from app.services.deadline import compute_deadline
-from app.services.notifications import notify_citizen
+from app.services.notifications import notify_citizen, notify_staff
 from app.services.qr import generate_poster_pdf, generate_qr_png
 from app.services.storage import upload_object
 
@@ -146,6 +155,14 @@ def _complaint_to_detail(complaint: Complaint) -> ComplaintDetail:
             created_at=latest_ai.created_at,
         )
 
+    # `need_info` da xodim so'ragan savol — fuqaro ko'radigan matn bilan
+    # bir xil bo'lishi uchun oxirgi `info_requested` eventidan olinadi.
+    info_request_text = None
+    for event in reversed(complaint.events):
+        if event.event_type == "info_requested" and event.payload:
+            info_request_text = event.payload.get("text")
+            break
+
     return ComplaintDetail(
         id=complaint.id,
         ticket_number=complaint.ticket_number,
@@ -162,6 +179,7 @@ def _complaint_to_detail(complaint: Complaint) -> ComplaintDetail:
         neighborhood_name=complaint.neighborhood.name if complaint.neighborhood else None,
         department=_department_brief(complaint.assigned_department) if complaint.assigned_department else None,
         assigned_user_id=complaint.assigned_user_id,
+        assigned_user_name=complaint.assigned_user.fullname if complaint.assigned_user else None,
         deadline_at=complaint.deadline_at,
         needs_review=complaint.needs_review,
         rejected_reason=complaint.rejected_reason,
@@ -172,6 +190,37 @@ def _complaint_to_detail(complaint: Complaint) -> ComplaintDetail:
         created_at=complaint.created_at,
         updated_at=complaint.updated_at,
         resolved_at=complaint.resolved_at,
+        accepted_at=complaint.accepted_at,
+        info_requested_at=complaint.info_requested_at,
+        info_provided_at=complaint.info_provided_at,
+        info_request_text=info_request_text,
+        citizen_messages=[
+            CitizenMessageOut(
+                id=m.id,
+                text=m.text,
+                source=m.source,
+                recorded_by=m.recorded_by,
+                recorded_by_name=m.recorder.fullname if m.recorder else None,
+                created_at=m.created_at,
+            )
+            for m in complaint.citizen_messages
+        ],
+        subtasks=[
+            SubtaskOut(
+                id=s.id,
+                department_id=s.department_id,
+                department_name=s.department.name("uz"),
+                assigned_user_id=s.assigned_user_id,
+                status=s.status,
+                note=s.note,
+                deadline_at=s.deadline_at,
+                created_at=s.created_at,
+                closed_at=s.closed_at,
+            )
+            for s in complaint.subtasks
+        ],
+        satisfaction=complaint.satisfaction,
+        reopened_count=complaint.reopened_count,
     )
 
 
@@ -190,9 +239,19 @@ def _build_complaints_query(
     q: str | None,
     date_from: date | None,
     date_to: date | None,
+    unassigned: bool = False,
+    sla_risk: bool = False,
+    need_info_over_hours: int | None = None,
+    mine: bool = False,
+    stuck_ai: bool = False,
 ):
     """Shared by list_complaints and export_complaints_xlsx (B5.5) so the two
-    never drift apart on what "the same filtered set" means."""
+    never drift apart on what "the same filtered set" means.
+
+    v1.4 navbat filtrlari `services/queues.py` dagi AYNAN bir xil
+    shartlarni ishlatadi — bosh ekrandagi karta raqami va shu yerdan
+    chiqadigan ro'yxat hech qachon farq qilmaydi ([10] §10.1).
+    """
     query = db.query(Complaint).join(Citizen, Complaint.citizen_id == Citizen.id).join(
         Category, Complaint.category_id == Category.id
     )
@@ -206,17 +265,24 @@ def _build_complaints_query(
         query = query.filter(Complaint.assigned_department_id == department_id)
     if assigned_user_id:
         query = query.filter(Complaint.assigned_user_id == assigned_user_id)
+    if mine:
+        query = query.filter(Complaint.assigned_user_id == staff.id)
     if source:
         query = query.filter(Complaint.source == source)
     if priority:
         query = query.filter(Complaint.priority == priority)
     if overdue:
-        query = query.filter(
-            Complaint.deadline_at < datetime.now(timezone.utc),
-            Complaint.status.notin_(TERMINAL_STATUSES),
-        )
+        query = query.filter(*queues.overdue())
     if needs_review:
-        query = query.filter(Complaint.needs_review.is_(True))
+        query = query.filter(*queues.ai_exceptions())
+    if unassigned:
+        query = query.filter(*queues.unassigned())
+    if sla_risk:
+        query = query.filter(*queues.sla_risk())
+    if need_info_over_hours is not None:
+        query = query.filter(*queues.awaiting_info(need_info_over_hours))
+    if stuck_ai:
+        query = query.filter(*queues.stuck_ai())
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -239,6 +305,11 @@ def list_complaints(
     priority: str | None = None,
     overdue: bool = False,
     needs_review: bool = False,
+    unassigned: bool = False,
+    sla_risk: bool = False,
+    need_info_over_hours: int | None = Query(None, ge=0),
+    mine: bool = False,
+    stuck_ai: bool = False,
     q: str | None = Query(None),
     date_from: date | None = None,
     date_to: date | None = None,
@@ -261,6 +332,11 @@ def list_complaints(
         q=q,
         date_from=date_from,
         date_to=date_to,
+        unassigned=unassigned,
+        sla_risk=sla_risk,
+        need_info_over_hours=need_info_over_hours,
+        mine=mine,
+        stuck_ai=stuck_ai,
     )
 
     total = query.count()
@@ -283,6 +359,9 @@ def list_complaints(
             needs_review=c.needs_review,
             ai=_ai_list_brief(c),
             description_snippet=c.description[:160],
+            assigned_user_id=c.assigned_user_id,
+            assigned_user_name=c.assigned_user.fullname if c.assigned_user else None,
+            info_requested_at=c.info_requested_at,
         )
         for c in rows
     ]
@@ -425,6 +504,15 @@ def update_status(
     if payload.reply_text and payload.status != STATUS_RESOLVED:
         raise AppError(422, "validation_error", "reply_text faqat status=resolved bilan qabul qilinadi")
     if payload.status == STATUS_RESOLVED:
+        # S2: ochiq idoralararo topshiriq bilan yopish — boshqa bo'lim
+        # hali ishlayotganda fuqaroga «hal qilindi» deyish demak.
+        open_subtasks = [s for s in complaint.subtasks if s.status == "open"]
+        if open_subtasks:
+            raise AppError(
+                422,
+                "subtasks_open",
+                f"{len(open_subtasks)} ta idoralararo topshiriq hali ochiq — avval ularni yoping",
+            )
         if payload.reply_text:
             _record_reply(db, complaint, payload.reply_text, staff)
         elif not complaint.replies:
@@ -457,8 +545,160 @@ def assign_complaint(
     if db.get(Department, payload.department_id) is None:
         raise AppError(404, "not_found", "Bo'lim topilmadi")
 
-    workflow.assign(db, complaint, payload.department_id, payload.assigned_user_id, actor_id=staff.id)
+    if payload.assigned_user_id is not None:
+        # v1.4: avval bu maydon umuman tekshirilmasdi — o'chirilgan yoki
+        # butunlay boshqa bo'lim xodimini yozib qo'yish mumkin edi, va
+        # murojaat hech kimning navbatida ko'rinmay qolardi ([03] §5).
+        assignee = db.get(User, payload.assigned_user_id)
+        if assignee is None or not assignee.is_active:
+            raise AppError(422, "validation_error", "Xodim topilmadi yoki faol emas")
+        if assignee.role != "admin" and assignee.department_id != payload.department_id:
+            raise AppError(422, "validation_error", "Xodim bu bo'limga tegishli emas")
+        workflow.assign(db, complaint, payload.department_id, payload.assigned_user_id, actor_id=staff.id)
+    else:
+        # Xodim ko'rsatilmagan: bo'lim o'zgarmasa mavjud egasi saqlanadi.
+        workflow.assign(db, complaint, payload.department_id, actor_id=staff.id)
+
     db.commit()
+    db.refresh(complaint)
+    return _complaint_to_detail(complaint)
+
+
+@router.post("/complaints/{complaint_id}/claim", response_model=ComplaintDetail)
+def claim_complaint(
+    complaint_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    staff: User = Depends(get_current_staff_up),
+):
+    """«Qabul qilaman» (v1.4, [03] §2.1) — egalik va `accepted_at` shu yerda.
+
+    Avval `accepted` ni FE tafsilot sahifasi ochilganda o'zi qo'yardi:
+    «ko'rdim» «qabul qildim» bilan tenglashardi, mas'ul xodim
+    aniqlanmasdi, va API'ni to'g'ridan-to'g'ri ishlatgan klient bu
+    bosqichni butunlay o'tkazib yuborardi.
+    """
+    complaint = db.get(Complaint, complaint_id)
+    if complaint is None:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+
+    workflow.claim(db, complaint, staff)
+    db.commit()
+    db.refresh(complaint)
+    return _complaint_to_detail(complaint)
+
+
+@router.post("/complaints/{complaint_id}/citizen-info", response_model=ComplaintDetail, status_code=201)
+def record_manual_citizen_info(
+    complaint_id: uuid.UUID,
+    payload: CitizenInfoIn,
+    db: Session = Depends(get_db),
+    staff: User = Depends(get_current_staff_up),
+):
+    """Manual kanal ([03] §5): xodim fuqaro bilan telefonda/jonli
+    gaplashib olgan ma'lumotni yozib qo'yadi.
+
+    Statusni ATAYLAB o'zgartirmaydi — fuqaro rostdan javob berganini
+    faqat xodim biladi, shuning uchun `in_progress` ga qaytarish ham
+    uning ongli qarori bo'lib qoladi (web/Telegram'da esa avtomatik).
+    """
+    complaint = db.get(Complaint, complaint_id)
+    if complaint is None:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+    _check_department_access(complaint, staff)
+
+    citizen_info.record_citizen_info(db, complaint, payload.text, source="manual", recorded_by=staff.id)
+    db.commit()
+    db.refresh(complaint)
+    return _complaint_to_detail(complaint)
+
+
+@router.post("/complaints/{complaint_id}/subtasks", response_model=ComplaintDetail, status_code=201)
+def create_subtask(
+    complaint_id: uuid.UUID,
+    payload: SubtaskIn,
+    db: Session = Depends(get_db),
+    staff: User = Depends(get_current_admin),
+):
+    """Idoralararo topshiriq ([03] §5, S2).
+
+    Bitta murojaat bir necha bo'limga tegishli bo'lishi mumkin (yo'l
+    buzilishi + drenaj + chiqindi). Har bo'lim o'z qismini bajaradi,
+    fuqaroga esa javob BITTA bo'ladi.
+    """
+    complaint = db.get(Complaint, complaint_id)
+    if complaint is None:
+        raise AppError(404, "not_found", "Murojaat topilmadi")
+    department = db.get(Department, payload.department_id)
+    if department is None:
+        raise AppError(404, "not_found", "Bo'lim topilmadi")
+    if payload.assigned_user_id is not None:
+        assignee = db.get(User, payload.assigned_user_id)
+        if assignee is None or not assignee.is_active or assignee.department_id != payload.department_id:
+            raise AppError(422, "validation_error", "Xodim topilmadi yoki bu bo'limga tegishli emas")
+
+    subtask = ComplaintSubtask(
+        complaint_id=complaint.id,
+        department_id=payload.department_id,
+        assigned_user_id=payload.assigned_user_id,
+        note=payload.note,
+        deadline_at=payload.deadline_at,
+        created_by=staff.id,
+    )
+    db.add(subtask)
+    db.flush()
+
+    db.add(
+        ComplaintEvent(
+            complaint_id=complaint.id,
+            event_type="subtask_created",
+            actor_type="staff",
+            actor_id=staff.id,
+            payload={"subtask_id": str(subtask.id), "department_id": str(payload.department_id)},
+        )
+    )
+    for user in db.execute(
+        select(User).where(
+            User.is_active.is_(True),
+            User.role == "department_staff",
+            User.department_id == payload.department_id,
+        )
+    ).scalars():
+        notify_staff(db, user, f"Yangi idoralararo topshiriq: {complaint.ticket_number}", complaint_id=complaint.id)
+
+    db.commit()
+    db.refresh(complaint)
+    return _complaint_to_detail(complaint)
+
+
+@router.patch("/subtasks/{subtask_id}", response_model=ComplaintDetail)
+def update_subtask(
+    subtask_id: uuid.UUID,
+    payload: SubtaskUpdate,
+    db: Session = Depends(get_db),
+    staff: User = Depends(get_current_staff_up),
+):
+    subtask = db.get(ComplaintSubtask, subtask_id)
+    if subtask is None:
+        raise AppError(404, "not_found", "Topshiriq topilmadi")
+    if staff.role in DEPARTMENT_SCOPED_ROLES and subtask.department_id != staff.department_id:
+        raise AppError(403, "forbidden", "Bu topshiriq sizning bo'limingizga tegishli emas")
+
+    subtask.status = payload.status
+    if payload.note:
+        subtask.note = payload.note
+    subtask.closed_at = datetime.now(timezone.utc) if payload.status != "open" else None
+
+    db.add(
+        ComplaintEvent(
+            complaint_id=subtask.complaint_id,
+            event_type="subtask_closed" if payload.status != "open" else "subtask_created",
+            actor_type="staff",
+            actor_id=staff.id,
+            payload={"subtask_id": str(subtask.id), "status": payload.status},
+        )
+    )
+    db.commit()
+    complaint = db.get(Complaint, subtask.complaint_id)
     db.refresh(complaint)
     return _complaint_to_detail(complaint)
 
@@ -504,7 +744,9 @@ def review_complaint(
     # machine tekshiruvi workflow.assign ichida). Aynan shu bo'limda bo'lsa
     # qayta assign shart emas.
     if complaint.assigned_department_id != department_id or complaint.status in (STATUS_NEW, STATUS_AI_PROCESSED):
-        workflow.assign(db, complaint, department_id, None, actor_id=staff.id)
+        # `assigned_user_id` berilmaydi: bo'lim o'zgarmasa mavjud egasi
+        # saqlanadi ([03] §5 «Egalik qoidasi»).
+        workflow.assign(db, complaint, department_id, actor_id=staff.id)
 
     complaint.needs_review = False
     db.add(
@@ -513,7 +755,14 @@ def review_complaint(
             event_type="reviewed",
             actor_type="staff",
             actor_id=staff.id,
-            payload={"category_code": category.code, "department_id": str(department_id)},
+            payload={
+                "category_code": category.code,
+                "department_id": str(department_id),
+                # v1.4: sabab majburiy — usiz AI sifatini o'lchab
+                # bo'lmasdi, faqat «admin nimanidir o'zgartirdi» qolardi.
+                "reason": payload.reason,
+                "reason_text": payload.reason_text,
+            },
         )
     )
     db.commit()
@@ -841,6 +1090,61 @@ def stats_ai_health(db: Session = Depends(get_db)):
         llm_errors_1h=llm_errors_1h,
         pending_analysis=db.query(Complaint).filter(Complaint.status == STATUS_NEW).count(),
         stt_ok=stt_ok,
+    )
+
+
+@router.get("/stats/queues", response_model=QueueStats, dependencies=[Depends(get_current_admin)])
+def stats_queues(db: Session = Depends(get_db)):
+    """Operatsion bosh ekran ([03] §5, [10] §10.1) — «hozir qaysi ishni
+    olish kerak?» degan savolga javob.
+
+    Har son `services/queues.py` dagi AYNAN shu shartlardan chiqadi,
+    `GET /complaints?...` filtrlari ham o'sha yerdan — karta raqami va
+    bosilganda ochiladigan ro'yxat hech qachon farq qilmaydi.
+    """
+    now = datetime.now(timezone.utc)
+
+    def count(conditions) -> int:
+        return db.query(Complaint).filter(*conditions).count()
+
+    active = Complaint.status.notin_(TERMINAL_STATUSES)
+    rows: list[DepartmentQueueRow] = []
+    departments = (
+        db.execute(select(Department).where(Department.is_active.is_(True)).order_by(Department.code))
+        .scalars()
+        .all()
+    )
+    for department in departments:
+        scoped = Complaint.assigned_department_id == department.id
+        new_count = db.query(Complaint).filter(
+            scoped, Complaint.status.in_([STATUS_ASSIGNED, STATUS_AI_PROCESSED])
+        ).count()
+        in_progress_count = db.query(Complaint).filter(scoped, Complaint.status == STATUS_IN_PROGRESS).count()
+        active_load = db.query(Complaint).filter(scoped, active).count()
+        rows.append(
+            DepartmentQueueRow(
+                department_id=department.id,
+                department_name=department.name("uz"),
+                new=new_count,
+                in_progress=in_progress_count,
+                sla_risk=db.query(Complaint).filter(scoped, *queues.sla_risk(now)).count(),
+                overdue=db.query(Complaint).filter(scoped, *queues.overdue(now)).count(),
+                unowned=db.query(Complaint).filter(scoped, active, Complaint.assigned_user_id.is_(None)).count(),
+                wip_limit=department.wip_limit,
+                # Limit BLOKLAMAYDI — faqat rahbarga «bu bo'lim qoqilib
+                # qoldi» degan signal ([04] departments.wip_limit).
+                over_limit=department.wip_limit is not None and active_load > department.wip_limit,
+            )
+        )
+
+    return QueueStats(
+        unassigned=count(queues.unassigned()),
+        ai_exceptions=count(queues.ai_exceptions()),
+        sla_risk=count(queues.sla_risk(now)),
+        overdue=count(queues.overdue(now)),
+        awaiting_info=count(queues.awaiting_info(now=now)),
+        stuck_ai=count(queues.stuck_ai(now)),
+        by_department=rows,
     )
 
 

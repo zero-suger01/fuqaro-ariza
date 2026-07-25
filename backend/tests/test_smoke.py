@@ -1,12 +1,31 @@
-"""B1 acceptance flow (docs/05-backend-tasklar.md B1 checkpoint C1):
-guest submit -> ticket -> track -> admin list -> status change.
+"""Uchdan-uchga asosiy oqim: guest submit → ticket → track → admin
+ro'yxati → status o'zgarishi.
 
-Runs against the docker-compose Postgres/MinIO/Redis with migrations and
-seed already applied — no separate test database is set up yet.
+Alohida test bazasida ishlaydi (`tests/conftest.py`), shu sabab LLM
+worker'i bilan poyga holati YO'Q: worker dev bazasiga ulangan va test
+murojaatlarini ko'rmaydi, murojaat esa `new` da qoladi. Avval bu testlar
+«worker allaqachon statusni o'zgartirgan bo'lishi mumkin» degan
+tekshiruvlarga to'la edi va aslida nimani tasdiqlayotgani noaniq edi.
 """
 import uuid
 
 import pytest
+
+
+def _submit(client, description: str, phone: str | None = None) -> tuple[str, str]:
+    phone = phone or f"+99890{uuid.uuid4().int % 10**7:07d}"
+    response = client.post(
+        "/api/public/complaints",
+        data={"description": description, "first_name": "Test", "phone": phone},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()["ticket_number"], phone
+
+
+def _complaint_id(client, headers: dict[str, str], ticket: str) -> str:
+    listing = client.get("/api/admin/complaints", params={"q": ticket}, headers=headers)
+    assert listing.status_code == 200, listing.text
+    return next(item["id"] for item in listing.json()["items"] if item["ticket_number"] == ticket)
 
 
 @pytest.mark.smoke
@@ -17,96 +36,62 @@ def test_health(client):
 
 
 @pytest.mark.smoke
-def test_guest_submit_track_admin_flow(client):
-    phone = f"+99890{uuid.uuid4().int % 10**7:07d}"
-
-    submit = client.post(
-        "/api/public/complaints",
-        data={
-            "description": "Yo'lda katta chuqur bor, mashinalar zarar ko'rmoqda",
-            "first_name": "Test",
-            "phone": phone,
-        },
-    )
-    assert submit.status_code == 201, submit.text
-    body = submit.json()
-    assert body["status"] == "new"
-    assert body["status_simple"] == "qabul_qilindi"
-    ticket = body["ticket_number"]
+def test_guest_submit_track_admin_flow(client, admin_headers):
+    ticket, phone = _submit(client, "Yo'lda katta chuqur bor, mashinalar zarar ko'rmoqda")
 
     track = client.get("/api/public/complaints/track", params={"ticket": ticket, "phone": phone})
     assert track.status_code == 200, track.text
-    assert track.json()["ticket_number"] == ticket
-    # v1.3: intake paytida hech qanday klassifikatsiya YO'Q — kategoriya
-    # `boshqa` bo'lib turadi va bir necha daqiqadan keyin LLM uni almashtiradi
-    # (docs/07 §1). Test LLM'ni kutmaydi — bu async, daqiqalar oladi.
-    assert track.json()["category"]["code"] == "boshqa"
+    body = track.json()
+    assert body["ticket_number"] == ticket
+    # v1.3: intake paytida klassifikatsiya YO'Q — kategoriya `boshqa` bo'lib
+    # turadi, LLM keyin almashtiradi (docs/07 §1).
+    assert body["category"]["code"] == "boshqa"
+    # v1.4: muddat intake paytida qo'yiladi — LLM ishlamasa ham murojaat
+    # SLA/eskalatsiya radarida qoladi.
+    assert body["deadline_at"] is not None
 
     # Enumeration protection: wrong phone for a real ticket still 404s.
     wrong = client.get("/api/public/complaints/track", params={"ticket": ticket, "phone": "+998900000001"})
     assert wrong.status_code == 404
     assert wrong.json()["code"] == "not_found"
 
-    login = client.post("/api/auth/login", json={"login": "+998900000000", "password": "admin123"})
-    assert login.status_code == 200, login.text
-    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    complaint_id = _complaint_id(client, admin_headers, ticket)
 
-    listing = client.get("/api/admin/complaints", params={"q": ticket}, headers=headers)
-    assert listing.status_code == 200, listing.text
-    items = listing.json()["items"]
-    assert any(item["ticket_number"] == ticket for item in items)
-    complaint_id = next(item["id"] for item in items if item["ticket_number"] == ticket)
-
-    # Worker LLM tahlilini tugatgan bo'lsa murojaat allaqachon `ai_processed`
-    # yoki `assigned` bo'ladi — test o'sha o'tishni qayta qilmoqchi bo'lsa 422
-    # `invalid_transition` olardi. Shuning uchun avval hozirgi holat o'qiladi.
-    current = client.get(f"/api/admin/complaints/{complaint_id}", headers=headers).json()["status"]
-    if current == "new":
-        status_change = client.patch(
-            f"/api/admin/complaints/{complaint_id}/status", json={"status": "ai_processed"}, headers=headers
-        )
-        assert status_change.status_code == 200, status_change.text
-        current = status_change.json()["status"]
-    assert current in ("ai_processed", "assigned")
+    status_change = client.patch(
+        f"/api/admin/complaints/{complaint_id}/status", json={"status": "ai_processed"}, headers=admin_headers
+    )
+    assert status_change.status_code == 200, status_change.text
+    assert status_change.json()["status"] == "ai_processed"
 
     track_after = client.get("/api/public/complaints/track", params={"ticket": ticket, "phone": phone})
     assert track_after.json()["timeline"][0]["done"] is True
 
-    # rejected requires a note (ai_processed va assigned — ikkalasidan ham
-    # rejected ruxsat etilgan o'tish, docs/03 §2.1)
+    # rejected sababsiz o'tmaydi (docs/03 §2.1)
     reject = client.patch(
-        f"/api/admin/complaints/{complaint_id}/status", json={"status": "rejected"}, headers=headers
+        f"/api/admin/complaints/{complaint_id}/status", json={"status": "rejected"}, headers=admin_headers
     )
     assert reject.status_code == 422
     assert reject.json()["code"] == "validation_error"
 
 
 @pytest.mark.smoke
-def test_resolved_requires_reply_and_review_flow(client):
+def test_resolved_requires_reply_and_review_flow(client, admin_headers):
     """R0/Q2-Q3: resolved javobsiz 422 reply_required; reply_text bilan bitta
     so'rovda javob+status; review endpointi needs_review'ni yopadi."""
-    phone = f"+99891{uuid.uuid4().int % 10**7:07d}"
-    submit = client.post(
-        "/api/public/complaints",
-        data={
-            "description": "Ko'chamizda suv quvuri yorilib ketdi, hovlilarni suv bosmoqda",
-            "first_name": "Test",
-            "phone": phone,
-        },
+    ticket, phone = _submit(client, "Ko'chamizda suv quvuri yorilib ketdi, hovlilarni suv bosmoqda")
+    complaint_id = _complaint_id(client, admin_headers, ticket)
+
+    client.patch(
+        f"/api/admin/complaints/{complaint_id}/status", json={"status": "ai_processed"}, headers=admin_headers
     )
-    assert submit.status_code == 201, submit.text
-    ticket = submit.json()["ticket_number"]
 
-    login = client.post("/api/auth/login", json={"login": "+998900000000", "password": "admin123"})
-    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
-    listing = client.get("/api/admin/complaints", params={"q": ticket}, headers=headers)
-    complaint_id = next(i["id"] for i in listing.json()["items"] if i["ticket_number"] == ticket)
+    # v1.4: review uchun sabab majburiy — sababsiz 422.
+    no_reason = client.post(f"/api/admin/complaints/{complaint_id}/review", json={}, headers=admin_headers)
+    assert no_reason.status_code == 422, no_reason.text
 
-    # new -> ai_processed (worker allaqachon qilgan bo'lishi mumkin), keyin
-    # review: AI taklifini qabul qilib bo'limga biriktiradi, needs_review=False
-    if client.get(f"/api/admin/complaints/{complaint_id}", headers=headers).json()["status"] == "new":
-        client.patch(f"/api/admin/complaints/{complaint_id}/status", json={"status": "ai_processed"}, headers=headers)
-    review = client.post(f"/api/admin/complaints/{complaint_id}/review", json={}, headers=headers)
+    review = client.post(
+        f"/api/admin/complaints/{complaint_id}/review", json={"reason": "ok"}, headers=admin_headers
+    )
     assert review.status_code == 200, review.text
     assert review.json()["status"] == "assigned"
     assert review.json()["needs_review"] is False
@@ -117,18 +102,20 @@ def test_resolved_requires_reply_and_review_flow(client):
     assert track.status_code == 200
     assert track.json()["department"] is not None
 
-    client.patch(f"/api/admin/complaints/{complaint_id}/status", json={"status": "in_progress"}, headers=headers)
+    client.patch(
+        f"/api/admin/complaints/{complaint_id}/status", json={"status": "in_progress"}, headers=admin_headers
+    )
 
-    # resolved javobsiz -> 422 reply_required
-    bare = client.patch(f"/api/admin/complaints/{complaint_id}/status", json={"status": "resolved"}, headers=headers)
+    bare = client.patch(
+        f"/api/admin/complaints/{complaint_id}/status", json={"status": "resolved"}, headers=admin_headers
+    )
     assert bare.status_code == 422, bare.text
     assert bare.json()["code"] == "reply_required"
 
-    # reply_text bilan -> javob + resolved bitta so'rovda
     resolved = client.patch(
         f"/api/admin/complaints/{complaint_id}/status",
         json={"status": "resolved", "reply_text": "Hurmatli fuqaro, quvur ta'mirlandi."},
-        headers=headers,
+        headers=admin_headers,
     )
     assert resolved.status_code == 200, resolved.text
     assert resolved.json()["status"] == "resolved"
@@ -136,6 +123,8 @@ def test_resolved_requires_reply_and_review_flow(client):
 
     track_after = client.get("/api/public/complaints/track", params={"ticket": ticket, "phone": phone})
     assert track_after.json()["reply_text"] == "Hurmatli fuqaro, quvur ta'mirlandi."
+    # v1.4: yakunlangan murojaatga baho berish mumkin.
+    assert track_after.json()["can_give_feedback"] is True
 
 
 @pytest.mark.smoke

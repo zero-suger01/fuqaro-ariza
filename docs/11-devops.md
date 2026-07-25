@@ -24,6 +24,27 @@ cd frontend && npm install && npm run dev     # :3000
 - `localhost:6379` — Homebrew orqali o'rnatilgan **native `redis-server`** (`/usr/local/opt/redis`) `docker-compose`dagi Redis konteyneridan mustaqil ravishda ham shu portni band qilishi mumkin (ikkalasi ham `127.0.0.1:6379`da). Ilova host mashinada (Docker'siz, `uvicorn ... --reload`) ishga tushirilsa, qaysi biriga ulanishi aniq emas — agar noto'g'risiga ulansa, rate limit (`app/core/ratelimit.py`) va ARQ navbat (`enqueue()`) sukut bo'yicha ishlagandek ko'rinadi-yu, aslida boshqa (bo'sh yoki eskirgan) Redis'ga yozib, hech kim iste'mol qilmaydi. Belgisi: `docker compose exec redis redis-cli KEYS "rl:*"` bo'sh qaytadi, lekin `redis-cli -h localhost -p 6379 KEYS "rl:*"` (Docker tashqarisidan) ma'lumot ko'rsatadi. Hal qilish: `brew services stop redis` (agar kerak bo'lmasa) yoki `docker-compose.yml`da Redis portini masalan `6380:6379`ga o'zgartirib, `REDIS_URL`ni mos ravishda yangilash.
 - **`OLLAMA_MODEL` mahalliy Ollama'da pull qilingan modelga aynan mos kelishi kerak.** Kod standarti (`app/config.py`) `gemma3:12b`, lekin ba'zi mashinalarda faqat boshqa nom/versiya (masalan `gemma4:12b`) pull qilingan bo'lishi mumkin — mos kelmasa, Ollama har safar "model not found" bilan javob beradi, `classify_with_llm` `LlmError` ko'taradi (`app/services/ai/llm.py`), va bu **jimgina** yutiladi: `needs_review=True` bo'lib qoladi, murojaat B6 avto-routing'idan o'tmaydi, admin navbatida "tekshiruv kerak" bo'lib qolaveradi — hech qanday xato logga chiqmaydi (bu graceful-degradation ataylab shunday, LLM'siz ham tizim ishlashi kerak). Tekshirish: `ollama list` bilan haqiqiy pull qilingan model nomini solishtirib, `backend/.env`da `OLLAMA_MODEL=<haqiqiy nom>` bilan ustunlik berish. Shuningdek 12B modelning CPU'da javob berishi mashinaning boshqa yuklamasiga (video qo'ng'iroq, ko'p tab) juda sezgir — yuklama baland bo'lsa oddiy so'rov ham daqiqalab cho'zilishi mumkin (docs/07-ai-layer.md §"Model tanlash"dagi 30-90s taxmin bo'sh CPU uchun).
 
+### 1.1 Testlarni yurgizish (v1.4)
+
+Testlar **alohida bazada** ishlaydi — avval ular `DATABASE_URL` ni ishlatib jonli dev bazaga murojaat, fuqaro va MinIO fayllari yozib qoldirardi.
+
+```bash
+cd backend && TEST_DATABASE_URL=postgresql+psycopg://ariza:ariza@localhost:5433/ariza_test pytest -q
+```
+
+`TEST_DATABASE_URL` `DATABASE_URL` bilan bir xil bo'lsa conftest **ishga tushmay to'xtaydi** — bu ataylab: tasodifan dev bazani tozalab yuborishning oldini oladi. Baza yo'q bo'lsa avtomatik yaratiladi, `alembic upgrade head` + seed (demosiz) yuriladi, har test tranzaksiyada bajarilib rollback qilinadi.
+
+### 1.2 Productionga chiqishdan oldin (majburiy cheklist)
+
+- [ ] `python -m app.seed` **`--demo` bayrog'isiz** yurgizilgan (demo bo'lim/xodim/murojaatlar yo'q).
+- [ ] Bazada namuna yozuvlar qolmagan: `SELECT count(*) FROM neighborhoods WHERE name LIKE 'NAMUNA %'` → 0 ([04](04-database.md) §2), sinov murojaatlari (`QA-TEST` va shu kabi) o'chirilgan.
+- [ ] `ADMIN_SEED_PHONE` / `ADMIN_SEED_PASSWORD` real qiymatlar bilan berilgan **yoki** admin qo'lda yaratilgan; `admin123` hech qayerda yo'q.
+- [ ] Seed admin birinchi kirishda parolni almashtirgan (`users.must_change_password = false` ekanini tekshirish).
+- [ ] `JWT_SECRET`, `BOT_API_TOKEN` — tasodifiy va noyob (dev qiymatlari emas).
+- [ ] `TURNSTILE_SECRET_KEY` to'ldirilgan (bo'sh = captcha o'chiq).
+- [ ] `OLLAMA_MODEL` serverdagi haqiqiy pull qilingan modelga mos (yuqoridagi ogohlantirish), `LLM_TIMEOUT_S` o'lchangan vaqtdan ≥2× katta ([07](07-ai-layer.md) §3).
+- [ ] `DATABASE_URL` va `TEST_DATABASE_URL` **boshqa-boshqa** bazalarni ko'rsatadi.
+
 ## 2. D-tasklar
 
 - [x] **D1 (S)** compose'ga `redis` qo'shildi (B1.7 bilan birga), `redis:7-alpine`, healthcheck bilan.

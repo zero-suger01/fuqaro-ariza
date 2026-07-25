@@ -2,9 +2,11 @@ from app.models.ai_analysis import AiAnalysis
 from app.models.audit_log import AuditLog
 from app.models.category import Category
 from app.models.citizen import Citizen
+from app.models.citizen_message import CitizenMessage
 from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
 from app.models.complaint_file import ComplaintFile
+from app.models.complaint_subtask import ComplaintSubtask
 from app.models.department import Department
 from app.models.neighborhood import Neighborhood
 from app.models.notification import Notification
@@ -24,6 +26,8 @@ __all__ = [
     "Complaint",
     "ComplaintFile",
     "ComplaintEvent",
+    "ComplaintSubtask",
+    "CitizenMessage",
     "Reply",
     "AiAnalysis",
     "SttJob",

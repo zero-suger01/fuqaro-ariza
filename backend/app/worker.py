@@ -162,7 +162,10 @@ async def analyze_complaint(ctx, complaint_id: str, attempt: int = 0) -> None:
         # Avtomatik yo'naltirish — past ishonchda ham (yo'naltirilmagan
         # murojaat = to'xtab qolgan murojaat).
         if category is not None and category.department_id:
-            workflow.assign(db, complaint, category.department_id, None, actor_type="ai")
+            # `assigned_user_id` berilmaydi — v1.4 dan oldin bu yerda
+            # ochiq `None` uzatilardi va AI qayta yo'naltirganda adminning
+            # qo'lda tayinlagan xodimi jimgina yo'qolardi ([03] §5).
+            workflow.assign(db, complaint, category.department_id, actor_type="ai")
 
         db.commit()
     finally:

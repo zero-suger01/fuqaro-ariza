@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -43,6 +43,14 @@ class Complaint(Base):
 
     rejected_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # M9/v1.4 — egalik va ma'lumot sikli ([04] §2).
+    # `accepted_at` faqat `claim()` da yoziladi: «ko'rdim» emas, «qabul qildim».
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    info_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    info_provided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    satisfaction: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    reopened_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -60,3 +68,9 @@ class Complaint(Base):
     )
     replies: Mapped[list["Reply"]] = relationship(back_populates="complaint", cascade="all, delete-orphan")
     ai_analyses: Mapped[list["AiAnalysis"]] = relationship(back_populates="complaint", cascade="all, delete-orphan")
+    citizen_messages: Mapped[list["CitizenMessage"]] = relationship(
+        back_populates="complaint", cascade="all, delete-orphan", order_by="CitizenMessage.created_at"
+    )
+    subtasks: Mapped[list["ComplaintSubtask"]] = relationship(
+        back_populates="complaint", cascade="all, delete-orphan", order_by="ComplaintSubtask.created_at"
+    )

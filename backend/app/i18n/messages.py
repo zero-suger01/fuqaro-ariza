@@ -75,6 +75,21 @@ _STATUS = {
 }
 
 
+# v1.4 — `need_info` da savolning O'ZI fuqaroga yetkaziladi. Umumiy
+# "qo'shimcha ma'lumot kerak" jumlasi fuqaroni sahifaga qaytarardi-yu,
+# nima kerakligini aytmasdi — sikl shu yerda uzilardi.
+_INFO_REQUEST = {
+    "uz": "Ariza {ticket} bo'yicha savol: {question} Javob berish: {url}/holat?ticket={ticket}",
+    "oz": "Ариза {ticket} бўйича савол: {question} Жавоб бериш: {url}/ҳолат?ticket={ticket}",
+    "ru": "Вопрос по обращению {ticket}: {question} Ответить: {url}/holat?ticket={ticket}",
+    "en": "Question about complaint {ticket}: {question} Reply at: {url}/holat?ticket={ticket}",
+}
+
+# SMS uzunligini cheklash: uzun savol matni SMS'ni bir necha qismga bo'lib
+# yuboradi (qimmat) va Eskiz tomonda kesilishi mumkin.
+_INFO_QUESTION_MAX = 180
+
+
 def _render(templates: dict[str, str], language: str, **kwargs) -> str:
     lang = language if language in templates else "uz"
     return templates[lang].format(url=settings.public_base_url, **kwargs)
@@ -93,3 +108,13 @@ def status_text(status: str, language: str, ticket: str) -> str | None:
     if templates is None:
         return None
     return _render(templates, language, ticket=ticket)
+
+
+def info_request_text(language: str, ticket: str, question: str) -> str:
+    """`need_info` SMS'i — xodimning savoli bilan birga ([03] §2.1)."""
+    question = " ".join(question.split())
+    if len(question) > _INFO_QUESTION_MAX:
+        question = question[: _INFO_QUESTION_MAX - 1].rstrip() + "…"
+    if question and question[-1] not in ".!?…":
+        question += "."
+    return _render(_INFO_REQUEST, language, ticket=ticket, question=question)

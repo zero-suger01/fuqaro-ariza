@@ -7,11 +7,13 @@ PostgreSQL 16. Hamma id — UUID v4. Hamma vaqt — `timestamptz`. Enum qiymatla
 ```
 citizens, users(staff), departments, categories,
 neighborhoods, complaints, complaint_files, complaint_events, replies,
+citizen_messages, complaint_subtasks,
 ai_analyses, stt_jobs, notifications, audit_logs,
 qr_codes, ticket_counters, settings
 ```
 
 > v1.3: `category_keywords` va `keyword_suggestions` jadvallari **olib tashlandi** (keyword dvigateli yo'q, [07](07-ai-layer.md) §1). Migratsiya: M8.
+> v1.4: `citizen_messages` va `complaint_subtasks` qo'shildi. Migratsiya: M9.
 
 ## 2. Jadval spetsifikatsiyalari
 
@@ -34,11 +36,14 @@ Guest submit: telefon bo'yicha upsert (ism yangilanadi, mavjud bo'lsa qayta yara
 
 Mavjud jadval o'zgaradi: `role` → `department_staff|admin` (B6, `alembic/versions/m6_role_model_v2.py`; dastlab `operator|employee|manager|admin` edi, `operator/employee/manager` birlashtirildi); qo'shiladi: `department_id uuid NULL FK`, `is_active bool default true`. Fuqaro-akkauntlar bu jadvaldan `citizens` ga ko'chiriladi (§4).
 
+**v1.4:** `must_change_password bool NOT NULL default false` — seed'dan yaratilgan admin uchun `true`. Login javobida qaytadi; `true` bo'lsa FE parol almashtirish sahifasiga majburan yo'naltiradi. Standart parol bilan production'ga chiqib ketishning oldini oladi.
+
 ### departments — ichki bo'limlar va tashqi tashkilotlar (mavjud `organizations` o'rniga)
 
 | Ustun | Tur |
 |---|---|
 | id, code varchar(50) UNIQUE, names jsonb, phone, email, is_external bool, is_active bool, created_at |
+| **v1.4:** `wip_limit int NULL` — bo'limning bir vaqtda ola oladigan aktiv ish soni. Faqat **ko'rsatkich**, hech narsani bloklamaydi: oshgani dashboard jadvalida `over_limit` bilan belgilanadi ([03](03-kontraktlar.md) §5 `stats/queues`). |
 
 ### categories — kategoriyalar (enum EMAS, jadval)
 
@@ -75,9 +80,21 @@ Qo'shiladi:
 | ai_category_id | uuid FK NULL, ai_confidence float NULL | denormalizatsiya (oxirgi tahlil) |
 | rejected_reason | text NULL | |
 
+**v1.4 da qo'shiladi (M9):**
+
+| Ustun | Tur | Izoh |
+|---|---|---|
+| accepted_at | timestamptz NULL | xodim «Qabul qilaman» bosgan payt ([03](03-kontraktlar.md) §2.1). `avg_first_action_hours_7d` shu ustundan hisoblanadi — avval avto-accept tufayli ko'rsatkich soxta edi |
+| info_requested_at | timestamptz NULL | `need_info` ga oxirgi o'tish payti — «24 soatdan ortiq javobsiz» navbatini indeks bilan hisoblash uchun |
+| info_provided_at | timestamptz NULL | fuqaro (yoki xodim manual) oxirgi ma'lumot bergan payt |
+| satisfaction | bool NULL | fuqaro bahosi ([03](03-kontraktlar.md) §3.6); NULL = baho berilmagan |
+| reopened_count | int NOT NULL default 0 | fuqaro e'tirozi bilan necha marta qayta ochilgan |
+
 O'zgaradi: `status` yangi kodlarga (§4 xarita); `description` min uzunlik 10 (validatsiya API darajasida). O'chadi: `organization_id` (→ assigned_department_id), `district` (bitta tuman), `category/ai_category` enum ustunlari.
 
 Deadline formulasi: `critical → min(sla_hours, 2h)`, `high → sla_hours/2`, `medium/low → sla_hours`.
+
+> **v1.4:** `deadline_at` endi **intake paytida** (`services/complaint_intake.py`) boshlang'ich qiymat bilan to'ldiriladi (fuqaro tanlagan yoki `boshqa` kategoriyasining `sla_hours`, `priority=medium`), LLM tahlildan keyin qayta hisoblanadi. Avval u faqat LLM'dan keyin yozilardi — LLM ishlamasa murojaat `deadline_at IS NULL` bo'lib qolib, SLA/eskalatsiya so'rovlariga (`deadline_at IS NOT NULL` sharti) umuman tushmasdi.
 
 ### complaint_files — barcha media (mavjud `images` o'rniga)
 
@@ -90,6 +107,35 @@ Deadline formulasi: `critical → min(sla_hours, 2h)`, `high → sla_hours/2`, `
 ### replies — rasmiy javoblar
 
 `id, complaint_id FK, ai_draft text NULL (asos bo'lgan draft), text text NOT NULL, sent_by uuid FK users, channels jsonb (["sms","telegram"]), sent_at timestamptz`.
+
+### citizen_messages — fuqarodan xodimga (v1.4, `replies` ning teskarisi)
+
+| Ustun | Tur | Izoh |
+|---|---|---|
+| id | uuid PK | |
+| complaint_id | uuid FK (CASCADE) idx | |
+| text | text NOT NULL | |
+| source | varchar(10) NOT NULL | `web` \| `telegram` \| `manual` ([03](03-kontraktlar.md) §3.5) |
+| recorded_by | uuid FK users NULL | faqat `manual` uchun — kim yozib qo'ygan |
+| created_at | timestamptz idx | |
+
+Fuqaro keyin yuborgan **rasm/fayllar uchun alohida jadval yo'q** — `complaint_files` allaqachon `complaint_id` ga bog'langan, keyingi yuklamalar o'sha murojaatga tushadi va tafsilot sahifasida umumiy galereyada ko'rinadi.
+
+### complaint_subtasks — idoralararo topshiriqlar (v1.4, S2)
+
+| Ustun | Tur | Izoh |
+|---|---|---|
+| id | uuid PK | |
+| complaint_id | uuid FK (CASCADE) idx | ota murojaat |
+| department_id | uuid FK NOT NULL | bajaruvchi bo'lim |
+| assigned_user_id | uuid FK users NULL | bo'lim ichidagi mas'ul |
+| status | varchar(10) NOT NULL default 'open' | `open` \| `done` \| `cancelled` |
+| note | text NOT NULL | nima qilinishi kerak |
+| deadline_at | timestamptz NULL | |
+| created_by | uuid FK users NOT NULL | admin |
+| created_at / closed_at | timestamptz | |
+
+Ota murojaat ochiq (`open`) sub-task bilan `resolved` ga o'ta olmaydi → 422 `subtasks_open`. Fuqaroga sub-tasklar ko'rinmaydi — javob **bitta va umumiy**.
 
 ### ai_analyses — har AI yugurishi (tarix)
 
@@ -127,6 +173,8 @@ Qo'shiladi: `citizen_id uuid FK NULL` (user_id NULL bo'lishi mumkin bo'ladi), `c
 
 `complaints`: (status), (category_id), (assigned_department_id), (citizen_id), (created_at), (deadline_at), (ticket_number UNIQUE), (neighborhood_id). `complaint_events`: (complaint_id, created_at). `citizens`: (phone UNIQUE), (telegram_chat_id UNIQUE).
 
+**v1.4 (M9):** `complaints`: (status, info_requested_at) — «javobsiz `need_info`» navbati; (assigned_user_id, status) — «Mening ishlarim» navbati. `citizen_messages`: (complaint_id, created_at). `complaint_subtasks`: (complaint_id), (department_id, status).
+
 ## 4. Mavjud sxemadan migratsiya (Alembic, tartib bilan)
 
 Bitta katta migratsiya EMAS — kichik bosqichlar, har biri alohida tekshiriladi (M1–M5 boshlang'ich; keyin `m6_role_model_v2` — B6, `m7_llm_always` — R0):
@@ -146,8 +194,17 @@ Bitta katta migratsiya EMAS — kichik bosqichlar, har biri alohida tekshiriladi
 6. **M7 — LLM-always (R0):** `ai_analyses.confident boolean NULL` qo'shildi (M8'da qayta tashlandi — pastga qarang). Fayl: `alembic/versions/m7_llm_always.py`.
 7. **M8 — LLM-only (v1.3):** `category_keywords` va `keyword_suggestions` jadvallari DROP, `ai_analyses.confident` ustuni DROP, `ai_analyses` dagi eski `engine='keyword'` yozuvlari o'chiriladi (ular endi hech qayerda o'qilmaydi va KPI hisobini buzadi). **Ma'lumot yo'qoladi:** 106 ta seed keyword va taklif navbati — ikkalasi ham qayta tiklanmaydi, lekin seed keywordlar `app/seed.py` tarixida qolgan va taklif navbati hosila ma'lumot edi. `downgrade()` sxemani qaytaradi (bo'sh jadvallar bilan). Fayl: `alembic/versions/m8_llm_only.py`.
 
+8. **M9 — egalik va ma'lumot sikli (v1.4):** `complaints` ga `accepted_at`, `info_requested_at`, `info_provided_at`, `satisfaction`, `reopened_count`; `departments.wip_limit`; `users.must_change_password`; yangi jadvallar `citizen_messages`, `complaint_subtasks`; yangi indekslar (§3). **Backfill:** mavjud `accepted`/`in_progress`+ statusdagi murojaatlar uchun `accepted_at` — `complaint_events` dagi `status_changed → accepted` eventining vaqti (yo'q bo'lsa NULL qoladi). `ck_complaints_status` CHECK'iga tegilmaydi — yangi status qo'shilmagan, faqat yangi **o'tishlar** (`resolved→in_progress`, `closed→in_progress`) qo'shilgan, ular esa ilova darajasida. Fayl: `alembic/versions/m9_ownership_and_info_loop.py`.
+
 > Dev bazalar odatda bo'sh — lekin migratsiya baribir data-safe yoziladi (server pilotida kerak bo'ladi). Har migratsiyadan keyin: `alembic upgrade head && python -m app.seed && pytest -k smoke`.
 
 ## 5. Seed (yangilangan `app/seed.py`)
 
-1) 15 kategoriya (names 4 tilda, icon, sla_hours, department bog'lash); 2) ~10 bo'lim (Suvsoz, Hudgaz, Elektr tarmoqlari, Yo'l xo'jaligi, Obodonlashtirish, Ekologiya, Qurilish inspeksiyasi, Kadastr, Soliq, Hokimlik murojaat bo'limi); 3) ~~keyword seed~~ (v1.3: keyword dvigateli yo'q); 4) admin user; 5) `settings` standartlari; 6) mahalla CSV import buyrug'i: `python -m app.tools.import_neighborhoods data/uychi_mfy.csv`.
+1) 15 kategoriya (names 4 tilda, icon, sla_hours, department bog'lash); 2) ~10 bo'lim (Suvsoz, Hudgaz, Elektr tarmoqlari, Yo'l xo'jaligi, Obodonlashtirish, Ekologiya, Qurilish inspeksiyasi, Kadastr, Soliq, Hokimlik murojaat bo'limi); 3) ~~keyword seed~~ (v1.3: keyword dvigateli yo'q); 4) admin user — **v1.4: faqat `ADMIN_SEED_PHONE` + `ADMIN_SEED_PASSWORD` env berilganda**; 5) `settings` standartlari; 6) mahalla CSV import buyrug'i: `python -m app.tools.import_neighborhoods data/uychi_mfy.csv`.
+
+**v1.4 — seed xavfsizligi.** Avval seed hardcode qilingan `+998900000000 / admin123` adminini har doim yaratardi — bu hisob production'ga o'zgarishsiz chiqib ketishi mumkin edi. Endi:
+
+- Admin **faqat** `ADMIN_SEED_PHONE` va `ADMIN_SEED_PASSWORD` ikkalasi berilganda yaratiladi; berilmasa yaratilmaydi va konsolga ogohlantirish chiqadi. Standart parol kodda qolmaydi.
+- Yaratilgan adminga `must_change_password=true` qo'yiladi — birinchi kirishda parol almashtirish majburiy.
+- Demo/test yozuvlari (sinov bo'limlari, sinov xodimlari, namuna murojaatlar) **faqat `python -m app.seed --demo`** bilan yaratiladi. Bayroqsiz seed faqat kataloglarni (bo'limlar, kategoriyalar, settings) qo'yadi — production'da xavfsiz.
+- Productionga chiqishdan oldingi cheklist: [11-devops.md](11-devops.md) §1.

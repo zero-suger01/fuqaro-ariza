@@ -40,7 +40,8 @@ Haqiqiy fayllarda yana `states.py` (FSM holatlari), `storage.py` (fuqaro profili
 ## T2 — Bildirishnomalar (backend tomonda, B4.2 bilan birga)
 
 - [ ] **T2.1 (S)** Status o'zgarganda/javob yuborilganda backend worker `sendMessage` chaqiradi (shablonlar 4 tilda, fuqaro tili bo'yicha). Bot protsessi bunga aralashmaydi.
-- [ ] **T2.2 (S)** need_info: xabar ichida "Javob yozish" tugmasi → fuqaro yozgani `citizen_reply` event sifatida backendga (`POST /api/bot/complaints/{ticket}/reply` — kontraktga qo'shiladi, docs-first tartibda).
+- [ ] **T2.2 (S)** need_info: xabar ichida xodimning savoli + "Javob yozish" tugmasi → fuqaro yozgani `POST /api/bot/complaints/info` orqali backendga ketadi ([03](03-kontraktlar.md) §6, v1.4 da kontraktga qo'shildi; `info_provided` event, murojaat avtomatik `in_progress` ga qaytadi).
+- [ ] **T2.3 (S)** `resolved` xabariga «Hal bo'ldimi? [Ha] [Yo'q]» inline tugmalari → `POST /api/bot/complaints/feedback` ([03](03-kontraktlar.md) §3.6/§6). «Yo'q» → izoh so'raladi, murojaat qayta ochiladi.
 
 ## T3 — Sayqal (P3 oxiri)
 

@@ -10,7 +10,7 @@ from app.core.security import create_access_token, decode_access_token, hash_pas
 from app.database import get_db
 from app.models.citizen import Citizen
 from app.models.user import User
-from app.schemas.auth import LoginRequest, MeOut, RegisterRequest, TokenResponse
+from app.schemas.auth import ChangePasswordRequest, LoginRequest, MeOut, RegisterRequest, TokenResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -38,6 +38,7 @@ def _staff_me(user: User) -> MeOut:
         role=user.role,
         department_id=user.department_id,
         department_name=user.department.name("uz") if user.department else None,
+        must_change_password=user.must_change_password,
     )
 
 
@@ -83,6 +84,36 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         return TokenResponse(access_token=token, user=_citizen_me(citizen))
 
     raise AppError(401, "unauthorized", "Login yoki parol noto'g'ri")
+
+
+@router.post("/change-password", response_model=MeOut)
+def change_password(
+    payload: ChangePasswordRequest,
+    token: str | None = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    """v1.4 — `must_change_password` bayrog'ini yopishning yagona yo'li.
+
+    Seed'dan yaratilgan admin birinchi kirishda majburan shu yerdan
+    o'tadi: aks holda standart parolli hisob production'da ishlab
+    ketaverardi."""
+    claims = decode_access_token(token) if token else None
+    if claims is None or claims.get("kind") != "staff":
+        raise AppError(401, "unauthorized", "Tizimga kirish talab qilinadi")
+
+    user = db.get(User, uuid.UUID(claims["sub"]))
+    if user is None or not user.is_active:
+        raise AppError(401, "unauthorized", "Tizimga kirish talab qilinadi")
+    if not verify_password(payload.current_password, user.password_hash):
+        raise AppError(400, "validation_error", "Joriy parol noto'g'ri")
+    if verify_password(payload.new_password, user.password_hash):
+        raise AppError(400, "validation_error", "Yangi parol eskisidan farq qilishi kerak")
+
+    user.password_hash = hash_password(payload.new_password)
+    user.must_change_password = False
+    db.commit()
+    db.refresh(user)
+    return _staff_me(user)
 
 
 @router.get("/me", response_model=MeOut)
