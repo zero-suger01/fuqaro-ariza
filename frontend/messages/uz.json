@@ -26,9 +26,6 @@
     "progress": "{current}/{total}-qadam",
     "back": "Orqaga",
     "continueButton": "Davom etish",
-    "stepLabel1": "Muammo",
-    "stepLabel2": "Manzil",
-    "stepLabel3": "Aloqa",
     "draftPrompt": {
       "message": "Boshlagan murojaatingizni davom ettirasizmi?",
       "resume": "Davom ettirish",
@@ -81,6 +78,7 @@
     },
     "analyzing": {
       "title": "Iltimos kuting, sun'iy intellekt tahlil qilmoqda...",
+      "note": "AI murojaatingizni qaysi tashkilotga yo'naltirishini aniqlamoqda",
       "subtitle": "Murojaatingiz tekshirilmoqda",
       "step1": "Murojaat qabul qilindi",
       "step2": "Sun'iy intellekt tahlil qilmoqda...",

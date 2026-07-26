@@ -26,9 +26,6 @@
     "progress": "Step {current} of {total}",
     "back": "Back",
     "continueButton": "Continue",
-    "stepLabel1": "Problem",
-    "stepLabel2": "Location",
-    "stepLabel3": "Contact",
     "draftPrompt": {
       "message": "Continue your unfinished complaint?",
       "resume": "Continue",
@@ -81,6 +78,7 @@
     },
     "analyzing": {
       "title": "Please wait, artificial intelligence is analyzing...",
+      "note": "AI is determining which organization your complaint will be routed to",
       "subtitle": "Your complaint is being checked",
       "step1": "Complaint received",
       "step2": "AI is analyzing...",
