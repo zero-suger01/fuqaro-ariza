@@ -6,7 +6,9 @@
     "loading": "Yuklanmoqda...",
     "back": "Orqaga",
     "continue": "Davom etish",
-    "myComplaints": "Mening murojaatlarim"
+    "myComplaints": "Mening murojaatlarim",
+    "darkMode": "Tungi rejim",
+    "lightMode": "Kunduzgi rejim"
   },
   "landing": {
     "greeting": "Hurmatli fuqaro!",

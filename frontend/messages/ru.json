@@ -6,7 +6,9 @@
     "loading": "Загрузка...",
     "back": "Назад",
     "continue": "Продолжить",
-    "myComplaints": "Мои обращения"
+    "myComplaints": "Мои обращения",
+    "darkMode": "Тёмный режим",
+    "lightMode": "Светлый режим"
   },
   "landing": {
     "greeting": "Уважаемый гражданин!",

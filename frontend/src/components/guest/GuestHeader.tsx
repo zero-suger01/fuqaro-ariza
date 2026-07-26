@@ -4,6 +4,7 @@ import { FileText, Landmark } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
+import { ThemeToggle } from "@/components/guest/ThemeToggle";
 
 const LOCALE_LABELS: Record<string, string> = {
   uz: "O'z",
@@ -51,6 +52,7 @@ export function GuestHeader() {
             <FileText className="h-4 w-4" aria-hidden />
             {t("myComplaints")}
           </Link>
+          <ThemeToggle />
         </div>
       </div>
     </header>

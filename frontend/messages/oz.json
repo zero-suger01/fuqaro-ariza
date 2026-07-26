@@ -6,7 +6,9 @@
     "loading": "Юкланмоқда...",
     "back": "Орқага",
     "continue": "Давом этиш",
-    "myComplaints": "Менинг мурожаатларим"
+    "myComplaints": "Менинг мурожаатларим",
+    "darkMode": "Тунги режим",
+    "lightMode": "Кундузги режим"
   },
   "landing": {
     "greeting": "Ҳурматли фуқаро!",

@@ -6,7 +6,9 @@
     "loading": "Loading...",
     "back": "Back",
     "continue": "Continue",
-    "myComplaints": "My complaints"
+    "myComplaints": "My complaints",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode"
   },
   "landing": {
     "greeting": "Dear citizen!",

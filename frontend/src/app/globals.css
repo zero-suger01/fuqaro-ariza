@@ -21,9 +21,9 @@
   --navy-600: #2b4e8a;
 
   /* Accent */
-  --accent: #c9a227;
-  --accent-hover: #b3901f;
-  --accent-soft: rgba(201, 162, 39, 0.12);
+  --accent: #f49a51;
+  --accent-hover: #e2833a;
+  --accent-soft: rgba(244, 154, 81, 0.12);
 
   /* Semantic */
   --success: #2e9e6b;
@@ -54,6 +54,38 @@
   /* Layout */
   --sidebar-w-collapsed: 76px;
   --sidebar-w-expanded: 248px;
+}
+
+.dark {
+  /* Surfaces */
+  --bg-app: #0b1220;
+  --bg-subtle: #131c2e;
+  --bg-surface: #17223a;
+  --border: #253150;
+  --border-strong: #34426a;
+
+  /* Text */
+  --text-primary: #eef2f8;
+  --text-secondary: #b7c2d6;
+  --text-muted: #8090ab;
+  --text-inverse: #0f2033;
+
+  /* Accent — a touch brighter so it still reads clearly on dark surfaces */
+  --accent: #f6a565;
+  --accent-hover: #f49a51;
+  --accent-soft: rgba(244, 154, 81, 0.18);
+
+  /* Semantic */
+  --success: #3ab27f;
+  --warning: #e0ad55;
+  --danger: #e05f4e;
+  --info: #5a8bd1;
+  --purple: #a569c9;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.45);
+  --shadow-lift: 0 8px 30px rgba(0, 0, 0, 0.5);
 }
 
 @theme inline {

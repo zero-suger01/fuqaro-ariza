@@ -66,7 +66,7 @@ export default function ComplaintsMap({
         groupByCoordinates: false,
       });
       const placemarks = points.map((p) => {
-        const color = STATUS_COLORS[p.status] ?? "#c9a227";
+        const color = STATUS_COLORS[p.status] ?? "#f49a51";
         return new ymaps.Placemark(
           [p.lat, p.lng],
           {
