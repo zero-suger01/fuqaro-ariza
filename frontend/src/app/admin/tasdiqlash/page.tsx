@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Ban, Check, Pencil, Sparkles, Split, X } from "lucide-react";
+import { ArrowRight, Check, Pencil, Sparkles, Split, X } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Label, Select, Textarea } from "@/components/ui/Input";
 import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api";
+import { PRIORITY_COLORS, PRIORITY_LABELS } from "@/lib/status";
 import type { CategoryAdmin, ComplaintListItem, DepartmentAdmin, Page } from "@/lib/types";
 
 /** docs/03 §5 — `POST .../review` `reason` qiymatlari. */
@@ -19,6 +21,16 @@ const REVIEW_REASON_OPTIONS: [ReviewReason, string][] = [
   ["wrong_priority", "Noto'g'ri muhimlik"],
   ["other", "Boshqa sabab"],
 ];
+
+/** AI_LOW_CONFIDENCE=0.6 (docs/07 §3) — shundan past bo'lsa xavotirli,
+ * 0.85+ bo'lsa ishonchli (ko'p bo'limli murojaatda ham 0.95 chiqadi,
+ * docs/07 §1.1). Rang shkalasi Badge'ning boshqa joylardagi (Priority,
+ * Status) semantikasi bilan bir xil. */
+function confidenceColor(confidence: number): string {
+  if (confidence >= 0.85) return "var(--success)";
+  if (confidence >= 0.6) return "var(--warning)";
+  return "var(--danger)";
+}
 
 /** v1.3 — «AI nazorati»: AI o'zi ikkilanib (past ishonch bilan) yo'naltirgan
  * murojaatlar. MUHIM: bu navbat EMAS — murojaatlar allaqachon bo'limga
@@ -128,49 +140,73 @@ export default function TasdiqlashPage() {
             const isEditing = editing === c.id;
             return (
               <Card key={c.id}>
-                <div className="flex flex-col md:flex-row md:items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <Link
-                      href={`/admin/murojaatlar/${c.id}`}
-                      className="text-xs font-mono text-text-muted hover:text-accent"
-                    >
-                      {c.ticket_number}
-                    </Link>
-                    <p className="text-sm text-text-primary mt-0.5 line-clamp-2">
+                <div className="flex flex-col md:flex-row md:items-start gap-4">
+                  <div className="flex-1 min-w-0 flex flex-col gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/admin/murojaatlar/${c.id}`}
+                        className="shrink-0 whitespace-nowrap text-xs font-mono text-text-muted hover:text-accent transition-colors"
+                      >
+                        {c.ticket_number}
+                      </Link>
+                      <Badge label={PRIORITY_LABELS[c.priority]} color={PRIORITY_COLORS[c.priority]} />
+                    </div>
+
+                    <p className="text-sm text-text-primary leading-relaxed line-clamp-2">
                       {c.description_snippet || c.ai?.summary || c.category.name}
                     </p>
-                    <p className="text-xs text-text-secondary mt-1 flex items-center gap-1 flex-wrap">
-                      <Sparkles className="h-3 w-3 text-accent shrink-0" />
-                      {suggestion ? (
-                        <>
-                          AI tanlovi: <strong className="text-accent">{suggestion.name}</strong>
-                          {c.ai?.confidence != null && <> · ishonch {Math.round(c.ai.confidence * 100)}%</>}
-                        </>
-                      ) : (
-                        <>AI kategoriyani aniqlay olmadi — hozir: {c.category.name}</>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-accent shrink-0" aria-hidden />
+                        {suggestion ? (
+                          <Badge label={suggestion.name} color="var(--accent)" />
+                        ) : (
+                          <Badge label="Kategoriyani aniqlay olmadi" color="var(--danger)" />
+                        )}
+                      </span>
+                      {suggestion && c.ai?.confidence != null && (
+                        <Badge
+                          label={`${Math.round(c.ai.confidence * 100)}% ishonch`}
+                          color={confidenceColor(c.ai.confidence)}
+                        />
                       )}
-                      {c.department && <> · yo&apos;naltirildi: {c.department.name}</>}
-                    </p>
+                      {c.department && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <ArrowRight className="h-3 w-3 text-text-muted shrink-0" aria-hidden />
+                          <Badge label={c.department.name} color="var(--info)" />
+                        </span>
+                      )}
+                    </div>
+
                     {/* v1.5 ko'p bo'limli murojaat ([07] §1.1) — sub-task bu
                         ro'yxatda ko'rsatilmasa, admin murojaatni ochmasdan
                         bo'linish bo'lganini bilmaydi va uni bekor qila
                         olmaydi (AI ikkalasiga ham yo'naltirishi noto'g'ri
                         bo'lishi mumkin — bitta tashkilot yetarli bo'lsa). */}
-                    {c.ai &&
-                      c.ai.open_subtasks.map((s) => (
-                        <p key={s.id} className="text-xs text-warning mt-1 flex items-center gap-1 flex-wrap">
-                          <Split className="h-3 w-3 shrink-0" />
-                          <>+ {s.department_name} bo&apos;limiga ham yuborildi</>
-                          <button
-                            type="button"
-                            onClick={() => cancelSubtask(s.id, c.id)}
-                            disabled={busySubtask === s.id}
-                            className="ml-1 inline-flex items-center gap-0.5 text-danger underline underline-offset-2 hover:no-underline disabled:opacity-50"
+                    {c.ai && c.ai.open_subtasks.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Split className="h-3.5 w-3.5 text-warning shrink-0" aria-hidden />
+                        {c.ai.open_subtasks.map((s) => (
+                          <span
+                            key={s.id}
+                            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-pill bg-warning/10 py-1 pl-3 pr-1.5 text-xs font-medium text-warning"
                           >
-                            <Ban className="h-3 w-3" /> Bekor qilish
-                          </button>
-                        </p>
-                      ))}
+                            + {s.department_name}
+                            <button
+                              type="button"
+                              onClick={() => cancelSubtask(s.id, c.id)}
+                              disabled={busySubtask === s.id}
+                              aria-label={`${s.department_name} bo'limiga topshiriqni bekor qilish`}
+                              title="Bekor qilish"
+                              className="flex h-5 w-5 items-center justify-center rounded-full text-warning transition-colors hover:bg-warning/25 disabled:opacity-50"
+                            >
+                              <X className="h-3 w-3" aria-hidden />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {!isEditing ? (
