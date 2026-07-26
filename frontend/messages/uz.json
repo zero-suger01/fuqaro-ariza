@@ -84,8 +84,7 @@
       "step3": "Mas'ul bo'limga yo'naltiriladi"
     },
     "success": {
-      "title": "Murojaatingiz qabul qilindi!",
-      "ticketLabel": "Sizning raqamingiz:",
+      "title": "Murojaatingiz qabul qilindi, sizning raqamingiz:",
       "copyButton": "Nusxalash",
       "copied": "Nusxalandi!",
       "screenshotNote": "Bu raqamni rasmga olib qo'ying.",

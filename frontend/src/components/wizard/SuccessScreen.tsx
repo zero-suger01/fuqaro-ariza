@@ -32,9 +32,8 @@ export function SuccessScreen({ ticketNumber, department }: { ticketNumber: stri
       <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
 
       <div className="flex w-full flex-col gap-3">
-        <p className="text-lg text-text-secondary">{t("ticketLabel")}</p>
-        <div className="rounded-card border-2 border-accent bg-accent-soft px-6 py-5">
-          <p className="text-[36px] font-bold tracking-wide text-text-primary">{ticketNumber}</p>
+        <div className="rounded-card border-2 border-accent bg-accent-soft px-6 py-6">
+          <p className="text-[44px] font-bold tracking-[0.35em] text-text-primary">{ticketNumber}</p>
         </div>
         <button
           type="button"
