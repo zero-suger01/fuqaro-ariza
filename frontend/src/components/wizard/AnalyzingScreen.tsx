@@ -1,7 +1,9 @@
 "use client";
 
-import { Check, Sparkles } from "lucide-react";
+import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Lottie from "lottie-react";
+import aiAnalyzingAnimation from "@/lib/lottie/ai-analyzing.json";
 
 // Ariza yuborilgan (backend'da ticket allaqachon yaratilgan), lekin AI
 // natijasi kutilmoqda — docs/10-ui-ux.md §2.9 "kutish holatlari
@@ -10,43 +12,16 @@ import { useTranslations } from "next-intl";
 // baribir "qabul qilindi" ekraniga o'tkazadi — bu ekran cheksiz osilib
 // qolmaydi.
 //
-// Badge: expanding pulse rings (globals.css @keyframes ring-pulse) + two
-// dots orbiting in opposite directions (@keyframes orbit) — a plain static
-// icon read as "stuck"; this reads as "actively working".
+// Badge: client-supplied Lottie animation (src/lib/lottie/ai-analyzing.json,
+// "AI-powered marketing tools abstract" from LottieFiles — downloaded and
+// provided directly, bundled locally rather than hotlinked).
 export function AnalyzingScreen() {
   const t = useTranslations("wizard.analyzing");
 
   return (
-    <div className="flex flex-col items-center gap-6 text-center">
-      <div className="relative flex h-28 w-28 items-center justify-center">
-        <span
-          className="absolute inset-0 rounded-full border-2 border-accent"
-          style={{ animation: "ring-pulse 2.4s ease-out infinite" }}
-          aria-hidden
-        />
-        <span
-          className="absolute inset-0 rounded-full border-2 border-accent"
-          style={{ animation: "ring-pulse 2.4s ease-out infinite", animationDelay: "0.8s" }}
-          aria-hidden
-        />
-        <span
-          className="absolute inset-0 rounded-full border-2 border-accent"
-          style={{ animation: "ring-pulse 2.4s ease-out infinite", animationDelay: "1.6s" }}
-          aria-hidden
-        />
-        <span
-          className="absolute h-2 w-2 rounded-full bg-accent"
-          style={{ animation: "orbit 3s linear infinite" }}
-          aria-hidden
-        />
-        <span
-          className="absolute h-1.5 w-1.5 rounded-full bg-accent/70"
-          style={{ animation: "orbit 3s linear infinite reverse", animationDelay: "-1.5s" }}
-          aria-hidden
-        />
-        <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-accent-soft shadow-lift">
-          <Sparkles className="h-8 w-8 animate-pulse text-accent" aria-hidden />
-        </div>
+    <div className="flex flex-col items-center gap-4 text-center">
+      <div className="h-48 w-48">
+        <Lottie animationData={aiAnalyzingAnimation} loop autoplay />
       </div>
       <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
       <p className="text-lg text-text-secondary">{t("subtitle")}</p>

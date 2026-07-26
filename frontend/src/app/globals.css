@@ -182,27 +182,3 @@ body {
 .yandex-map-container {
   border-radius: var(--radius-inner);
 }
-
-/* AnalyzingScreen — rings expanding outward from the AI badge, staggered
- * per-ring via animation-delay so they read as a continuous pulse. */
-@keyframes ring-pulse {
-  0% {
-    transform: scale(0.75);
-    opacity: 0.55;
-  }
-  100% {
-    transform: scale(1.9);
-    opacity: 0;
-  }
-}
-
-/* Small dots orbiting the AI badge — two run this in reverse at an offset
- * delay so they don't visually collide. */
-@keyframes orbit {
-  from {
-    transform: rotate(0deg) translateX(44px) rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg) translateX(44px) rotate(-360deg);
-  }
-}
