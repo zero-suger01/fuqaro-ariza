@@ -72,6 +72,11 @@ Server holati `GET /api/admin/stats/ai-health` da: `ollama_ok`, oxirgi muvaffaqi
 
 ## 3. LLM — Ollama + Gemma (yagona dvigatel)
 
+> **Vaqtincha (lokal dev, v1.5.1):** `LLM_PROVIDER=deepseek` bilan Ollama o'rniga
+> DeepSeek API (`app/services/ai/deepseek` chaqiruvi `app/services/ai/llm.py`
+> ichida) ishlatilishi mumkin — bir xil `LlmAnalysis` sxemasi, worker/pipeline
+> o'zgarmaydi. `DEEPSEEK_API_KEY` kerak (§9). Qaytarish: `LLM_PROVIDER=ollama`.
+
 ### Model tanlash (serverga qarab, env `OLLAMA_MODEL`)
 
 | Server | Tavsiya model | Izoh |

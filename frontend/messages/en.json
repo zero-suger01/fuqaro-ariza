@@ -69,6 +69,13 @@
       "submitButton": "Submit",
       "submitting": "Submitting..."
     },
+    "analyzing": {
+      "title": "One moment...",
+      "subtitle": "Your complaint is being checked",
+      "step1": "Complaint received",
+      "step2": "AI is analyzing...",
+      "step3": "Will be routed to the responsible department"
+    },
     "success": {
       "title": "Your complaint has been received!",
       "ticketLabel": "Your tracking number:",
@@ -78,7 +85,8 @@
       "smsNote": "We also sent it by SMS.",
       "checkStatusButton": "Check status",
       "homeButton": "Home",
-      "aiNote": "AI reads your complaint and routes it to the responsible department."
+      "aiNote": "AI reads your complaint and routes it to the responsible department.",
+      "aiRouted": "Your complaint has been confirmed and sent to the \"{department}\" department. It is being reviewed."
     },
     "error": {
       "generic": "Something went wrong. Please try again.",

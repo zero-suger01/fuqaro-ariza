@@ -32,7 +32,7 @@ from app.models.complaint_event import ComplaintEvent
 from app.models.complaint_subtask import ComplaintSubtask
 from app.models.stt_job import SttJob
 from app.models.user import User
-from app.services.ai.llm import LlmError, analyze_with_llm
+from app.services.ai.llm import LlmError, analyze_with_llm, current_engine_and_model
 from app.services.ai.stt import SttError, transcribe
 from app.services import workflow
 from app.services.deadline import compute_deadline
@@ -227,6 +227,7 @@ async def analyze_complaint(ctx, complaint_id: str, attempt: int = 0) -> None:
 
         await _mark_llm_success(ctx)
 
+        _engine, _model = current_engine_and_model()
         category = db.execute(select(Category).where(Category.code == result.category_code)).scalar_one_or_none()
         unknown_code = category is None
         if unknown_code:
@@ -245,7 +246,7 @@ async def analyze_complaint(ctx, complaint_id: str, attempt: int = 0) -> None:
                 summary=result.summary_uz,
                 suggested_reply=result.reply_draft_uz,
                 tags=result.tags,
-                model=settings.ollama_model,
+                model=_model,
                 latency_ms=latency_ms,
             )
         )
@@ -270,8 +271,8 @@ async def analyze_complaint(ctx, complaint_id: str, attempt: int = 0) -> None:
                 event_type="ai_processed",
                 actor_type="ai",
                 payload={
-                    "engine": "llm",
-                    "model": settings.ollama_model,
+                    "engine": _engine,
+                    "model": _model,
                     "confidence": result.confidence,
                     "needs_review": complaint.needs_review,
                     "latency_ms": latency_ms,

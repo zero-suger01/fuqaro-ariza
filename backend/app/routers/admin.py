@@ -29,6 +29,7 @@ from app.core.security import hash_password
 from app.database import get_db
 from app.i18n.messages import reply_text as sms_reply_text
 from app.models.ai_analysis import AiAnalysis
+from app.services.ai.llm import current_engine_and_model
 from app.models.audit_log import AuditLog
 from app.models.category import Category
 from app.models.citizen import Citizen
@@ -1053,9 +1054,19 @@ def stats_ai_health(db: Session = Depends(get_db)):
 
     ollama_ok = last_success is not None and (now - last_success) <= timedelta(minutes=10)
     if not ollama_ok:
-        # Yaqin muvaffaqiyat yo'q — jonli ping (2 s): server turibdimi o'zi?
+        # Yaqin muvaffaqiyat yo'q — jonli ping (2 s): server/API turibdimi o'zi?
+        # LLM_PROVIDER=deepseek bo'lsa Ollama'ni emas, DeepSeek'ni tekshiramiz
+        # (aks holda lokal Ollama o'chiq bo'lsa ham deepseek ishlab turgan
+        # bo'lishi mumkin — dashboard yolg'on "ishlamayapti" ko'rsatardi).
         try:
-            ping = httpx.get(f"{settings.ollama_url}/api/tags", timeout=2.0)
+            if settings.llm_provider == "deepseek":
+                ping = httpx.get(
+                    f"{settings.deepseek_base_url}/models",
+                    headers={"Authorization": f"Bearer {settings.deepseek_api_key or ''}"},
+                    timeout=2.0,
+                )
+            else:
+                ping = httpx.get(f"{settings.ollama_url}/api/tags", timeout=2.0)
             ollama_ok = ping.status_code == 200
         except httpx.HTTPError:
             ollama_ok = False
@@ -1083,9 +1094,10 @@ def stats_ai_health(db: Session = Depends(get_db)):
     )
     stt_ok = last_stt is None or last_stt.status != "failed"
 
+    _, active_model = current_engine_and_model()
     return AiHealthOut(
         ollama_ok=ollama_ok,
-        model=settings.ollama_model,
+        model=active_model,
         last_llm_success_at=last_success,
         llm_queue_depth=llm_queue_depth,
         llm_errors_1h=llm_errors_1h,

@@ -10,8 +10,10 @@ import { Step1Problem } from "@/components/wizard/Step1Problem";
 import { Step2Location } from "@/components/wizard/Step2Location";
 import { Step3Contact } from "@/components/wizard/Step3Contact";
 import { SuccessScreen } from "@/components/wizard/SuccessScreen";
+import { AnalyzingScreen } from "@/components/wizard/AnalyzingScreen";
 import { apiGet, apiPostForm } from "@/lib/api";
 import { toE164 } from "@/lib/phone";
+import { useAiRouting } from "@/lib/useAiRouting";
 import { EMPTY_DRAFT, clearDraft, loadDraft, saveDraft, type WizardDraft } from "@/lib/wizardDraft";
 import type { ComplaintSubmitResponse, PublicCategory, PublicNeighborhood, QrLanding } from "@/lib/types";
 import { ApiError } from "@/lib/api";
@@ -34,6 +36,7 @@ function WizardContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<ComplaintSubmitResponse | null>(null);
+  const aiRouting = useAiRouting(result?.ticket_number ?? null, result ? toE164(draft.phoneDigits) : null);
 
   useEffect(() => {
     apiGet<PublicCategory[]>(`/api/public/categories?lang=${locale}`)
@@ -113,9 +116,19 @@ function WizardContent() {
   }
 
   if (result) {
+    if (aiRouting.status === "polling") {
+      return (
+        <GuestShell>
+          <AnalyzingScreen />
+        </GuestShell>
+      );
+    }
     return (
       <GuestShell>
-        <SuccessScreen ticketNumber={result.ticket_number} />
+        <SuccessScreen
+          ticketNumber={result.ticket_number}
+          department={aiRouting.status === "routed" ? aiRouting.department : null}
+        />
       </GuestShell>
     );
   }
