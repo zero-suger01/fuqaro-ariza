@@ -12,17 +12,15 @@ import aiAnalyzingAnimation from "@/lib/lottie/ai-analyzing.json";
 // baribir "qabul qilindi" ekraniga o'tkazadi — bu ekran cheksiz osilib
 // qolmaydi.
 //
-// Badge: client-supplied Lottie animation (src/lib/lottie/ai-analyzing.json,
-// "AI-powered marketing tools abstract" from LottieFiles — downloaded and
-// provided directly, bundled locally rather than hotlinked).
+// Lottie animatsiyasi (src/lib/lottie/ai-analyzing.json, mijoz bergan
+// "AI-powered marketing tools abstract") endi katta sarlavha grafikasi
+// emas — "Sun'iy intellekt tahlil qilmoqda..." qatorining o'zida, kichik
+// belgi sifatida (mijoz sahifa yuqorisida ko'rishni xohlamadi).
 export function AnalyzingScreen() {
   const t = useTranslations("wizard.analyzing");
 
   return (
     <div className="flex flex-col items-center gap-4 text-center">
-      <div className="h-48 w-48">
-        <Lottie animationData={aiAnalyzingAnimation} loop autoplay />
-      </div>
       <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
       <p className="text-lg text-text-secondary">{t("subtitle")}</p>
 
@@ -34,10 +32,9 @@ export function AnalyzingScreen() {
           <p className="text-base text-text-primary">{t("step1")}</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft">
-            <span className="absolute h-7 w-7 animate-ping rounded-full bg-accent/40" aria-hidden />
-            <span className="h-2.5 w-2.5 rounded-full bg-accent" aria-hidden />
-          </span>
+          <div className="h-11 w-11 shrink-0">
+            <Lottie animationData={aiAnalyzingAnimation} loop autoplay />
+          </div>
           <p className="text-base font-medium text-text-primary">{t("step2")}</p>
         </div>
         <div className="flex items-center gap-3">

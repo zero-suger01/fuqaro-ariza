@@ -92,7 +92,6 @@
       "smsNote": "We also sent it by SMS.",
       "checkStatusButton": "Check status",
       "homeButton": "Home",
-      "aiNote": "AI reads your complaint and routes it to the responsible department.",
       "aiRouted": "Your complaint has been confirmed and sent to the \"{department}\" department. It is being reviewed."
     },
     "error": {

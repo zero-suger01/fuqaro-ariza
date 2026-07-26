@@ -51,14 +51,15 @@ export function SuccessScreen({ ticketNumber, department }: { ticketNumber: stri
         <p>{t("smsNote")}</p>
       </div>
 
-      {/* R0/Q5 — fuqaro AI ishlayotganini biladi (murojaat 1 daqiqada bo'limda) */}
-      {department ? (
+      {/* R0/Q5 — fuqaro AI ishlayotganini biladi (murojaat 1 daqiqada bo'limda).
+          Mijoz so'ragan: routing hali noma'lum bo'lsa (department=null,
+          20s poll timeout) statik "AI o'qib yo'naltiradi" matni endi
+          ko'rsatilmaydi — faqat haqiqiy natija bo'lsa banner chiqadi. */}
+      {department && (
         <div className="flex w-full items-start gap-3 rounded-card border-2 border-success bg-success/10 px-4 py-3 text-left">
           <BadgeCheck className="mt-0.5 h-6 w-6 shrink-0 text-success" aria-hidden />
           <p className="text-base text-text-primary">{t("aiRouted", { department })}</p>
         </div>
-      ) : (
-        <p className="w-full rounded-card bg-bg-subtle px-4 py-3 text-base text-text-secondary">{t("aiNote")}</p>
       )}
 
       <div className="flex w-full flex-col gap-3">

@@ -92,7 +92,6 @@
       "smsNote": "SMS ham yubordik.",
       "checkStatusButton": "Holatini tekshirish",
       "homeButton": "Bosh sahifa",
-      "aiNote": "Sun'iy intellekt murojaatingizni o'qib, mas'ul bo'limga yo'naltiradi.",
       "aiRouted": "Murojaatingiz tasdiqlandi va \"{department}\" bo'limiga yuborildi. Ko'rib chiqilmoqda."
     },
     "error": {
