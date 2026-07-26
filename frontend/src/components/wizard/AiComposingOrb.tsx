@@ -4,11 +4,11 @@ import { useEffect, useRef } from "react";
 
 // thinking-orbs (orbs.jakubantalik.com) "composing" effektining kattaroq,
 // accent rangli (#F49A51) nusxasi — kutubxona faqat 20/64px va oq-qora
-// bo'lgani uchun canvas'da qayta yozildi. To'lqin-simon ko'p lentali
-// sash: 5 ta gorizontal nuqtalar lentasi sinus to'lqin bo'ylab oqadi.
+// bo'lgani uchun canvas'da qayta yozildi. Aylana shaklida: 5 ta konsentrik
+// nuqtali halqa radius bo'ylab to'lqinlanib oqadi (undulating rings).
 const ACCENT_RGB = "244, 154, 81"; // #F49A51 — loyihaning accent rangi
-const BANDS = 5;
-const DOTS_PER_BAND = 42;
+const RINGS = 5;
+const DOTS_PER_RING = 44;
 
 export function AiComposingOrb({
   size = 300,
@@ -40,23 +40,25 @@ export function AiComposingOrb({
       ctx.clearRect(0, 0, size, size);
       const cx = size / 2;
       const cy = size / 2;
-      const span = size * 0.78;
-      const amp = size * 0.055;
+      const maxR = size * 0.4;
+      const amp = size * 0.028;
 
-      for (let b = 0; b < BANDS; b++) {
-        const bandPhase = (b / BANDS) * Math.PI * 2;
-        const bandY = cy + (b - (BANDS - 1) / 2) * size * 0.085;
-        for (let i = 0; i < DOTS_PER_BAND; i++) {
-          const progress = i / (DOTS_PER_BAND - 1);
-          const x = cx - span / 2 + progress * span;
-          const wave = Math.sin(progress * Math.PI * 3 + t * 2 + bandPhase);
-          const y = bandY + wave * amp;
-          // Chekkalarga yaqin nuqtalar mayda va xira
-          const edge = Math.sin(progress * Math.PI);
-          const alpha = 0.2 + 0.6 * edge;
-          const r = 2.2 + 1.8 * edge;
+      for (let ring = 0; ring < RINGS; ring++) {
+        const ringPhase = (ring / RINGS) * Math.PI * 2;
+        const baseR = maxR * (0.35 + 0.65 * (ring / (RINGS - 1)));
+        for (let i = 0; i < DOTS_PER_RING; i++) {
+          const angle = (i / DOTS_PER_RING) * Math.PI * 2;
+          // Halqa bo'ylab oqayotgan to'lqin — radius ozgina siljiydi
+          const wave = Math.sin(angle * 4 + t * 2.2 + ringPhase);
+          const r = baseR + wave * amp;
+          const x = cx + Math.cos(angle) * r;
+          const y = cy + Math.sin(angle) * r;
+          // To'lqin cho'qqisidagi nuqtalar yorqinroq
+          const glow = 0.5 + 0.5 * wave;
+          const alpha = 0.3 + 0.55 * glow;
+          const dotR = 2 + 1.8 * glow;
           ctx.beginPath();
-          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.arc(x, y, dotR, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${ACCENT_RGB}, ${alpha})`;
           ctx.fill();
         }
