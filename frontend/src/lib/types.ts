@@ -93,6 +93,9 @@ export interface AiListBrief {
   summary: string | null;
   suggested_category: CategoryBrief | null;
   confidence: number | null;
+  // v1.5 ko'p bo'limli murojaat ([07] §1.1) — AI yaratgan ochiq sub-tasklar
+  // bo'lim nomlari (bo'sh = sub-task yo'q).
+  open_subtask_departments: string[];
 }
 
 export interface ComplaintListItem {

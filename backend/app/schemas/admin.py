@@ -207,6 +207,10 @@ class AiListBrief(BaseModel):
     summary: str | None
     suggested_category: CategoryBrief | None
     confidence: float | None
+    # v1.5 ko'p bo'limli murojaat ([07] §1.1) — AI yaratgan OCHIQ sub-tasklar
+    # bo'lim nomlari. Tasdiqlash navbati buni ko'rsatmasa admin murojaatni
+    # ochmasdan turib bo'linish bo'lganini bilmaydi.
+    open_subtask_departments: list[str] = []
 
 
 class ComplaintListItem(BaseModel):
