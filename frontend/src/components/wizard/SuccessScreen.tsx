@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Home, Search } from "lucide-react";
+import { BadgeCheck, Check, Copy, Home, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { GuestLinkButton } from "@/components/guest/GuestButton";
 
-export function SuccessScreen({ ticketNumber }: { ticketNumber: string }) {
+// AI natijasi (`useAiRouting`, frontend/src/lib/useAiRouting.ts) bu ekran
+// ochilishidan OLDIN kutiladi (AnalyzingScreen) — shuning uchun bu yerda
+// faqat yakuniy holat ko'rsatiladi: `department` bo'lsa qaysi bo'limga
+// yo'naltirilgani, bo'lmasa (poll 20 s da timeout bo'lgan bo'lsa) umumiy
+// statik matn (docs/10-ui-ux.md §2.9).
+export function SuccessScreen({ ticketNumber, department }: { ticketNumber: string; department: string | null }) {
   const t = useTranslations("wizard.success");
   const [copied, setCopied] = useState(false);
 
@@ -47,7 +52,14 @@ export function SuccessScreen({ ticketNumber }: { ticketNumber: string }) {
       </div>
 
       {/* R0/Q5 — fuqaro AI ishlayotganini biladi (murojaat 1 daqiqada bo'limda) */}
-      <p className="w-full rounded-card bg-bg-subtle px-4 py-3 text-base text-text-secondary">{t("aiNote")}</p>
+      {department ? (
+        <div className="flex w-full items-start gap-3 rounded-card border-2 border-success bg-success/10 px-4 py-3 text-left">
+          <BadgeCheck className="mt-0.5 h-6 w-6 shrink-0 text-success" aria-hidden />
+          <p className="text-base text-text-primary">{t("aiRouted", { department })}</p>
+        </div>
+      ) : (
+        <p className="w-full rounded-card bg-bg-subtle px-4 py-3 text-base text-text-secondary">{t("aiNote")}</p>
+      )}
 
       <div className="flex w-full flex-col gap-3">
         <GuestLinkButton href={`/holat?ticket=${encodeURIComponent(ticketNumber)}`} variant="primary">

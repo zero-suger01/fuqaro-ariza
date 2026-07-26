@@ -1,9 +1,13 @@
-"""Ollama (Gemma) — loyihaning YAGONA AI dvigateli (docs/07-ai-layer.md §3).
+"""LLM — loyihaning YAGONA AI dvigateli (docs/07-ai-layer.md §3).
 
 Har murojaat shu yerdan o'tadi: kategoriya, ustuvorlik, kayfiyat, xulosa va
-javob drafti bitta JSON javobda qaytadi. Har qanday xato (Ollama o'chiq,
+javob drafti bitta JSON javobda qaytadi. Har qanday xato (dvigatel o'chiq,
 timeout, buzuq JSON) `LlmError` ko'taradi — chaqiruvchi (worker) uni ushlab,
 murojaatni qayta urinish navbatiga qo'yadi (docs/07 §2), admin navbatiga EMAS.
+
+`LLM_PROVIDER` env orqali tanlanadi: "ollama" (standart, lokal) yoki
+"deepseek" (API, vaqtincha — DeepSeek Ollama o'rnini bosadi, ikkalasi ham
+xuddi shu `LlmAnalysis` sxemasini qaytaradi, worker bu farqni bilmaydi).
 """
 import json
 import time
@@ -103,35 +107,70 @@ class LlmAnalysis(BaseModel):
         return max(0.0, min(1.0, value))
 
 
+def current_engine_and_model() -> tuple[str, str]:
+    """Dashboard/`ai_analyses.model` uchun: qaysi provayder va model hozir
+    faol (LLM_PROVIDER, docs/07 §3)."""
+    if settings.llm_provider == "deepseek":
+        return "deepseek", settings.deepseek_model
+    return "ollama", settings.ollama_model
+
+
 def _category_catalog(db: Session) -> str:
     categories = db.query(Category).filter(Category.is_active.is_(True)).order_by(Category.sort_order).all()
     return "\n".join(f"- {c.code}: {c.name('uz')}" for c in categories)
 
 
+def _call_ollama(messages: list[dict]) -> str:
+    response = httpx.post(
+        f"{settings.ollama_url}/api/chat",
+        json={
+            "model": settings.ollama_model,
+            "messages": messages,
+            "format": "json",
+            "options": {"temperature": 0},
+            "keep_alive": -1,
+            "stream": False,
+        },
+        timeout=settings.llm_timeout_s,
+    )
+    response.raise_for_status()
+    return response.json()["message"]["content"]
+
+
+def _call_deepseek(messages: list[dict]) -> str:
+    if not settings.deepseek_api_key:
+        raise LlmError("DEEPSEEK_API_KEY berilmagan (LLM_PROVIDER=deepseek, backend/.env)")
+    response = httpx.post(
+        f"{settings.deepseek_base_url}/chat/completions",
+        headers={"Authorization": f"Bearer {settings.deepseek_api_key}"},
+        json={
+            "model": settings.deepseek_model,
+            "messages": messages,
+            "response_format": {"type": "json_object"},
+            "temperature": 0,
+            "stream": False,
+        },
+        timeout=settings.llm_timeout_s,
+    )
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
+
+
 def analyze_with_llm(db: Session, text: str, address: str | None = None) -> tuple[LlmAnalysis, int]:
     """Returns (analysis, latency_ms). `llm_max_attempts` urinishdan keyin
     ham bo'lmasa `LlmError` — worker qayta urinish navbatiga qo'yadi."""
-    payload = {
-        "model": settings.ollama_model,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT_TEMPLATE.format(categories=_category_catalog(db))},
-            {"role": "user", "content": text if not address else f"{text}\n\nManzil: {address}"},
-        ],
-        "format": "json",
-        "options": {"temperature": 0},
-        "keep_alive": -1,
-        "stream": False,
-    }
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT_TEMPLATE.format(categories=_category_catalog(db))},
+        {"role": "user", "content": text if not address else f"{text}\n\nManzil: {address}"},
+    ]
+    call = _call_deepseek if settings.llm_provider == "deepseek" else _call_ollama
+    engine_label = settings.deepseek_model if settings.llm_provider == "deepseek" else settings.ollama_model
 
     last_error: Exception | None = None
     for _ in range(settings.llm_max_attempts):
         started = time.monotonic()
         try:
-            response = httpx.post(
-                f"{settings.ollama_url}/api/chat", json=payload, timeout=settings.llm_timeout_s
-            )
-            response.raise_for_status()
-            content = response.json()["message"]["content"]
+            content = call(messages)
             result = LlmAnalysis.model_validate(json.loads(content))
             return result, int((time.monotonic() - started) * 1000)
         except (httpx.HTTPError, KeyError, json.JSONDecodeError) as exc:
@@ -140,6 +179,6 @@ def analyze_with_llm(db: Session, text: str, address: str | None = None) -> tupl
             last_error = exc
 
     raise LlmError(
-        f"Ollama {settings.llm_max_attempts} urinishdan keyin ham javob bermadi "
-        f"(timeout {settings.llm_timeout_s:.0f}s, model {settings.ollama_model}): {last_error}"
+        f"{settings.llm_provider} {settings.llm_max_attempts} urinishdan keyin ham javob bermadi "
+        f"(timeout {settings.llm_timeout_s:.0f}s, model {engine_label}): {last_error}"
     ) from last_error

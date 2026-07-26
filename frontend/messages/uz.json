@@ -67,6 +67,13 @@
       "submitButton": "Yuborish",
       "submitting": "Yuborilmoqda..."
     },
+    "analyzing": {
+      "title": "Bir daqiqa...",
+      "subtitle": "Murojaatingiz tekshirilmoqda",
+      "step1": "Murojaat qabul qilindi",
+      "step2": "Sun'iy intellekt tahlil qilmoqda...",
+      "step3": "Mas'ul bo'limga yo'naltiriladi"
+    },
     "success": {
       "title": "Murojaatingiz qabul qilindi!",
       "ticketLabel": "Sizning raqamingiz:",
@@ -76,7 +83,8 @@
       "smsNote": "SMS ham yubordik.",
       "checkStatusButton": "Holatini tekshirish",
       "homeButton": "Bosh sahifa",
-      "aiNote": "Sun'iy intellekt murojaatingizni o'qib, mas'ul bo'limga yo'naltiradi."
+      "aiNote": "Sun'iy intellekt murojaatingizni o'qib, mas'ul bo'limga yo'naltiradi.",
+      "aiRouted": "Murojaatingiz tasdiqlandi va \"{department}\" bo'limiga yuborildi. Ko'rib chiqilmoqda."
     },
     "error": {
       "generic": "Xatolik yuz berdi. Qaytadan urinib ko'ring.",

@@ -31,8 +31,17 @@ class Settings(BaseSettings):
     smtp_port: int = 587
 
     # AI (docs/07-ai-layer.md) — LLM yagona dvigatel (v1.3)
+    # v1.5.1 (vaqtincha, lokal): "ollama" | "deepseek". Ikkalasi ham xuddi
+    # shu LlmAnalysis sxemasini qaytaradi — worker/pipeline o'zgarmaydi,
+    # faqat app/services/ai/llm.py ichida qaysi API chaqirilishi almashadi.
+    llm_provider: str = "ollama"
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "gemma3:12b"
+    # DeepSeek (OpenAI-compatible chat completions). Lokal Ollama o'rniga
+    # vaqtincha ishlatilganda LLM_PROVIDER=deepseek + shu kalit kerak.
+    deepseek_api_key: str | None = None
+    deepseek_model: str = "deepseek-chat"
+    deepseek_base_url: str = "https://api.deepseek.com"
     # LLM shundan past ishonch bersa `needs_review` BELGISI qo'yiladi
     # (bloklamaydi — murojaat baribir yo'naltiriladi, docs/07 §1).
     ai_low_confidence: float = 0.6
