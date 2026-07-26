@@ -14,7 +14,6 @@ from app.models.qr_code import QrCode
 from app.models.reply import Reply
 from app.models.setting import Setting
 from app.models.stt_job import SttJob
-from app.models.ticket_counter import TicketCounter
 from app.models.user import User
 
 __all__ = [
@@ -31,7 +30,6 @@ __all__ = [
     "Reply",
     "AiAnalysis",
     "SttJob",
-    "TicketCounter",
     "QrCode",
     "Setting",
     "AuditLog",

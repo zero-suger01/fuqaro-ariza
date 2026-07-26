@@ -1,25 +1,28 @@
-from datetime import datetime, timezone
+import secrets
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
-
-settings = get_settings()
+_MAX_ATTEMPTS = 20
 
 
 def next_ticket_number(db: Session) -> str:
-    """Row-locked per-year counter (docs/04-database.md ticket_counters).
-    `INSERT ... ON CONFLICT DO NOTHING` then `UPDATE ... RETURNING` is
-    race-safe under concurrent submits without a separate SELECT FOR UPDATE.
+    """8-digit ticket: '85' fixed prefix + 6 random digits (client
+    requirement — replaces the old sequential UY-YYYY-NNNNNN scheme, which
+    was also an enumeration risk now that /track looks up by ticket alone
+    with no phone check).
+
+    `secrets.randbelow` (not `random`) since this is now the sole public
+    identifier for a citizen's complaint. Checked against `complaints` for
+    uniqueness before use — 1e6 possible suffixes makes collisions rare at
+    realistic volumes, but never assume; retry on collision instead of
+    trusting non-collision.
     """
-    year = datetime.now(timezone.utc).year
-    db.execute(
-        text("INSERT INTO ticket_counters (year, last_value) VALUES (:year, 0) ON CONFLICT (year) DO NOTHING"),
-        {"year": year},
-    )
-    last_value = db.execute(
-        text("UPDATE ticket_counters SET last_value = last_value + 1 WHERE year = :year RETURNING last_value"),
-        {"year": year},
-    ).scalar_one()
-    return f"{settings.ticket_prefix}-{year}-{last_value:06d}"
+    for _ in range(_MAX_ATTEMPTS):
+        candidate = f"85{secrets.randbelow(1_000_000):06d}"
+        exists = db.execute(
+            text("SELECT 1 FROM complaints WHERE ticket_number = :t"), {"t": candidate}
+        ).scalar_one_or_none()
+        if exists is None:
+            return candidate
+    raise RuntimeError("Ticket raqami generatsiya qilib bo'lmadi — takroriy urinishlar tugadi")

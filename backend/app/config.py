@@ -16,8 +16,6 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7
 
-    ticket_prefix: str = "UY"
-
     s3_endpoint_url: str = "http://localhost:9000"
     s3_access_key: str = "ariza"
     s3_secret_key: str = "ariza12345"

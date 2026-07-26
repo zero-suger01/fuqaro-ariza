@@ -8,7 +8,7 @@
 
 | Narsa | Format | Misol |
 |---|---|---|
-| Ticket raqami | `{PREFIX}-{YYYY}-{NNNNNN}`; prefiks env `TICKET_PREFIX` (standart `UY`); counter har yil 1 dan | `UY-2026-000145` |
+| Ticket raqami | 8 ta raqam: qat'iy `85` prefiksi + 6 ta tasodifiy raqam (`secrets.randbelow`, DB'da unique tekshiriladi, to'qnashsa qayta urinadi). v1.8: eski ketma-ket `UY-YYYY-NNNNNN` sxemasi olib tashlandi — u ham mijoz talabi, ham xavfsizlik muammosi edi (ketma-ket raqam `/track` endi faqat ticket bo'yicha ishlagani uchun taxmin qilib topish mumkin edi). `ticket_counters` jadvali (M13) o'chirildi. | `85123456` |
 | Telefon | DB va API'da E.164: `+998XXXXXXXXX` (13 belgi). Ko'rsatishda FE formatlaydi: `+998 (90) 123-45-67` | `+998901234567` |
 | Vaqt | API'da ISO 8601 UTC (`Z` bilan). Ko'rsatish har doim `Asia/Tashkent` | `2026-07-24T09:30:00Z` |
 | ID | UUID v4 (string) | |
@@ -95,23 +95,23 @@ Javob `201`:
 ```json
 {
   "id": "e0a1...",
-  "ticket_number": "UY-2026-000145",
+  "ticket_number": "85123456",
   "status": "new",
   "status_simple": "qabul_qilindi",
   "created_at": "2026-07-24T09:30:00Z",
-  "track_url": "/holat?ticket=UY-2026-000145"
+  "track_url": "/holat?ticket=85123456"
 }
 ```
 
 Muhim: javob AI natijasini KUTMAYDI (AI async). Rate limit: 5 ta / soat / telefon, 20 ta / kun / IP → 429 `rate_limited`.
 
-### 3.2 `GET /api/public/complaints/track?ticket=UY-2026-000145&phone=%2B998901234567` — holat
+### 3.2 `GET /api/public/complaints/track?ticket=85123456` — holat
 
-Telefon murojaat egasinikiga mos kelmasa ham 404 `not_found` (enumeration himoyasi). Javob `200`:
+v1.7: FAQAT ticket bo'yicha (telefon endi tekshirilmaydi — ongli mahsulot qarori). Mavjud bo'lmagan ticket 404 `not_found`. Javob `200`:
 
 ```json
 {
-  "ticket_number": "UY-2026-000145",
+  "ticket_number": "85123456",
   "status_simple": "ijroda",
   "need_info": false,
   "category": {"code": "suv", "name": "Suv va kanalizatsiya"},

@@ -101,7 +101,7 @@
   "status": {
     "title": "Check complaint status",
     "ticketLabel": "Tracking number",
-    "ticketPlaceholder": "UY-2026-000123",
+    "ticketPlaceholder": "85123456",
     "checkButton": "Check",
     "checking": "Checking...",
     "notFound": "Complaint not found. Check the number and try again.",

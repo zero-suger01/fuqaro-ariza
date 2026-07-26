@@ -113,7 +113,7 @@ def test_web_answer_rejects_unknown_ticket(client, admin_headers):
 
     response = client.post(
         "/api/public/complaints/info",
-        data={"ticket": "UY-2026-999999", "text": "Uy raqami 12"},
+        data={"ticket": "85999999", "text": "Uy raqami 12"},
     )
     assert response.status_code == 404
     assert response.json()["code"] == "not_found"

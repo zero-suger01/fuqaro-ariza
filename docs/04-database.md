@@ -67,7 +67,7 @@ Qo'shiladi:
 
 | Ustun | Tur | Izoh |
 |---|---|---|
-| ticket_number | varchar(20) UNIQUE NOT NULL | UY-2026-000145 |
+| ticket_number | varchar(20) UNIQUE NOT NULL | 85123456 |
 | citizen_id | uuid FK NOT NULL | user_id o'rnini bosadi |
 | category_id | uuid FK NOT NULL | enum ustunlar o'chadi |
 | priority | varchar(10) default 'medium' | |

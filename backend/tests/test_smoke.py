@@ -52,7 +52,7 @@ def test_guest_submit_track_admin_flow(client, admin_headers):
 
     # v1.7: track lookup is ticket-only by design (product decision) — a
     # made-up ticket still 404s, but a real ticket needs no phone match.
-    missing = client.get("/api/public/complaints/track", params={"ticket": "UY-2026-999999"})
+    missing = client.get("/api/public/complaints/track", params={"ticket": "85999999"})
     assert missing.status_code == 404
     assert missing.json()["code"] == "not_found"
 
