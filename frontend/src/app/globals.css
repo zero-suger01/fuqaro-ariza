@@ -182,36 +182,3 @@ body {
 .yandex-map-container {
   border-radius: var(--radius-inner);
 }
-
-/* AI kutish ekrani animatsiyasi — AnalyzingScreen.tsx
-   Hujjat kartochkasi ustidan skaner nuri o'tadi, uchqunlar suzadi. */
-@keyframes scan {
-  0% { transform: translateY(-56px); opacity: 0; }
-  15% { opacity: 1; }
-  85% { opacity: 1; }
-  100% { transform: translateY(200px); opacity: 0; }
-}
-
-@keyframes sparkle {
-  0%, 100% { transform: translateY(0) scale(1); opacity: 0; }
-  25% { opacity: 1; }
-  50% { transform: translateY(-10px) scale(1.2); opacity: 1; }
-  75% { opacity: 0.6; }
-}
-
-@keyframes progress {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(300%); }
-}
-
-.animate-scan {
-  animation: scan 2.4s ease-in-out infinite;
-}
-
-.animate-sparkle {
-  animation: sparkle 2.6s ease-in-out infinite;
-}
-
-.animate-progress {
-  animation: progress 2s ease-in-out infinite;
-}
