@@ -130,16 +130,18 @@ def _build_timeline(complaint: Complaint) -> list[TimelineStep]:
     ]
 
 
-def _find_by_ticket_and_phone(db: Session, ticket: str, phone: str) -> Complaint:
-    """Fuqaroni ticket+telefon juftligi bo'yicha aniqlash — track, info va
+def _find_by_ticket(db: Session, ticket: str) -> Complaint:
+    """Fuqaroni FAQAT ticket raqami bo'yicha aniqlash — track, info va
     feedback uchun yagona qoida ([03] §3.2/§3.5/§3.6).
 
-    Ticket mavjud bo'lib telefon mos kelmasa ham AYNAN shu 404 qaytadi:
-    aks holda javob farqi ticket raqamlarini taxminlash uchun oracle
-    bo'lib qolardi.
+    DIQQAT: ticket raqamlari ketma-ket (UY-2026-000123), shuning uchun
+    telefon tekshiruvisiz istalgan kishi raqamni taxmin qilib boshqa
+    fuqaroning murojaat tafsilotlarini (manzil, javoblar) ko'rishi va
+    hatto ma'lumot/feedback yuborishi mumkin. Bu ongli tanlov (mahsulot
+    egasi so'ragan) — telefon bilan tasdiqlash olib tashlandi.
     """
     complaint = db.execute(select(Complaint).where(Complaint.ticket_number == ticket)).scalar_one_or_none()
-    if complaint is None or complaint.citizen.phone != phone:
+    if complaint is None:
         raise AppError(404, "not_found", "Murojaat topilmadi")
     return complaint
 
@@ -154,9 +156,9 @@ def _info_request_text(complaint: Complaint) -> str | None:
 
 
 @router.get("/complaints/track", response_model=TrackOut)
-def track_complaint(request: Request, ticket: str, phone: str, db: Session = Depends(get_db)):
+def track_complaint(request: Request, ticket: str, db: Session = Depends(get_db)):
     enforce_track_limit(request)
-    complaint = _find_by_ticket_and_phone(db, ticket, phone)
+    complaint = _find_by_ticket(db, ticket)
 
     latest_reply = complaint.replies[-1] if complaint.replies else None
 
@@ -190,7 +192,6 @@ def track_complaint(request: Request, ticket: str, phone: str, db: Session = Dep
 def submit_citizen_info(
     request: Request,
     ticket: str = Form(...),
-    phone: str = Form(..., pattern=PHONE_PATTERN),
     text: str = Form(..., min_length=1, max_length=2000),
     images: list[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
@@ -203,7 +204,7 @@ def submit_citizen_info(
     qolib ketishi mumkin edi.
     """
     enforce_info_limit(request)
-    complaint = _find_by_ticket_and_phone(db, ticket, phone)
+    complaint = _find_by_ticket(db, ticket)
 
     resumed = record_citizen_info(db, complaint, text, source="web", images=images)
     db.commit()
@@ -223,7 +224,7 @@ def submit_feedback(request: Request, payload: FeedbackIn, db: Session = Depends
     qolar, norozi fuqaroga esa yangi murojaat yozishdan boshqa yo'l
     qolmasdi (yangi ticket, uzilgan tarix)."""
     enforce_info_limit(request)
-    complaint = _find_by_ticket_and_phone(db, payload.ticket, payload.phone)
+    complaint = _find_by_ticket(db, payload.ticket)
 
     reopened = record_feedback(db, complaint, satisfied=payload.satisfied, comment=payload.comment)
     db.commit()

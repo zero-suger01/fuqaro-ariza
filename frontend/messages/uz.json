@@ -99,10 +99,9 @@
     "title": "Murojaat holatini tekshirish",
     "ticketLabel": "Murojaat raqami",
     "ticketPlaceholder": "UY-2026-000123",
-    "phoneLabel": "Telefon raqamingiz",
     "checkButton": "Tekshirish",
     "checking": "Tekshirilmoqda...",
-    "notFound": "Bunday murojaat topilmadi. Raqam va telefonni tekshirib qaytadan urining.",
+    "notFound": "Bunday murojaat topilmadi. Raqamni tekshirib qaytadan urining.",
     "steps": {
       "qabul_qilindi": "Qabul qilindi",
       "korilmoqda": "Ko'rib chiqilmoqda",

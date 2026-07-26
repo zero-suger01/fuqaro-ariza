@@ -9,7 +9,6 @@ import { GuestButton } from "@/components/guest/GuestButton";
 import { GuestTimeline } from "@/components/guest/GuestTimeline";
 import { ImagePicker } from "@/components/wizard/ImagePicker";
 import { apiGet, apiPost, apiPostForm, ApiError } from "@/lib/api";
-import { digitsAfterCountryCode, formatUzPhoneDisplay, isValidUzPhone, toE164 } from "@/lib/phone";
 import type { CitizenInfoResponse, FeedbackResponse, TrackResponse } from "@/lib/types";
 
 function StatusForm() {
@@ -18,7 +17,6 @@ function StatusForm() {
   const searchParams = useSearchParams();
 
   const [ticket, setTicket] = useState(searchParams.get("ticket") ?? "");
-  const [phoneDigits, setPhoneDigits] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TrackResponse | null>(null);
@@ -45,18 +43,16 @@ function StatusForm() {
     setInfoSent(false);
     setFeedbackDone(false);
     setComplaintNotSolved(false);
-    if (!ticket.trim() || !isValidUzPhone(phoneDigits)) {
+    if (!ticket.trim()) {
       setError(t("notFound"));
       return;
     }
     setLoading(true);
     try {
-      const params = new URLSearchParams({ ticket: ticket.trim(), phone: toE164(phoneDigits) });
+      const params = new URLSearchParams({ ticket: ticket.trim() });
       const response = await apiGet<TrackResponse>(`/api/public/complaints/track?${params.toString()}`);
       setResult(response);
     } catch {
-      // 404 va boshqa xatolar uchun bir xil matn — ticket mavjudligi
-      // oshkor qilinmasligi kerak (backend ham shu sababdan 404 beradi).
       setError(t("notFound"));
     } finally {
       setLoading(false);
@@ -74,7 +70,6 @@ function StatusForm() {
     try {
       const form = new FormData();
       form.append("ticket", ticket.trim());
-      form.append("phone", toE164(phoneDigits));
       form.append("text", infoText.trim());
       infoImages.forEach((file) => form.append("images", file));
       await apiPostForm<CitizenInfoResponse>("/api/public/complaints/info", form);
@@ -94,7 +89,6 @@ function StatusForm() {
     try {
       const response = await apiPost<FeedbackResponse>("/api/public/complaints/feedback", {
         ticket: ticket.trim(),
-        phone: toE164(phoneDigits),
         satisfied,
         comment: satisfied ? null : feedbackComment.trim() || null,
       });
@@ -118,17 +112,6 @@ function StatusForm() {
             value={ticket}
             onChange={(e) => setTicket(e.target.value.toUpperCase())}
             placeholder={t("ticketPlaceholder")}
-            className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-base font-medium text-text-secondary">{t("phoneLabel")}</label>
-          <input
-            type="tel"
-            inputMode="numeric"
-            value={formatUzPhoneDisplay(phoneDigits)}
-            onChange={(e) => setPhoneDigits(digitsAfterCountryCode(e.target.value))}
-            placeholder="+998 (90) 123-45-67"
             className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
           />
         </div>

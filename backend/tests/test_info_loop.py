@@ -104,15 +104,16 @@ def test_web_answer_resumes_work(client, admin_headers):
 
 
 @pytest.mark.smoke
-def test_web_answer_rejects_wrong_phone(client, admin_headers):
-    """Identifikatsiya `track` bilan bir xil — noto'g'ri telefon 404
-    (murojaat mavjudligi oshkor qilinmaydi)."""
-    ticket, _, complaint_id = _assigned_complaint(client, admin_headers)
+def test_web_answer_rejects_unknown_ticket(client, admin_headers):
+    """Identifikatsiya `track` bilan bir xil — v1.7: faqat ticket bo'yicha
+    (telefon endi tekshirilmaydi, ongli mahsulot qarori), lekin mavjud
+    bo'lmagan ticket baribir 404."""
+    _, _, complaint_id = _assigned_complaint(client, admin_headers)
     _request_info(client, admin_headers, complaint_id, "Uy raqamingizni yozing")
 
     response = client.post(
         "/api/public/complaints/info",
-        data={"ticket": ticket, "phone": "+998900000009", "text": "Uy raqami 12"},
+        data={"ticket": "UY-2026-999999", "text": "Uy raqami 12"},
     )
     assert response.status_code == 404
     assert response.json()["code"] == "not_found"
