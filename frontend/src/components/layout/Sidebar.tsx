@@ -62,17 +62,17 @@ function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: bool
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
       className={clsx(
-        "group flex items-center gap-3 rounded-pill px-3 py-2.5 text-sm font-medium transition-colors duration-150",
-        isActive ? "bg-white/[0.08] text-white" : "text-white/60 hover:bg-white/[0.06] hover:text-white"
+        "group flex items-center gap-2.5 rounded-pill px-3 py-2 text-[13px] font-medium transition-colors duration-150",
+        isActive ? "bg-accent/15 text-accent font-semibold" : "text-white/45 hover:bg-white/[0.04] hover:text-white/80"
       )}
     >
-      <Icon className="h-[18px] w-[18px] shrink-0" />
+      <Icon className="h-4 w-4 shrink-0" />
       <span className="min-w-0 truncate">{item.label}</span>
       {showCount && (
         <span
           className={clsx(
-            "ml-auto shrink-0 rounded-pill px-2 py-0.5 text-xs font-mono font-bold",
-            item.danger ? "bg-danger/20 text-danger" : "bg-white/10 text-white"
+            "ml-auto shrink-0 rounded-pill px-1.5 py-0.5 text-[10px] font-mono font-semibold tabular-nums",
+            item.danger ? "bg-danger/20 text-danger" : "bg-white/[0.06] text-white/40"
           )}
         >
           {item.count}
@@ -90,11 +90,11 @@ function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: bool
 function NavTreeInner({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?: () => void }) {
   const isActive = useIsActive();
   return (
-    <nav className="flex-1 overflow-y-auto flex flex-col gap-5">
-      {groups.map((group) => (
-        <div key={group.title} className="flex flex-col gap-1">
+    <nav className="flex-1 overflow-y-auto flex flex-col gap-1">
+      {groups.map((group, i) => (
+        <div key={group.title} className={clsx("flex flex-col gap-0.5 py-2.5", i > 0 && "border-t border-white/[0.06]")}>
           {/* Guruh sarlavhasi bosilmaydi — u yorliq, havola emas (docs/10 §10.2). */}
-          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/35">
+          <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/25">
             {group.title}
           </p>
           {group.items.map((item) => (
@@ -132,9 +132,9 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
   const logoutButton = (
     <button
       onClick={logout}
-      className="flex items-center gap-3 rounded-pill px-3 py-2.5 text-sm font-medium text-white/60 hover:bg-white/[0.06] hover:text-white transition-colors duration-150"
+      className="flex items-center gap-2.5 rounded-pill px-3 py-2 text-[13px] font-medium text-white/45 hover:bg-white/[0.04] hover:text-white/80 transition-colors duration-150"
     >
-      <LogOut className="h-[18px] w-[18px]" />
+      <LogOut className="h-4 w-4" />
       Chiqish
     </button>
   );
