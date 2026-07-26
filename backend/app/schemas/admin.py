@@ -200,6 +200,16 @@ class UserPatch(BaseModel):
         return value
 
 
+class OpenSubtaskBrief(BaseModel):
+    """R2: Tasdiqlash navbatida sub-taskni ochmasdan bekor qilish uchun
+    yetarli maydonlar (`PATCH /subtasks/{id}` bilan bir xil ruxsat qoidasi —
+    admin yoki shu bo'lim xodimi)."""
+
+    id: uuid.UUID
+    department_id: uuid.UUID
+    department_name: str
+
+
 class AiListBrief(BaseModel):
     """R2: ro'yxat qatoridagi qisqa AI ma'lumoti — Navbatim sahifasidagi xulosa
     qatori va Tasdiqlash navbatidagi taklif uchun (docs/03 §5 list izohi)."""
@@ -207,10 +217,10 @@ class AiListBrief(BaseModel):
     summary: str | None
     suggested_category: CategoryBrief | None
     confidence: float | None
-    # v1.5 ko'p bo'limli murojaat ([07] §1.1) — AI yaratgan OCHIQ sub-tasklar
-    # bo'lim nomlari. Tasdiqlash navbati buni ko'rsatmasa admin murojaatni
-    # ochmasdan turib bo'linish bo'lganini bilmaydi.
-    open_subtask_departments: list[str] = []
+    # v1.5 ko'p bo'limli murojaat ([07] §1.1) — AI yaratgan OCHIQ sub-tasklar.
+    # Tasdiqlash navbati buni ko'rsatmasa admin murojaatni ochmasdan turib
+    # bo'linish bo'lganini bilmaydi, sub-taskni bekor ham qila olmaydi.
+    open_subtasks: list[OpenSubtaskBrief] = []
 
 
 class ComplaintListItem(BaseModel):

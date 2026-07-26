@@ -88,14 +88,22 @@ export interface ReplyItem {
   sent_at: string;
 }
 
+// R2: Tasdiqlash navbatida sub-taskni ochmasdan bekor qilish uchun
+// (PATCH /subtasks/{id} bilan bir xil ruxsat qoidasi).
+export interface OpenSubtaskBrief {
+  id: string;
+  department_id: string;
+  department_name: string;
+}
+
 // R2: ro'yxat qatoridagi qisqa AI ma'lumoti (Navbatim / Tasdiqlash navbati)
 export interface AiListBrief {
   summary: string | null;
   suggested_category: CategoryBrief | null;
   confidence: number | null;
   // v1.5 ko'p bo'limli murojaat ([07] §1.1) — AI yaratgan ochiq sub-tasklar
-  // bo'lim nomlari (bo'sh = sub-task yo'q).
-  open_subtask_departments: string[];
+  // (bo'sh = sub-task yo'q).
+  open_subtasks: OpenSubtaskBrief[];
 }
 
 export interface ComplaintListItem {
