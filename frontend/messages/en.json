@@ -55,6 +55,7 @@
       "title": "Where is the problem?",
       "neighborhoodLabel": "Select your neighborhood",
       "neighborhoodPlaceholder": "Search neighborhood...",
+      "changeNeighborhood": "Change",
       "addressLabel": "Street, house",
       "addressPlaceholder": "For example: Mustaqillik street, house 12",
       "locating": "Detecting your location...",

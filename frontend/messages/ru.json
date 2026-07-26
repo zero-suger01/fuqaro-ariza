@@ -55,6 +55,7 @@
       "title": "Где находится проблема?",
       "neighborhoodLabel": "Выберите ваш махаллю",
       "neighborhoodPlaceholder": "Поиск махалли...",
+      "changeNeighborhood": "Изменить",
       "addressLabel": "Улица, дом",
       "addressPlaceholder": "Например: улица Мустакиллик, дом 12",
       "locating": "Определяем ваше местоположение...",

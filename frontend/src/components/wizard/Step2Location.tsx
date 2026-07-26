@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Search } from "lucide-react";
+import { MapPinCheck, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { clsx } from "clsx";
 import { GuestButton } from "@/components/guest/GuestButton";
@@ -44,6 +44,17 @@ export function Step2Location({
   const [locating, setLocating] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
 
+  const selectedNeighborhood = useMemo(
+    () => neighborhoods.find((n) => n.id === neighborhoodId) ?? null,
+    [neighborhoods, neighborhoodId]
+  );
+  // QR orqali (yoki avval tanlangan mahalla bilan davom etilganda) mahalla
+  // allaqachon aniq bo'lsa, tasdiqlash chipini ko'rsatamiz — qidiruv/ro'yxat
+  // faqat "O'zgartirish" bosilganda yoki mahalla umuman tanlanmagan bo'lsa
+  // ochiladi. Aks holda tanlov uzun ro'yxat ichida jimgina ko'rinmas edi.
+  const [editingNeighborhood, setEditingNeighborhood] = useState(false);
+  const showPicker = editingNeighborhood || !selectedNeighborhood;
+
   const onLocationChangeRef = useRef(onLocationChange);
   useEffect(() => {
     onLocationChangeRef.current = onLocationChange;
@@ -83,51 +94,80 @@ export function Step2Location({
 
   return (
     <div className="flex flex-col gap-5">
-      <MapPicker
-        lat={latitude ?? UYCHI_CENTER[0]}
-        lng={longitude ?? UYCHI_CENTER[1]}
-        onChange={onLocationChange}
-      />
-      {locating && <p className="text-base text-text-muted">{t("locating")}</p>}
-      {locationDenied && <p className="text-base text-text-muted">{t("locationDenied")}</p>}
-
-      <div className="flex flex-col gap-2">
-        <label className="text-base font-medium text-text-secondary">{t("neighborhoodLabel")}</label>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-muted" aria-hidden />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("neighborhoodPlaceholder")}
-            className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface pl-12 pr-4 text-lg text-text-primary outline-none focus:border-accent"
-          />
-        </div>
-        <div className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-control border border-border p-1">
-          {filtered.map((n) => (
-            <button
-              key={n.id}
-              type="button"
-              onClick={() => onNeighborhoodChange(n.id)}
-              className={clsx(
-                "rounded-control px-4 py-3 text-left text-lg",
-                n.id === neighborhoodId ? "bg-accent-soft font-semibold text-accent" : "text-text-primary hover:bg-bg-subtle"
-              )}
-            >
-              {n.name}
-            </button>
-          ))}
-          {filtered.length === 0 && <p className="px-4 py-3 text-base text-text-muted">—</p>}
-        </div>
+      <div className="flex flex-col gap-2 rounded-card border border-border bg-bg-surface p-4 shadow-card">
+        <MapPicker
+          lat={latitude ?? UYCHI_CENTER[0]}
+          lng={longitude ?? UYCHI_CENTER[1]}
+          onChange={onLocationChange}
+        />
+        {locating && <p className="text-base text-text-muted">{t("locating")}</p>}
+        {locationDenied && <p className="text-base text-text-muted">{t("locationDenied")}</p>}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <label className="text-base font-medium text-text-secondary">{t("addressLabel")}</label>
-        <input
-          value={address}
-          onChange={(e) => onAddressChange(e.target.value)}
-          placeholder={t("addressPlaceholder")}
-          className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
-        />
+      <div className="flex flex-col gap-4 rounded-card border border-border bg-bg-surface p-4 shadow-card">
+        <div className="flex flex-col gap-2">
+          <label className="text-base font-medium text-text-secondary">{t("neighborhoodLabel")}</label>
+
+          {!showPicker && selectedNeighborhood ? (
+            <div className="flex items-center justify-between gap-3 rounded-control border-2 border-accent bg-accent-soft px-4 py-3">
+              <span className="flex items-center gap-2 text-lg font-semibold text-accent">
+                <MapPinCheck className="h-5 w-5 flex-none" aria-hidden />
+                {selectedNeighborhood.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => setEditingNeighborhood(true)}
+                className="flex-none text-base text-accent underline underline-offset-2"
+              >
+                {t("changeNeighborhood")}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-muted" aria-hidden />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={t("neighborhoodPlaceholder")}
+                  className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface pl-12 pr-4 text-lg text-text-primary outline-none focus:border-accent"
+                />
+              </div>
+              <div className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-control border border-border p-1">
+                {filtered.map((n) => (
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={() => {
+                      onNeighborhoodChange(n.id);
+                      setEditingNeighborhood(false);
+                      setQuery("");
+                    }}
+                    className={clsx(
+                      "rounded-control px-4 py-3 text-left text-lg",
+                      n.id === neighborhoodId
+                        ? "bg-accent-soft font-semibold text-accent"
+                        : "text-text-primary hover:bg-bg-subtle"
+                    )}
+                  >
+                    {n.name}
+                  </button>
+                ))}
+                {filtered.length === 0 && <p className="px-4 py-3 text-base text-text-muted">—</p>}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-base font-medium text-text-secondary">{t("addressLabel")}</label>
+          <input
+            value={address}
+            onChange={(e) => onAddressChange(e.target.value)}
+            placeholder={t("addressPlaceholder")}
+            className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
+          />
+        </div>
       </div>
 
       <div className="flex gap-3">
