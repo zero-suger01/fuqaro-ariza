@@ -47,7 +47,7 @@
       "fileTooLarge": "Fayl hajmi 50MB dan katta bo'lmasligi kerak",
       "maxPhotosError": "Ko'pi bilan 5 ta rasm yuklash mumkin",
       "maxVideoError": "Faqat 1 ta video yuklash mumkin",
-      "minLengthError": "Kamida 10 ta belgi yozing",
+      "minLengthError": "Kamida 10 ta belgi yozing yoki ovozli xabar yuboring",
       "voiceNotSupported": "Bu qurilmada ovoz yozib bo'lmaydi",
       "removeVoice": "Ovozli xabarni o'chirish"
     },
@@ -56,7 +56,9 @@
       "neighborhoodLabel": "Mahallangizni tanlang",
       "neighborhoodPlaceholder": "Mahalla qidirish...",
       "addressLabel": "Ko'cha, uy",
-      "addressPlaceholder": "Masalan: Mustaqillik ko'chasi, 12-uy"
+      "addressPlaceholder": "Masalan: Mustaqillik ko'chasi, 12-uy",
+      "locating": "Joylashuvingiz aniqlanmoqda...",
+      "locationDenied": "Joylashuvni aniqlab bo'lmadi — xaritadan qo'lda belgilang"
     },
     "step3": {
       "title": "Siz haqingizda",

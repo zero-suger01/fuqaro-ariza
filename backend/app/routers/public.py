@@ -52,7 +52,7 @@ router = APIRouter(prefix="/api/public", tags=["public"])
 @router.post("/complaints", response_model=ComplaintSubmitOut, status_code=201)
 def submit_complaint(
     request: Request,
-    description: str = Form(..., min_length=10, max_length=5000),
+    description: str = Form("", max_length=5000),
     first_name: str = Form(..., min_length=1, max_length=100),
     last_name: str = Form("", max_length=100),
     phone: str = Form(..., pattern=PHONE_PATTERN),
@@ -74,6 +74,12 @@ def submit_complaint(
         raise AppError(422, "validation_error", "Noto'g'ri til kodi")
     if source not in SOURCES:
         raise AppError(422, "validation_error", "Noto'g'ri manba")
+    # A voice message stands on its own (transcribed + analyzed in the
+    # background) — only require typed text to meet the length floor when
+    # there's no audio attached to fall back on.
+    has_audio = audio is not None and bool(audio.filename)
+    if len(description.strip()) < 10 and not has_audio:
+        raise AppError(422, "validation_error", "Kamida 10 ta belgi yozing yoki ovozli xabar yuboring")
 
     verify_captcha(captcha_token, request.client.host if request.client else None)
     enforce_submit_limits(request, phone)

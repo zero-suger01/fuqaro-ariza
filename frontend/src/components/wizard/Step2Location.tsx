@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -41,6 +41,39 @@ export function Step2Location({
   const t = useTranslations("wizard.step2");
   const tWizard = useTranslations("wizard");
   const [query, setQuery] = useState("");
+  const [locating, setLocating] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
+
+  const onLocationChangeRef = useRef(onLocationChange);
+  useEffect(() => {
+    onLocationChangeRef.current = onLocationChange;
+  }, [onLocationChange]);
+
+  useEffect(() => {
+    // The complaint is almost always about wherever the citizen currently
+    // is, so pre-fill the pin from GPS instead of always defaulting to the
+    // district center — they only need to touch the map if it's wrong.
+    if (latitude != null && longitude != null) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        onLocationChangeRef.current(position.coords.latitude, position.coords.longitude);
+      },
+      () => {
+        setLocating(false);
+        setLocationDenied(true);
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 }
+    );
+    // Runs once on mount only — re-running on every latitude/longitude
+    // change (e.g. after the citizen manually repositions the pin) would
+    // fight their edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -57,6 +90,8 @@ export function Step2Location({
         lng={longitude ?? UYCHI_CENTER[1]}
         onChange={onLocationChange}
       />
+      {locating && <p className="text-base text-text-muted">{t("locating")}</p>}
+      {locationDenied && <p className="text-base text-text-muted">{t("locationDenied")}</p>}
 
       <div className="flex flex-col gap-2">
         <label className="text-base font-medium text-text-secondary">{t("neighborhoodLabel")}</label>

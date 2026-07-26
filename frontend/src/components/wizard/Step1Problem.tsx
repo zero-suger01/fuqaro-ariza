@@ -52,7 +52,10 @@ export function Step1Problem({
   const autoDetectedRef = useRef(true);
   const voiceTranscriptRef = useRef("");
 
-  const canContinue = description.trim().length >= MIN_DESCRIPTION_LENGTH;
+  // A voice message stands on its own — the backend transcribes and
+  // analyzes it in the background, so it doesn't need to also clear the
+  // typed-text length floor (matches app/routers/public.py's check).
+  const canContinue = description.trim().length >= MIN_DESCRIPTION_LENGTH || audio !== null;
 
   function runDetection() {
     if (!autoDetectedRef.current) return;

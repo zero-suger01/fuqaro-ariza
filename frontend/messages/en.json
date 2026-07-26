@@ -47,7 +47,7 @@
       "fileTooLarge": "File size must not exceed 50MB",
       "maxPhotosError": "Up to 5 photos can be uploaded",
       "maxVideoError": "Only 1 video can be uploaded",
-      "minLengthError": "Write at least 10 characters",
+      "minLengthError": "Write at least 10 characters or send a voice message",
       "voiceNotSupported": "Voice recording isn't supported on this device",
       "removeVoice": "Remove voice message"
     },
@@ -56,7 +56,9 @@
       "neighborhoodLabel": "Select your neighborhood",
       "neighborhoodPlaceholder": "Search neighborhood...",
       "addressLabel": "Street, house",
-      "addressPlaceholder": "For example: Mustaqillik street, house 12"
+      "addressPlaceholder": "For example: Mustaqillik street, house 12",
+      "locating": "Detecting your location...",
+      "locationDenied": "Couldn't detect your location — set the pin on the map manually"
     },
     "step3": {
       "title": "About you",
