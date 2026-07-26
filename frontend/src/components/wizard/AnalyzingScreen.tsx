@@ -13,25 +13,22 @@ import aiAnalyzingAnimation from "@/lib/lottie/ai-analyzing.json";
 // qolmaydi.
 //
 // Lottie animatsiyasi (src/lib/lottie/ai-analyzing.json, mijoz bergan
-// "AI-powered marketing tools abstract") sarlavha qatorining o'ng
-// tomonida, katta o'lchamda — mijoz talabi (avval kichik va chapda
-// edi, keyin sahifa yuqorisidagi markazdagi katta grafika yoqmagan edi).
+// "AI-powered marketing tools abstract") endi checklist kartochkasining
+// ICHIDA, uning kengligiga mos kattalikda — mijoz talabi (avval
+// sarlavha qatorida, kartochkadan tashqarida edi).
 export function AnalyzingScreen() {
   const t = useTranslations("wizard.analyzing");
 
   return (
     <div className="flex flex-col items-center gap-4 text-center">
-      <div className="flex w-full items-center justify-between gap-4">
-        <div className="flex-1 text-left">
-          <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
-          <p className="mt-1 text-lg text-text-secondary">{t("subtitle")}</p>
-        </div>
-        <div className="h-36 w-36 flex-none">
-          <Lottie animationData={aiAnalyzingAnimation} loop autoplay />
-        </div>
-      </div>
+      <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
+      <p className="text-lg text-text-secondary">{t("subtitle")}</p>
 
       <div className="flex w-full flex-col gap-4 rounded-card bg-bg-surface p-5 text-left shadow-card">
+        <div className="mx-auto aspect-square w-full max-w-[280px]">
+          <Lottie animationData={aiAnalyzingAnimation} loop autoplay />
+        </div>
+
         <div className="flex items-center gap-3">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success/15">
             <Check className="h-4 w-4 text-success" aria-hidden />
