@@ -36,7 +36,7 @@ function WizardContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<ComplaintSubmitResponse | null>(null);
-  const aiRouting = useAiRouting(result?.ticket_number ?? null, result ? toE164(draft.phoneDigits) : null);
+  const aiRouting = useAiRouting(result?.ticket_number ?? null);
 
   useEffect(() => {
     apiGet<PublicCategory[]>(`/api/public/categories?lang=${locale}`)
