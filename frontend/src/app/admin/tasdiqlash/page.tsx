@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Pencil, Sparkles, Split, X } from "lucide-react";
+import { Ban, Check, Pencil, Sparkles, Split, X } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Label, Select, Textarea } from "@/components/ui/Input";
-import { apiGet, apiPost, ApiError } from "@/lib/api";
+import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api";
 import type { CategoryAdmin, ComplaintListItem, DepartmentAdmin, Page } from "@/lib/types";
 
 /** docs/03 §5 — `POST .../review` `reason` qiymatlari. */
@@ -37,6 +37,7 @@ export default function TasdiqlashPage() {
   const [editReason, setEditReason] = useState<ReviewReason>("wrong_category");
   const [editReasonText, setEditReasonText] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [busySubtask, setBusySubtask] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -66,6 +67,30 @@ export default function TasdiqlashPage() {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
     } finally {
       setBusy(null);
+    }
+  }
+
+  /** Admin ikkinchi bo'lim noto'g'ri deb hisoblasa (masalan bitta tashkilot
+   * hal qila oladi) — sub-taskni shu yerdan, murojaatni ochmasdan bekor
+   * qilish (PATCH /subtasks/{id}, docs/03 §5). Asosiy kategoriya/bo'lim va
+   * `needs_review` bunga bog'liq emas — admin xohlasa ularni alohida
+   * "To'g'ri"/"Saqlash" bilan yopadi. */
+  async function cancelSubtask(subtaskId: string, complaintId: string) {
+    setBusySubtask(subtaskId);
+    setError(null);
+    try {
+      await apiPatch(`/api/admin/subtasks/${subtaskId}`, { status: "cancelled" });
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === complaintId && item.ai
+            ? { ...item, ai: { ...item.ai, open_subtasks: item.ai.open_subtasks.filter((s) => s.id !== subtaskId) } }
+            : item
+        )
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+    } finally {
+      setBusySubtask(null);
     }
   }
 
@@ -128,13 +153,24 @@ export default function TasdiqlashPage() {
                     </p>
                     {/* v1.5 ko'p bo'limli murojaat ([07] §1.1) — sub-task bu
                         ro'yxatda ko'rsatilmasa, admin murojaatni ochmasdan
-                        bo'linish bo'lganini bilmaydi. */}
-                    {c.ai && c.ai.open_subtask_departments.length > 0 && (
-                      <p className="text-xs text-warning mt-1 flex items-center gap-1 flex-wrap">
-                        <Split className="h-3 w-3 shrink-0" />+ {c.ai.open_subtask_departments.join(", ")}{" "}
-                        bo&apos;limiga ham yuborildi
-                      </p>
-                    )}
+                        bo'linish bo'lganini bilmaydi va uni bekor qila
+                        olmaydi (AI ikkalasiga ham yo'naltirishi noto'g'ri
+                        bo'lishi mumkin — bitta tashkilot yetarli bo'lsa). */}
+                    {c.ai &&
+                      c.ai.open_subtasks.map((s) => (
+                        <p key={s.id} className="text-xs text-warning mt-1 flex items-center gap-1 flex-wrap">
+                          <Split className="h-3 w-3 shrink-0" />
+                          <>+ {s.department_name} bo&apos;limiga ham yuborildi</>
+                          <button
+                            type="button"
+                            onClick={() => cancelSubtask(s.id, c.id)}
+                            disabled={busySubtask === s.id}
+                            className="ml-1 inline-flex items-center gap-0.5 text-danger underline underline-offset-2 hover:no-underline disabled:opacity-50"
+                          >
+                            <Ban className="h-3 w-3" /> Bekor qilish
+                          </button>
+                        </p>
+                      ))}
                   </div>
 
                   {!isEditing ? (
