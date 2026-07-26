@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Pencil, Sparkles, X } from "lucide-react";
+import { Check, Pencil, Sparkles, Split, X } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -126,6 +126,15 @@ export default function TasdiqlashPage() {
                       )}
                       {c.department && <> · yo&apos;naltirildi: {c.department.name}</>}
                     </p>
+                    {/* v1.5 ko'p bo'limli murojaat ([07] §1.1) — sub-task bu
+                        ro'yxatda ko'rsatilmasa, admin murojaatni ochmasdan
+                        bo'linish bo'lganini bilmaydi. */}
+                    {c.ai && c.ai.open_subtask_departments.length > 0 && (
+                      <p className="text-xs text-warning mt-1 flex items-center gap-1 flex-wrap">
+                        <Split className="h-3 w-3 shrink-0" />+ {c.ai.open_subtask_departments.join(", ")}{" "}
+                        bo&apos;limiga ham yuborildi
+                      </p>
+                    )}
                   </div>
 
                   {!isEditing ? (

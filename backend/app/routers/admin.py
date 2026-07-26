@@ -137,6 +137,7 @@ def _ai_list_brief(complaint: Complaint) -> AiListBrief | None:
         summary=latest.summary,
         suggested_category=_category_brief(latest.suggested_category) if latest.suggested_category else None,
         confidence=latest.confidence,
+        open_subtask_departments=[s.department.name("uz") for s in complaint.subtasks if s.status == "open"],
     )
 
 

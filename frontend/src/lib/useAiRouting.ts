@@ -25,13 +25,13 @@ export type AiRoutingState =
   | { status: "routed"; department: string }
   | { status: "timeout" };
 
-export function useAiRouting(ticketNumber: string | null, phone: string | null): AiRoutingState {
+export function useAiRouting(ticketNumber: string | null): AiRoutingState {
   const [state, setState] = useState<AiRoutingState>({ status: "polling" });
 
   useEffect(() => {
-    if (!ticketNumber || !phone) return;
+    if (!ticketNumber) return;
     let cancelled = false;
-    const params = new URLSearchParams({ ticket: ticketNumber, phone });
+    const params = new URLSearchParams({ ticket: ticketNumber });
     const start = Date.now();
 
     async function poll() {
@@ -55,7 +55,7 @@ export function useAiRouting(ticketNumber: string | null, phone: string | null):
     return () => {
       cancelled = true;
     };
-  }, [ticketNumber, phone]);
+  }, [ticketNumber]);
 
   return state;
 }
