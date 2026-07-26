@@ -6,6 +6,9 @@ import { useTranslations } from "next-intl";
 
 const MAX_IMAGES = 5;
 
+/** Simple photo-only picker used outside the main complaint wizard (e.g. the
+ * "additional info" reply flow on the status page) — the wizard itself uses
+ * MediaPicker, which also handles video. */
 export function ImagePicker({
   images,
   onChange,

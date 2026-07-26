@@ -24,7 +24,7 @@ def _assigned_to_sanitation(client, admin_headers) -> str:
             "description": "Mahalla ichida chiqindi uyumlari yig'ilib qolgan, olib ketilmayapti",
             "first_name": "Test",
             "phone": phone,
-            "category_code": "chiqindi",
+            "category_code": "chiqindi_obodon",
         },
     )
     assert submit.status_code == 201, submit.text

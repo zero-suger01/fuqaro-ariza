@@ -124,7 +124,8 @@ def create_complaint(
         url = upload_file(data, mime, "video")
         db.add(ComplaintFile(complaint_id=complaint.id, kind="video", url=url, mime=mime, size_bytes=len(data)))
 
-    if audio is not None and audio.filename:
+    has_audio = audio is not None and bool(audio.filename)
+    if has_audio:
         data, mime = validate_file(audio, "audio")
         url = upload_file(data, mime, "audio")
         db.add(ComplaintFile(complaint_id=complaint.id, kind="audio", url=url, mime=mime, size_bytes=len(data)))
@@ -142,5 +143,12 @@ def create_complaint(
     notify_citizen(db, citizen, f"Arizangiz qabul qilindi: {complaint.ticket_number}", complaint_id=complaint.id, sms_text=sms)
     db.commit()
 
-    enqueue("analyze_complaint", str(complaint.id))
+    # Voice messages are transcribed in the background first (docs/07 §6b) —
+    # `transcribe_complaint_audio` writes `ComplaintFile.transcript`, then
+    # itself enqueues `analyze_complaint` so the LLM sees the spoken content
+    # alongside the written description. No audio => classify immediately.
+    if has_audio:
+        enqueue("transcribe_complaint_audio", str(complaint.id))
+    else:
+        enqueue("analyze_complaint", str(complaint.id))
     return complaint

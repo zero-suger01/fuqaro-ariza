@@ -242,7 +242,8 @@ export default function AdminComplaintDetailPage() {
   const openSubtasks = complaint.subtasks.filter((s) => s.status === "open");
 
   const images = complaint.files.filter((f) => f.kind === "image");
-  const otherFiles = complaint.files.filter((f) => f.kind !== "image");
+  const audioFiles = complaint.files.filter((f) => f.kind === "audio");
+  const otherFiles = complaint.files.filter((f) => f.kind !== "image" && f.kind !== "audio");
 
   return (
     <AppShell title={`Murojaat ${complaint.ticket_number}`}>
@@ -252,23 +253,25 @@ export default function AdminComplaintDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 flex flex-col gap-6">
-          {images.length > 0 && (
+          {(images.length > 0 || otherFiles.length > 0) && (
             <Card>
               <div className="flex items-center gap-2 mb-4">
                 <ImageIcon className="h-4 w-4 text-accent" />
                 <h2 className="text-base font-semibold text-text-primary">Media</h2>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {images.map((img) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={img.id}
-                    src={img.url}
-                    alt="murojaat rasmi"
-                    className="aspect-square object-cover rounded-inner border border-border"
-                  />
-                ))}
-              </div>
+              {images.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {images.map((img) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={img.id}
+                      src={img.url}
+                      alt="murojaat rasmi"
+                      className="aspect-square object-cover rounded-inner border border-border"
+                    />
+                  ))}
+                </div>
+              )}
               {otherFiles.length > 0 && (
                 <div className="flex flex-col gap-2 mt-4">
                   {otherFiles.map((f) => (
@@ -279,11 +282,34 @@ export default function AdminComplaintDetailPage() {
                       rel="noreferrer"
                       className="text-sm text-accent hover:underline"
                     >
-                      {f.kind === "video" ? "🎥" : "🎵"} {f.kind} faylni ochish
+                      🎥 {f.kind} faylni ochish
                     </a>
                   ))}
                 </div>
               )}
+            </Card>
+          )}
+
+          {audioFiles.length > 0 && (
+            <Card>
+              <div className="flex items-center gap-2 mb-4">
+                <span aria-hidden>🎵</span>
+                <h2 className="text-base font-semibold text-text-primary">Ovozli xabar</h2>
+              </div>
+              <div className="flex flex-col gap-4">
+                {audioFiles.map((f) => (
+                  <div key={f.id} className="flex flex-col gap-2">
+                    <audio controls src={f.url} className="w-full" />
+                    {f.transcript ? (
+                      <p className="text-sm text-text-secondary rounded-inner bg-bg-subtle border border-border px-3 py-2">
+                        {f.transcript}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-text-muted italic">Matnga aylantirilmoqda yoki hali tayyor emas</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </Card>
           )}
 

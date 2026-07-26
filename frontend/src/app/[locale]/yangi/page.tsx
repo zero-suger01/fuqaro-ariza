@@ -28,6 +28,7 @@ function WizardContent() {
   const [draft, setDraft] = useState<WizardDraft>(EMPTY_DRAFT);
   const [images, setImages] = useState<File[]>([]);
   const [video, setVideo] = useState<File | null>(null);
+  const [audio, setAudio] = useState<Blob | null>(null);
 
   const [pendingDraft, setPendingDraft] = useState<WizardDraft | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -95,6 +96,7 @@ function WizardContent() {
       if (draft.longitude != null) formData.append("longitude", String(draft.longitude));
       images.forEach((file) => formData.append("images", file));
       if (video) formData.append("video", video);
+      if (audio) formData.append("audio", audio, "voice.webm");
 
       const response = await apiPostForm<ComplaintSubmitResponse>("/api/public/complaints", formData);
       setResult(response);
@@ -141,6 +143,8 @@ function WizardContent() {
             <Step1Problem
               description={draft.description}
               onDescriptionChange={(description) => updateDraft({ description })}
+              audio={audio}
+              onAudioChange={setAudio}
               images={images}
               onImagesChange={setImages}
               video={video}
@@ -148,7 +152,6 @@ function WizardContent() {
               categoryCode={draft.categoryCode}
               onCategoryChange={(categoryCode) => updateDraft({ categoryCode })}
               categories={categories}
-              language={locale}
               onNext={() => updateDraft({ step: 2 })}
             />
           )}

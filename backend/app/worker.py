@@ -180,8 +180,17 @@ async def analyze_complaint(ctx, complaint_id: str, attempt: int = 0) -> None:
         if complaint is None or complaint.status != STATUS_NEW:
             return
 
+        # Voice messages are transcribed before this job runs (see
+        # `transcribe_complaint_audio`) — fold the transcript in so the LLM
+        # classifies/routes on what the citizen SAID as well as what they
+        # typed, without polluting the citizen-facing `description` column.
+        audio_transcripts = [f.transcript for f in complaint.files if f.kind == "audio" and f.transcript]
+        analysis_text = complaint.description
+        if audio_transcripts:
+            analysis_text = f"{analysis_text}\n\n[Ovozli xabar matni]: {' '.join(audio_transcripts)}"
+
         try:
-            result, latency_ms = analyze_with_llm(db, complaint.description, complaint.address)
+            result, latency_ms = analyze_with_llm(db, analysis_text, complaint.address)
         except LlmError:
             await _mark_llm_error(ctx)
             # Admin navbati emas — qayta urinish (docs/07 §2). Murojaat `new`
@@ -354,8 +363,42 @@ async def transcribe_audio(ctx, job_id: str) -> None:
         db.close()
 
 
+async def transcribe_complaint_audio(ctx, complaint_id: str) -> None:
+    """Voice-message murojaatlar uchun: audio faylni matnga aylantirib
+    `ComplaintFile.transcript`'ga yozadi (xodim tinglamasdan o'qishi uchun),
+    so'ng klassifikatsiya uchun `analyze_complaint`'ni navbatga qo'yadi.
+    STT xato bersa ham tahlil to'xtamaydi — yozma tavsif baribir bor,
+    transkripsiya faqat qo'shimcha signal."""
+    db = SessionLocal()
+    local_path = None
+    try:
+        complaint = db.get(Complaint, uuid.UUID(complaint_id))
+        if complaint is None:
+            return
+        audio_file = next((f for f in complaint.files if f.kind == "audio"), None)
+        if audio_file is not None:
+            try:
+                local_path = download_to_temp(audio_file.url)
+                audio_file.transcript = transcribe(local_path, complaint.language)
+                db.commit()
+            except SttError as exc:
+                logger.warning(
+                    "%s: ovozli xabarni matnga aylantirib bo'lmadi: %s",
+                    complaint.ticket_number,
+                    str(exc)[:200],
+                )
+    finally:
+        if local_path:
+            try:
+                os.unlink(local_path)
+            except OSError:
+                pass
+        db.close()
+        await ctx["redis"].enqueue_job("analyze_complaint", complaint_id)
+
+
 class WorkerSettings:
-    functions = [analyze_complaint, transcribe_audio]
+    functions = [analyze_complaint, transcribe_audio, transcribe_complaint_audio]
     cron_jobs = [
         cron(sweep_pending_analysis, minute={0, 15, 30, 45}),
         cron(lifecycle_job, hour=3, minute=0),

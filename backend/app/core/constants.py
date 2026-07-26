@@ -105,9 +105,12 @@ REVIEW_REASONS = ["ok", "wrong_category", "wrong_department", "wrong_priority", 
 SUBTASK_STATUSES = ["open", "done", "cancelled"]
 
 CATEGORY_CODES = [
-    "chiqindi", "yol", "transport", "elektr", "gaz", "suv", "kommunal",
-    "daraxt", "ekologiya", "qurilish", "obodonlashtirish", "kadastr",
-    "soliq", "ijtimoiy", "boshqa",
+    "yol_transport", "suv_kanalizatsiya", "elektr", "gaz", "chiqindi_obodon",
+    "uy_kommunal", "ekologiya", "jamoat_xavfsizlik", "yongin_xavfsizligi",
+    "sogliqni_saqlash", "talim", "ijtimoiy_yordam", "bandlik_mehnat",
+    "yer_kadastr", "qurilish_arxitektura", "soliq_moliya", "fhdyo_hujjatlar",
+    "qishloq_xojaligi", "telekommunikatsiya", "huquqiy_masalalar",
+    "taklif_tashabbus", "boshqa",
 ]
 DEFAULT_CATEGORY_CODE = "boshqa"
 
@@ -117,7 +120,10 @@ FILE_LIMITS = {
     "video": {"max_size_mb": 50, "max_count": 1, "mimes": ["video/mp4", "video/quicktime"]},
     # audio/x-wav: some libmagic builds report legacy WAV as x-wav rather than
     # the contract's "audio/wav" — same format, kept as a compatibility alias.
-    "audio": {"max_size_mb": 10, "max_duration_s": 120, "max_count": 1, "mimes": ["audio/ogg", "audio/webm", "audio/mpeg", "audio/mp4", "audio/wav", "audio/x-wav"]},
+    # video/webm: libmagic can't tell an audio-only WebM (e.g. MediaRecorder's
+    # "audio/webm;codecs=opus" output) from a video one by magic bytes alone —
+    # both are Matroska containers — so it always reports "video/webm".
+    "audio": {"max_size_mb": 10, "max_duration_s": 120, "max_count": 1, "mimes": ["audio/ogg", "audio/webm", "video/webm", "audio/mpeg", "audio/mp4", "audio/wav", "audio/x-wav"]},
 }
 
 # §8 complaint_events.event_type

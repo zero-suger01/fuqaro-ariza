@@ -1,15 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Mic, Square } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Mic, Square, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { clsx } from "clsx";
-import { apiGet, apiPostForm } from "@/lib/api";
-import type { SttJobCreated, SttJobStatus } from "@/lib/types";
 
 const MAX_SECONDS = 120;
-const POLL_INTERVAL_MS = 1500;
-const POLL_TIMEOUT_MS = 90_000;
 
 function isRecordingSupported(): boolean {
   return (
@@ -19,17 +15,20 @@ function isRecordingSupported(): boolean {
   );
 }
 
+/** Records a voice message and hands the raw Blob up to the wizard — it's
+ * submitted alongside the complaint as its own audio file (kind="audio"),
+ * never dictated into the description textarea. Transcription (for AI
+ * classification + staff readback) happens server-side after submit. */
 export function VoiceRecorder({
-  language,
-  onTranscribed,
+  audio,
+  onAudioChange,
 }: {
-  language: string;
-  onTranscribed: (text: string) => void;
+  audio: Blob | null;
+  onAudioChange: (blob: Blob | null) => void;
 }) {
   const t = useTranslations("wizard");
   const [supported, setSupported] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [transcribing, setTranscribing] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,37 +46,12 @@ export function VoiceRecorder({
     };
   }, []);
 
-  async function pollJob(jobId: string): Promise<string | null> {
-    const start = Date.now();
-    while (Date.now() - start < POLL_TIMEOUT_MS) {
-      const status = await apiGet<SttJobStatus>(`/api/public/stt/${jobId}`);
-      if (status.status === "done") return status.text;
-      if (status.status === "failed") return null;
-      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-    }
-    return null;
-  }
-
-  async function transcribe(blob: Blob) {
-    setTranscribing(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append("audio", blob, "voice.webm");
-      formData.append("language", language);
-      const job = await apiPostForm<SttJobCreated>("/api/public/stt", formData);
-      const text = await pollJob(job.job_id);
-      if (text) {
-        onTranscribed(text);
-      } else {
-        setError(t("error.generic"));
-      }
-    } catch {
-      setError(t("error.generic"));
-    } finally {
-      setTranscribing(false);
-    }
-  }
+  const previewUrl = useMemo(() => (audio ? URL.createObjectURL(audio) : null), [audio]);
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   function stopRecording() {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -103,7 +77,7 @@ export function VoiceRecorder({
         () => {
           stream.getTracks().forEach((track) => track.stop());
           const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
-          void transcribe(blob);
+          onAudioChange(blob);
         },
         { once: true }
       );
@@ -126,11 +100,21 @@ export function VoiceRecorder({
 
   if (!supported) return null;
 
-  if (transcribing) {
+  if (audio && previewUrl && !recording) {
     return (
-      <div className="flex w-full items-center justify-center gap-3 rounded-card border-2 border-border-strong px-6 py-4 text-lg text-text-secondary">
-        <span className="h-3 w-3 animate-pulse rounded-full bg-accent" aria-hidden />
-        {t("step1.transcribing")}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3 rounded-card border-2 border-border-strong bg-bg-surface px-4 py-3">
+          <audio controls src={previewUrl} className="h-10 flex-1" />
+          <button
+            type="button"
+            onClick={() => onAudioChange(null)}
+            aria-label={t("step1.removeVoice")}
+            className="flex h-10 w-10 items-center justify-center rounded-control text-danger hover:bg-danger/10"
+          >
+            <Trash2 className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+        {error && <p className="text-base text-danger">{error}</p>}
       </div>
     );
   }

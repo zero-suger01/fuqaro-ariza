@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { MapPin, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { clsx } from "clsx";
 import { GuestButton } from "@/components/guest/GuestButton";
@@ -41,7 +41,6 @@ export function Step2Location({
   const t = useTranslations("wizard.step2");
   const tWizard = useTranslations("wizard");
   const [query, setQuery] = useState("");
-  const [showMap, setShowMap] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -52,6 +51,12 @@ export function Step2Location({
   return (
     <div className="flex flex-col gap-5">
       <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
+
+      <MapPicker
+        lat={latitude ?? UYCHI_CENTER[0]}
+        lng={longitude ?? UYCHI_CENTER[1]}
+        onChange={onLocationChange}
+      />
 
       <div className="flex flex-col gap-2">
         <label className="text-base font-medium text-text-secondary">{t("neighborhoodLabel")}</label>
@@ -91,23 +96,6 @@ export function Step2Location({
           className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
         />
       </div>
-
-      <button
-        type="button"
-        onClick={() => setShowMap((v) => !v)}
-        className="flex min-h-[56px] w-full items-center justify-center gap-3 rounded-card border-2 border-border-strong bg-bg-surface px-6 py-4 text-lg font-semibold text-text-primary hover:bg-bg-subtle"
-      >
-        <MapPin className="h-6 w-6" aria-hidden />
-        {showMap ? t("mapHide") : t("mapButton")}
-      </button>
-
-      {showMap && (
-        <MapPicker
-          lat={latitude ?? UYCHI_CENTER[0]}
-          lng={longitude ?? UYCHI_CENTER[1]}
-          onChange={onLocationChange}
-        />
-      )}
 
       <div className="flex gap-3">
         <GuestButton type="button" variant="secondary" onClick={onBack} className="flex-1">

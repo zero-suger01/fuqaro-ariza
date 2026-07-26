@@ -100,6 +100,7 @@ class FileOut(BaseModel):
     mime: str
     size_bytes: int
     duration_s: int | None
+    transcript: str | None = None
 
     class Config:
         from_attributes = True

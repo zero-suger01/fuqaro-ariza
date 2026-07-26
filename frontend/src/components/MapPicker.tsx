@@ -1,23 +1,7 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
-import L from "leaflet";
-
-const pinIcon = L.divIcon({
-  className: "",
-  html: `<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;background:#c9a227;transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 6px rgba(10,30,60,0.3)"></div>`,
-  iconSize: [26, 26],
-  iconAnchor: [13, 26],
-});
-
-function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      onPick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
+import { useEffect, useRef } from "react";
+import { loadYandexMaps, type YMaps } from "@/lib/yandexMaps";
 
 export default function MapPicker({
   lat,
@@ -28,19 +12,72 @@ export default function MapPicker({
   lng: number;
   onChange: (lat: number, lng: number) => void;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<YMaps | null>(null);
+  const placemarkRef = useRef<YMaps | null>(null);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    loadYandexMaps().then((ymaps) => {
+      if (cancelled || !containerRef.current) return;
+
+      const map = new ymaps.Map(containerRef.current, {
+        center: [lat, lng],
+        zoom: 15,
+        controls: ["zoomControl"],
+      });
+      mapRef.current = map;
+
+      const placemark = new ymaps.Placemark(
+        [lat, lng],
+        {},
+        { preset: "islands#goldDotIcon", draggable: true }
+      );
+      placemarkRef.current = placemark;
+      map.geoObjects.add(placemark);
+
+      map.events.add("click", (e: YMaps) => {
+        const coords = e.get("coords") as [number, number];
+        placemark.geometry.setCoordinates(coords);
+        onChangeRef.current(coords[0], coords[1]);
+      });
+      placemark.events.add("dragend", () => {
+        const coords = placemark.geometry.getCoordinates() as [number, number];
+        onChangeRef.current(coords[0], coords[1]);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      mapRef.current?.destroy();
+      mapRef.current = null;
+      placemarkRef.current = null;
+    };
+    // Map is only ever created once — lat/lng changes after that are handled
+    // by the effect below (moving the existing placemark), not a re-create.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const placemark = placemarkRef.current;
+    if (!placemark) return;
+    const current = placemark.geometry.getCoordinates() as [number, number];
+    if (current[0] !== lat || current[1] !== lng) {
+      placemark.geometry.setCoordinates([lat, lng]);
+      mapRef.current?.setCenter([lat, lng]);
+    }
+  }, [lat, lng]);
+
   return (
-    <MapContainer
-      center={[lat, lng]}
-      zoom={13}
+    <div
+      ref={containerRef}
       style={{ height: "260px", width: "100%" }}
-      className="rounded-inner overflow-hidden"
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <ClickHandler onPick={onChange} />
-      <Marker position={[lat, lng]} icon={pinIcon} />
-    </MapContainer>
+      className="yandex-map-container overflow-hidden rounded-inner"
+    />
   );
 }

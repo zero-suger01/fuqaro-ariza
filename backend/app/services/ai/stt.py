@@ -50,11 +50,22 @@ def _transcribe_mohirai(wav_path: str, language: str) -> str:
     raise SttError("mohir.ai provayderi hali ulanmagan")
 
 
+def _transcribe_gigaam(wav_path: str, language: str) -> str:
+    from app.services.ai.gigaam_asr import GigaamAsrError, transcribe_gigaam
+
+    try:
+        return transcribe_gigaam(wav_path)
+    except GigaamAsrError as e:
+        raise SttError(str(e)) from e
+
+
 def transcribe(audio_path: str, language: str = "uz") -> str:
     wav_path = _to_16k_mono_wav(audio_path)
     try:
         if settings.stt_provider == "mohirai":
             return _transcribe_mohirai(wav_path, language)
+        if settings.stt_provider == "gigaam":
+            return _transcribe_gigaam(wav_path, language)
         return _transcribe_whisper(wav_path, language)
     finally:
         Path(wav_path).unlink(missing_ok=True)

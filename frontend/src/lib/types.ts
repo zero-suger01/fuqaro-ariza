@@ -57,6 +57,7 @@ export interface FileItem {
   mime: string;
   size_bytes: number;
   duration_s: number | null;
+  transcript?: string | null;
 }
 
 export interface EventItem {

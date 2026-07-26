@@ -62,12 +62,12 @@ def test_second_problem_reaches_its_department(client, db_session):
     """«chiroq va suv» — suv bo'yicha alohida topshiriq ochiladi."""
     complaint, category = _complaint(db_session, "elektr")
 
-    created = _create_ai_subtasks(db_session, complaint, ["suv"], category)
+    created = _create_ai_subtasks(db_session, complaint, ["suv_kanalizatsiya"], category)
     assert created == 1
 
     subtasks = _subtasks(db_session, complaint)
     assert len(subtasks) == 1
-    water = db_session.execute(select(Category).where(Category.code == "suv")).scalar_one()
+    water = db_session.execute(select(Category).where(Category.code == "suv_kanalizatsiya")).scalar_one()
     assert subtasks[0].department_id == water.department_id
     # AI yaratgan — xodim yo'q (M10).
     assert subtasks[0].created_by is None
@@ -76,7 +76,7 @@ def test_second_problem_reaches_its_department(client, db_session):
     events = [e for e in complaint.events if e.event_type == "subtask_created"]
     assert len(events) == 1
     assert events[0].actor_type == "ai"
-    assert events[0].payload["category_code"] == "suv"
+    assert events[0].payload["category_code"] == "suv_kanalizatsiya"
 
 
 @pytest.mark.smoke
@@ -156,7 +156,7 @@ def test_duplicate_departments_collapse(client, db_session):
     """Ikki xil kod bitta bo'limga tushsa — bitta topshiriq."""
     complaint, category = _complaint(db_session, "elektr")
 
-    created = _create_ai_subtasks(db_session, complaint, ["suv", "suv"], category)
+    created = _create_ai_subtasks(db_session, complaint, ["suv_kanalizatsiya", "suv_kanalizatsiya"], category)
     assert created == 1
 
 
@@ -188,7 +188,7 @@ def test_ai_subtask_blocks_resolve(client, admin_headers, db_session):
 
     complaint = db_session.get(Complaint, uuid.UUID(complaint_id))
     category = db_session.execute(select(Category).where(Category.code == "elektr")).scalar_one()
-    assert _create_ai_subtasks(db_session, complaint, ["suv"], category) == 1
+    assert _create_ai_subtasks(db_session, complaint, ["suv_kanalizatsiya"], category) == 1
     db_session.flush()
 
     client.patch(

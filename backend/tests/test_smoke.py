@@ -132,7 +132,7 @@ def test_categories_and_neighborhoods(client):
     categories = client.get("/api/public/categories")
     assert categories.status_code == 200
     codes = {c["code"] for c in categories.json()}
-    assert "yol" in codes and "boshqa" in codes
+    assert "yol_transport" in codes and "boshqa" in codes
 
     neighborhoods = client.get("/api/public/neighborhoods")
     assert neighborhoods.status_code == 200

@@ -1,43 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import MarkerClusterGroup from "react-leaflet-cluster";
-import L from "leaflet";
-import "leaflet.heat";
+import { useCallback, useEffect, useRef } from "react";
+import { loadYandexMaps, type YMaps } from "@/lib/yandexMaps";
 import { STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
 import type { HeatmapPoint, MapPoint } from "@/lib/types";
 
 // Uychi shahri (tuman markazi) — Step2Location.tsx bilan bir xil manba/izoh.
 const UYCHI_CENTER: [number, number] = [41.0294, 71.8483];
-
-function markerIcon(status: MapPoint["status"]) {
-  const color = STATUS_COLORS[status] ?? "var(--accent)";
-  return L.divIcon({
-    className: "",
-    html: `<div style="width:20px;height:20px;border-radius:50% 50% 50% 0;background:${color};transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 5px rgba(10,30,60,0.35)"></div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 20],
-  });
-}
-
-function HeatLayer({ points }: { points: HeatmapPoint[] }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (points.length === 0) return;
-    const layer = L.heatLayer(
-      points.map((p) => [p.lat, p.lng, p.weight]),
-      { radius: 28, blur: 20, maxZoom: 16 }
-    );
-    layer.addTo(map);
-    return () => {
-      map.removeLayer(layer);
-    };
-  }, [map, points]);
-
-  return null;
-}
 
 export default function ComplaintsMap({
   mode,
@@ -48,34 +17,106 @@ export default function ComplaintsMap({
   points: MapPoint[];
   heatmapPoints: HeatmapPoint[];
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<YMaps | null>(null);
+  const layerRef = useRef<YMaps | null>(null);
+
+  const renderLayer = useCallback(
+    async (ymaps: YMaps) => {
+      const map = mapRef.current;
+      if (!map) return;
+
+      if (layerRef.current) {
+        if (typeof layerRef.current.destroy === "function") {
+          layerRef.current.destroy();
+        } else {
+          map.geoObjects.remove(layerRef.current);
+        }
+        layerRef.current = null;
+      }
+
+      if (mode === "heatmap") {
+        // ymaps.Heatmap isn't in the standard 2.1 bundle (and Yandex hasn't
+        // published a reliably loadable module URL for it) — approximate a
+        // heatmap with overlapping translucent circles instead: denser
+        // clusters of points naturally layer into a hotter-looking area.
+        // Radius/opacity scale with each point's weight.
+        const maxWeight = Math.max(1, ...heatmapPoints.map((p) => p.weight));
+        const collection = new ymaps.GeoObjectCollection();
+        for (const p of heatmapPoints) {
+          const intensity = p.weight / maxWeight;
+          const circle = new ymaps.Circle(
+            [[p.lat, p.lng], 150 + intensity * 250],
+            {},
+            {
+              fillColor: "#e04b2955",
+              strokeWidth: 0,
+              fillOpacity: 0.25 + intensity * 0.35,
+            }
+          );
+          collection.add(circle);
+        }
+        map.geoObjects.add(collection);
+        layerRef.current = collection;
+        return;
+      }
+
+      const clusterer = new ymaps.Clusterer({
+        preset: "islands#invertedVioletClusterIcons",
+        groupByCoordinates: false,
+      });
+      const placemarks = points.map((p) => {
+        const color = STATUS_COLORS[p.status] ?? "#c9a227";
+        return new ymaps.Placemark(
+          [p.lat, p.lng],
+          {
+            balloonContentHeader: p.ticket_number,
+            balloonContentBody: `${STATUS_LABELS[p.status]}<br/>${p.category_name}`,
+          },
+          { preset: "islands#circleIcon", iconColor: color }
+        );
+      });
+      clusterer.add(placemarks);
+      map.geoObjects.add(clusterer);
+      layerRef.current = clusterer;
+    },
+    [mode, points, heatmapPoints]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    loadYandexMaps().then((ymaps) => {
+      if (cancelled || !containerRef.current) return;
+      const map = new ymaps.Map(containerRef.current, {
+        center: UYCHI_CENTER,
+        zoom: 12,
+        controls: ["zoomControl", "fullscreenControl"],
+      });
+      mapRef.current = map;
+      renderLayer(ymaps);
+    });
+
+    return () => {
+      cancelled = true;
+      mapRef.current?.destroy();
+      mapRef.current = null;
+      layerRef.current = null;
+    };
+    // Map is created once; renderLayer's own dependencies handle re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    loadYandexMaps().then((ymaps) => renderLayer(ymaps));
+  }, [renderLayer]);
+
   return (
-    <MapContainer
-      center={UYCHI_CENTER}
-      zoom={12}
+    <div
+      ref={containerRef}
       style={{ height: "560px", width: "100%" }}
-      className="rounded-inner overflow-hidden"
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      {mode === "heatmap" ? (
-        <HeatLayer points={heatmapPoints} />
-      ) : (
-        <MarkerClusterGroup chunkedLoading>
-          {points.map((p) => (
-            <Marker key={p.id} position={[p.lat, p.lng]} icon={markerIcon(p.status)}>
-              <Popup>
-                <div className="flex flex-col gap-0.5 text-sm">
-                  <strong>{p.ticket_number}</strong>
-                  <span>{STATUS_LABELS[p.status]}</span>
-                  <span className="text-text-muted">{p.category_name}</span>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MarkerClusterGroup>
-      )}
-    </MapContainer>
+      className="yandex-map-container overflow-hidden rounded-inner"
+    />
   );
 }

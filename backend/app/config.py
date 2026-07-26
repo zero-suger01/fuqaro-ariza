@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     stt_provider: str = "whisper"
     stt_whisper_model: str = "medium"
     mohirai_api_key: str | None = None
+    # GigaAM Multilingual int8 ONNX (voice/ sibling project) — dir containing
+    # manifest.json + the int8 .onnx file. Used when stt_provider="gigaam".
+    gigaam_model_dir: str | None = None
 
     # Notifications
     eskiz_email: str | None = None
