@@ -28,17 +28,28 @@ export interface NavGroup {
  * Navbat elementlari bir xil sahifaga turli filtr bilan boradi
  * (`/admin/murojaatlar?queue=overdue`), shuning uchun faqat pathname
  * bo'yicha solishtirsa ularning HAMMASI bir vaqtda aktiv ko'rinardi.
+ *
+ * Ikkita qo'shimcha holat ham shu yerda tuzatiladi: (1) `/admin`
+ * (Bosh ekran) — prefiks emas, ANIQ mos kelishi kerak, aks holda u
+ * `/admin/*` ostidagi HAR BIR sahifada aktiv ko'rinardi. (2) `Eksport`
+ * (`/admin/murojaatlar?export=1`) faqat `queue` ni solishtirganda
+ * `Barcha murojaatlar` bilan bir vaqtda aktiv bo'lib qolardi — `export`
+ * parametri ham solishtiriladi.
  */
 function useIsActive() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentQueue = searchParams.get("queue");
 
   return (href: string) => {
     const [path, query] = href.split("?");
-    const wantedQueue = query ? new URLSearchParams(query).get("queue") : null;
-    if (pathname !== path && !pathname?.startsWith(path + "/")) return false;
-    return wantedQueue === currentQueue;
+    const pathMatches = pathname === path || (path !== "/admin" && pathname?.startsWith(path + "/"));
+    if (!pathMatches) return false;
+
+    const wanted = new URLSearchParams(query ?? "");
+    return (
+      (wanted.get("queue") ?? null) === searchParams.get("queue") &&
+      (wanted.get("export") ?? null) === searchParams.get("export")
+    );
   };
 }
 
@@ -130,8 +141,9 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
 
   return (
     <>
-      {/* Desktop — doimiy sidebar */}
-      <aside className="hidden md:flex md:flex-col w-[248px] shrink-0 bg-navy-900 text-white/60 h-screen sticky top-0 px-3 py-4">
+      {/* Desktop — doimiy sidebar. "Floating" panel (chekka-chekkasiga
+          yopishmagan, yumaloq burchakli) — pilot rebrand uslubi. */}
+      <aside className="hidden md:flex md:flex-col w-[248px] shrink-0 bg-navy-900 text-white/60 h-[calc(100vh-1.5rem)] sticky top-3 my-3 ml-3 rounded-[28px] px-3 py-4">
         {brand}
         <NavTree groups={groups} />
         {logoutButton}
