@@ -17,7 +17,7 @@ export function AnalyzingScreen() {
 
   return (
     <div className="flex flex-col items-center justify-center gap-6 text-center">
-      <h1 className="max-w-xs text-[26px] font-bold leading-snug text-text-primary sm:max-w-sm sm:text-[28px]">
+      <h1 className="max-w-xs text-lg leading-snug text-text-secondary sm:max-w-sm">
         {t("title")}
       </h1>
 
