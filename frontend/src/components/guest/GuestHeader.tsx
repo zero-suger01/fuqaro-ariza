@@ -25,7 +25,7 @@ export function GuestHeader() {
           <Landmark className="h-7 w-7 text-accent" aria-hidden />
           <span className="text-lg font-semibold">{t("appName")}</span>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <nav className="flex items-center gap-1 text-base font-medium" aria-label="Til tanlash">
             {routing.locales.map((loc, i) => (
               <span key={loc} className="flex items-center">
@@ -47,10 +47,18 @@ export function GuestHeader() {
           </nav>
           <Link
             href="/kabinet"
-            className="flex items-center gap-1.5 rounded-pill bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent-soft/70"
+            aria-label={t("myComplaints")}
+            className="flex items-center gap-1.5 rounded-pill bg-accent-soft px-2.5 py-1.5 text-sm font-semibold text-accent hover:bg-accent-soft/70 sm:px-3"
           >
             <FileText className="h-4 w-4" aria-hidden />
-            {t("myComplaints")}
+            {/* "Mening murojaatlarim" translates to very different lengths
+             * per locale (e.g. Cyrillic "Менинг мурожаатларим" is much
+             * longer than "En" locale's "My complaints") — on narrow
+             * screens that made the header wrap into a second row for
+             * some languages but not others. Hiding the label below the
+             * `sm` breakpoint (icon stays, aria-label covers a11y) makes
+             * the wrap behavior identical across all 4 locales. */}
+            <span className="hidden sm:inline">{t("myComplaints")}</span>
           </Link>
           <ThemeToggle />
         </div>
