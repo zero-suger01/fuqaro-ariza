@@ -4,11 +4,11 @@
 
 | Qaror | Tanlov | Nega (va nima rad etildi) |
 |---|---|---|
-| Backend | **FastAPI (Python) QOLADI** | TZ'da NestJS yozilgan, lekin: ishlayotgan kod bor; AI qatlam (Ollama, faster-whisper, transliteratsiya) Python'da native; 2 kishilik jamoa uchun bitta backend tili. NestJS'ga rewrite = 2+ hafta yo'qotish, 0 foyda |
+| Backend | **FastAPI (Python) QOLADI** | TZ'da NestJS yozilgan, lekin: ishlayotgan kod bor; AI qatlam (Ollama, GigaAM ONNX, transliteratsiya) Python'da native; 2 kishilik jamoa uchun bitta backend tili. NestJS'ga rewrite = 2+ hafta yo'qotish, 0 foyda |
 | ORM/migratsiya | SQLAlchemy 2 + Alembic (qoladi) | Prisma emas — backend Python |
 | Queue | **Redis + ARQ** (async, engil) | BullMQ emas (Node); Celery og'ir. ARQ — FastAPI bilan bitta uslub. STT va LLM ishlari shu queue'da |
 | LLM fallback | **Ollama** + Gemma (12B q4; GPU'siz zaif serverda 4B) | Lokal, bepul, offline. Model nomi env orqali: `OLLAMA_MODEL` |
-| Ovoz→matn | **faster-whisper** lokal (standart) + **mohir.ai API** ixtiyoriy provayder | [07-ai-layer.md](07-ai-layer.md) §5 da to'liq asos |
+| Ovoz→matn | **GigaAM (int8 ONNX)** lokal (standart) + **mohir.ai API** ixtiyoriy provayder | [07-ai-layer.md](07-ai-layer.md) §5 da to'liq asos |
 | Frontend | Next.js 16 App Router (qoladi), Tailwind v4, Recharts, Leaflet | TZ'dagi ro'yxatga yaqin; shadcn/TanStack/Zustand — **majburiy emas**, kerak joyda qo'shiladi (fuqaro portali imkon qadar oddiy qolsin) |
 | i18n | **next-intl**, locale'lar: `uz` (lotin, standart), `oz` (kirill), `ru`, `en` | gov.uz uslubidagi qisqa kodlar. Backend xabarlari ham shu kodlar bilan |
 | SMS | Eskiz.uz | O'zbekistonda standart, arzon |
@@ -33,7 +33,7 @@
                                    │        │                                                       │
                                    │        ▼                                                       │
                                    │   worker (ARQ) ──► Ollama :11434 (Gemma)  [LLM klassifikatsiya]│
-                                   │        └─────────► faster-whisper (lokal) [ovoz→matn]          │
+                                   │        └─────────► GigaAM ONNX (lokal) [ovoz→matn]          │
                                    └────────────────────────────────────────────────────────────────┘
 ```
 
