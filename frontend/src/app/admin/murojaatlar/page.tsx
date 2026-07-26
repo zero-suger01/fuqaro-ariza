@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FilterX, ClipboardList, AlertTriangle, FileSpreadsheet, UserX } from "lucide-react";
+import { clsx } from "clsx";
+import { FilterX, ClipboardList, AlertTriangle, FileSpreadsheet, FileText, UserX } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -11,8 +12,27 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { apiGet, apiGetBlob } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { formatUzDateTime } from "@/lib/formatDate";
 import type { CategoryAdmin, ComplaintListItem, ComplaintStatus, DepartmentAdmin, Page, Priority } from "@/lib/types";
 import { PRIORITY_COLORS, PRIORITY_LABELS, STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
+
+/** Kanban-uslub ustunlari — 10 ta xom `status`ni operativ jihatdan uchta
+ * mantiqiy bosqichga yig'adi (fuqaroga ko'rsatiladigan `status_simple`dan
+ * FARQLI — bu yerda admin uchun aniqlik muhim, shuning uchun `accepted`
+ * "Ijroda"ga, "assigned" esa hali hech kim qo'l urmagani uchun "Yangi"ga
+ * tushadi). Joriy sahifadagi (filtrlangan, paginatsiyalangan) `items`ni
+ * qayta guruhlaydi — so'rov/filtr/pagination o'zgarmaydi.
+ */
+const KANBAN_BUCKETS: { key: string; label: string; dotColor: string; statuses: ComplaintStatus[] }[] = [
+  { key: "new", label: "Yangi", dotColor: "var(--info)", statuses: ["new", "ai_processed", "assigned"] },
+  { key: "progress", label: "Ijroda", dotColor: "var(--warning)", statuses: ["accepted", "in_progress", "need_info"] },
+  {
+    key: "done",
+    label: "Yakunlangan",
+    dotColor: "var(--success)",
+    statuses: ["resolved", "closed", "archived", "rejected"],
+  },
+];
 
 interface Filters {
   status: ComplaintStatus | "";
@@ -76,6 +96,61 @@ function isOverdue(deadline: string | null, status: ComplaintStatus): boolean {
   if (!deadline) return false;
   if (["resolved", "closed", "rejected", "archived"].includes(status)) return false;
   return new Date(deadline).getTime() < Date.now();
+}
+
+function KanbanCard({ c }: { c: ComplaintListItem }) {
+  const overdue = isOverdue(c.deadline_at, c.status);
+  return (
+    <Link
+      href={`/admin/murojaatlar/${c.id}`}
+      className="flex flex-col gap-4 rounded-card border border-border bg-bg-surface p-5 shadow-card transition hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-lift"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-bg-subtle">
+            <FileText className="h-5 w-5 text-text-secondary" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-text-primary">{c.category.name}</p>
+            <p className="font-mono text-xs text-text-muted">{c.ticket_number}</p>
+          </div>
+        </div>
+        <Badge label={STATUS_LABELS[c.status]} color={STATUS_COLORS[c.status]} />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 border-t border-border pt-4">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-wide text-text-muted">Mas&apos;ul</p>
+          {c.assigned_user_name ? (
+            <p className="mt-0.5 truncate text-sm font-medium text-text-primary">{c.assigned_user_name}</p>
+          ) : (
+            <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-warning">
+              <UserX className="h-3 w-3 shrink-0" aria-hidden /> yo&apos;q
+            </p>
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-wide text-text-muted">Muddat</p>
+          <p className={clsx("mt-0.5 text-sm font-medium", overdue ? "text-danger" : "text-text-primary")}>
+            {c.deadline_at ? formatUzDateTime(c.deadline_at) : "—"}
+          </p>
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-wide text-text-muted">Bo&apos;lim</p>
+          <p className="mt-0.5 truncate text-sm font-medium text-text-primary">{c.department?.name ?? "—"}</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge label={PRIORITY_LABELS[c.priority]} color={PRIORITY_COLORS[c.priority]} />
+        {c.needs_review && (
+          <span className="inline-flex items-center gap-1 text-xs text-warning">
+            <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden /> AI tekshiruv kerak
+          </span>
+        )}
+      </div>
+    </Link>
+  );
 }
 
 function AdminComplaintsView() {
@@ -252,100 +327,70 @@ function AdminComplaintsView() {
         </div>
       </Card>
 
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-text-primary">Murojaatlar ro&apos;yxati</h2>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-text-muted">
-              Jami <strong className="text-text-primary">{total}</strong> ta
-            </span>
-            {user?.role === "admin" && (
-              <Button type="button" variant="secondary" disabled={exporting} onClick={handleExport}>
-                <FileSpreadsheet className="h-4 w-4" /> {exporting ? "Tayyorlanmoqda..." : "Excel eksport"}
-              </Button>
-            )}
-          </div>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h2 className="text-base font-semibold text-text-primary">Murojaatlar ro&apos;yxati</h2>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-text-muted">
+            Jami <strong className="text-text-primary">{total}</strong> ta
+          </span>
+          {user?.role === "admin" && (
+            <Button type="button" variant="secondary" disabled={exporting} onClick={handleExport}>
+              <FileSpreadsheet className="h-4 w-4" /> {exporting ? "Tayyorlanmoqda..." : "Excel eksport"}
+            </Button>
+          )}
         </div>
+      </div>
 
-        {loading ? (
-          <div className="py-14 text-center text-text-muted text-sm">Yuklanmoqda...</div>
-        ) : items.length === 0 ? (
+      {loading ? (
+        <div className="py-14 text-center text-text-muted text-sm">Yuklanmoqda...</div>
+      ) : items.length === 0 ? (
+        <Card>
           <div className="py-14 flex flex-col items-center gap-2 text-text-muted text-sm">
             <ClipboardList className="h-6 w-6" />
             Murojaatlar topilmadi
             <span className="text-xs">Filtrlarni o&apos;zgartirib qayta urinib ko&apos;ring</span>
           </div>
-        ) : (
-          <div className="flex flex-col divide-y divide-border">
-            {items.map((c) => {
-              const overdue = isOverdue(c.deadline_at, c.status);
-              return (
-                <Link
-                  key={c.id}
-                  href={`/admin/murojaatlar/${c.id}`}
-                  className="flex items-center justify-between gap-4 py-3.5 hover:bg-bg-subtle -mx-2 px-2 rounded-inner transition"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-mono font-medium text-text-primary">{c.ticket_number}</span>
-                      <span className="text-sm text-text-secondary">{c.category.name}</span>
-                      {c.needs_review && (
-                        <span className="inline-flex items-center gap-1 text-xs text-warning">
-                          <AlertTriangle className="h-3 w-3" /> tekshiruv kerak
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-text-muted mt-1">
-                      {c.citizen.fullname} · {c.citizen.phone}
-                      {c.neighborhood_name ? ` · ${c.neighborhood_name}` : ""}
-                      {c.department ? ` · ${c.department.name}` : ""}
-                    </p>
-                    {/* v1.4: egasi ro'yxatda ko'rinadi — «kim javobgar»
-                        savoliga murojaatni ochmasdan javob beradi. */}
-                    <p className="text-xs mt-1">
-                      {c.assigned_user_name ? (
-                        <span className="text-text-secondary">Mas&apos;ul: {c.assigned_user_name}</span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-warning">
-                          <UserX className="h-3 w-3" /> egasi yo&apos;q
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs mt-1">
-                      {new Date(c.created_at).toLocaleDateString("uz-UZ")}
-                      {c.deadline_at && (
-                        <span className={overdue ? "text-danger font-medium" : "text-text-muted"}>
-                          {" "}
-                          · muddat: {new Date(c.deadline_at).toLocaleDateString("uz-UZ")}
-                          {overdue ? " (o'tgan)" : ""}
-                        </span>
-                      )}
-                    </p>
+        </Card>
+      ) : (
+        // Joriy sahifa (server filtr/pagination'idan kelgan `items`) 3 ta
+        // operativ ustunga guruhlanadi — pagination o'sha holicha ishlaydi,
+        // faqat ko'rinish o'zgaradi (kanban, docs/10 dan tashqari — pilot).
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {KANBAN_BUCKETS.map((bucket) => {
+            const bucketItems = items.filter((c) => bucket.statuses.includes(c.status));
+            return (
+              <div key={bucket.key} className="flex flex-col gap-3">
+                <div className="flex items-center gap-2 px-1">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: bucket.dotColor }} />
+                  <h3 className="text-sm font-semibold text-text-primary">{bucket.label}</h3>
+                  <span className="text-xs text-text-muted">{bucketItems.length}</span>
+                </div>
+                {bucketItems.length === 0 ? (
+                  <div className="rounded-card border border-dashed border-border-strong p-6 text-center text-xs text-text-muted">
+                    Bo&apos;sh
                   </div>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <Badge label={PRIORITY_LABELS[c.priority]} color={PRIORITY_COLORS[c.priority]} />
-                    <Badge label={STATUS_LABELS[c.status]} color={STATUS_COLORS[c.status]} />
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
+                ) : (
+                  bucketItems.map((c) => <KanbanCard key={c.id} c={c} />)
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-            <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              Oldingi
-            </Button>
-            <span className="text-sm text-text-muted">
-              {page} / {totalPages}
-            </span>
-            <Button variant="secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-              Keyingi
-            </Button>
-          </div>
-        )}
-      </Card>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between rounded-card border border-border bg-bg-surface px-5 py-4 shadow-card">
+          <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            Oldingi
+          </Button>
+          <span className="text-sm text-text-muted">
+            {page} / {totalPages}
+          </span>
+          <Button variant="secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+            Keyingi
+          </Button>
+        </div>
+      )}
     </AppShell>
   );
 }
