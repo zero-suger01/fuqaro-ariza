@@ -1,125 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { ThinkingOrb } from "thinking-orbs";
 
 // Ariza yuborilgan (backend'da ticket allaqachon yaratilgan), lekin AI
 // natijasi kutilmoqda — docs/10-ui-ux.md §2.9 "kutish holatlari
-// tushuntiriladi" qoidasi bo'yicha 3 qadamli progress ko'rsatiladi.
+// tushuntiriladi" qoidasi bo'yicha sodda kutish ekrani ko'rsatiladi.
 // `useAiRouting` (frontend/src/lib/useAiRouting.ts) 20 s dan keyin
 // baribir "qabul qilindi" ekraniga o'tkazadi — bu ekran cheksiz osilib
 // qolmaydi.
-//
-// 3D card-stack: birinchi qadam oldinda ko'rsatiladi, qolgan ikkitasi
-// orqada kutadi. Har 2.5 s dan keyin oldingi karta orqaga aylanib
-// ketadi va keyingisi oldinga chiqadi.
-const STEP_INTERVAL_MS = 2500;
-
 export function AnalyzingScreen() {
   const t = useTranslations("wizard.analyzing");
-  const [activeStep, setActiveStep] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveStep((prev) => (prev + 1) % 3);
-    }, STEP_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, []);
-
-  const steps = [t("step1"), t("step2"), t("step3")];
 
   return (
-    <div className="flex flex-col items-center gap-4 text-center">
-      <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
-      <p className="text-lg text-text-secondary">{t("subtitle")}</p>
+    <div className="flex flex-col items-center justify-center gap-8 text-center">
+      <h1 className="max-w-xs text-[26px] font-bold leading-snug text-text-primary sm:max-w-sm sm:text-[28px]">
+        {t("title")}
+      </h1>
 
-      <div className="flex w-full justify-center">
-        <div className="relative h-44 w-full max-w-sm [perspective:1000px]">
-          {[0, 1, 2].map((index) => (
-            <StepCard
-              key={index}
-              index={index}
-              activeStep={activeStep}
-              label={steps[index]}
-            />
-          ))}
+      <div className="relative flex h-44 w-44 items-center justify-center">
+        {/* Tashqi nurlanish */}
+        <div className="absolute inset-0 rounded-full bg-[#F49A51]/15 blur-3xl animate-ai-glow" />
+
+        {/* Kengayib ketayotgan halqalar */}
+        <div className="absolute inset-0 rounded-full border-2 border-[#F49A51]/25 animate-pulse-ring" />
+        <div className="absolute inset-0 rounded-full border-2 border-[#F49A51]/20 animate-pulse-ring [animation-delay:0.7s]" />
+
+        {/* Markaziy shar */}
+        <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-[#F49A51] via-[#e8863a] to-[#F49A51] shadow-[0_0_40px_rgba(244,154,81,0.45)] animate-ai-breathe">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/25 to-transparent" />
         </div>
+
+        {/* Aylanib yuruvchi zarralar */}
+        <span className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F49A51] shadow-[0_0_12px_rgba(244,154,81,0.9)] animate-orbit" />
+        <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)] animate-orbit [animation-delay:-1.2s] [animation-duration:2.4s]" />
+        <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F49A51] shadow-[0_0_8px_rgba(244,154,81,0.9)] animate-orbit [animation-delay:-2s] [animation-duration:3.2s]" />
       </div>
-    </div>
-  );
-}
-
-function StepCard({
-  index,
-  activeStep,
-  label,
-}: {
-  index: number;
-  activeStep: number;
-  label: string;
-}) {
-  const position = (index - activeStep + 3) % 3;
-
-  const transforms: Record<number, string> = {
-    0: "rotateY(0deg) translateZ(60px) scale(1)",
-    1: "rotateY(22deg) translateZ(0px) scale(0.92)",
-    2: "rotateY(44deg) translateZ(-60px) scale(0.84)",
-  };
-
-  const opacities: Record<number, string> = {
-    0: "1",
-    1: "0.55",
-    2: "0.3",
-  };
-
-  const zIndexes: Record<number, number> = {
-    0: 30,
-    1: 20,
-    2: 10,
-  };
-
-  const isFront = position === 0;
-
-  return (
-    <div
-      className="absolute inset-x-0 top-0 mx-auto flex h-36 w-[90%] items-center gap-4 rounded-card bg-bg-surface p-5 shadow-card transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] [backface-visibility:hidden] [transform-style:preserve-3d]"
-      style={{
-        transform: transforms[position],
-        opacity: opacities[position],
-        zIndex: zIndexes[position],
-      }}
-    >
-      <span
-        className={[
-          "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
-          isFront && index === 0 ? "bg-success/15" : "",
-          isFront && index === 1 ? "bg-accent-soft" : "",
-          isFront && index === 2 ? "bg-bg-subtle" : "",
-          !isFront ? "bg-bg-subtle" : "",
-        ].filter(Boolean).join(" ")}
-      >
-        {isFront && index === 0 && <Check className="h-6 w-6 text-success" aria-hidden />}
-        {isFront && index === 1 && (
-          <ThinkingOrb state="composing" size={20} aria-label={label} />
-        )}
-        {isFront && index === 2 && (
-          <span className="h-3.5 w-3.5 rounded-full bg-border-strong" aria-hidden />
-        )}
-        {!isFront && (
-          <span className="h-3 w-3 rounded-full bg-border-strong" aria-hidden />
-        )}
-      </span>
-
-      <p
-        className={[
-          "text-lg leading-snug",
-          isFront ? "font-medium text-text-primary" : "text-text-muted",
-        ].filter(Boolean).join(" ")}
-      >
-        {label}
-      </p>
     </div>
   );
 }
