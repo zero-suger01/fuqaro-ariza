@@ -15,7 +15,10 @@ python-dotenv==1.0.1
 arq==0.26.1
 redis==5.0.8
 python-magic==0.4.27
-onnxruntime==1.23.2
+# GigaAM STT — DO NOT downgrade below 1.28.0: older CPU EPs (verified down
+# to 1.23.2) lack ConvInteger, which the int8-quantized model's first conv
+# layer requires — session creation fails with "NOT_IMPLEMENTED: ... Conv_quant".
+onnxruntime==1.28.0
 pillow==12.3.0
 pillow-heif==0.18.0
 segno==1.6.1
