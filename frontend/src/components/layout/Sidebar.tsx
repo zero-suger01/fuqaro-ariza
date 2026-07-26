@@ -63,7 +63,9 @@ function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: bool
       aria-current={isActive ? "page" : undefined}
       className={clsx(
         "group flex items-center gap-2.5 rounded-pill px-3 py-2 text-[13px] font-medium transition-colors duration-150",
-        isActive ? "bg-accent/15 text-accent font-semibold" : "text-white/45 hover:bg-white/[0.04] hover:text-white/80"
+        isActive
+          ? "bg-accent/15 text-accent font-semibold"
+          : "text-text-secondary hover:bg-bg-subtle hover:text-text-primary"
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
@@ -72,7 +74,7 @@ function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: bool
         <span
           className={clsx(
             "ml-auto shrink-0 rounded-pill px-1.5 py-0.5 text-[10px] font-mono font-semibold tabular-nums",
-            item.danger ? "bg-danger/20 text-danger" : "bg-white/[0.06] text-white/40"
+            item.danger ? "bg-danger/20 text-danger" : "bg-bg-subtle text-text-muted"
           )}
         >
           {item.count}
@@ -90,11 +92,11 @@ function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: bool
 function NavTreeInner({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?: () => void }) {
   const isActive = useIsActive();
   return (
-    <nav className="flex-1 overflow-y-auto flex flex-col gap-1">
+    <nav className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1">
       {groups.map((group, i) => (
-        <div key={group.title} className={clsx("flex flex-col gap-0.5 py-2.5", i > 0 && "border-t border-white/[0.06]")}>
+        <div key={group.title} className={clsx("flex flex-col gap-0.5 py-2.5", i > 0 && "border-t border-border")}>
           {/* Guruh sarlavhasi bosilmaydi — u yorliq, havola emas (docs/10 §10.2). */}
-          <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/25">
+          <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-muted">
             {group.title}
           </p>
           {group.items.map((item) => (
@@ -125,14 +127,14 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
       <div className="h-9 w-9 rounded-full bg-accent/20 flex items-center justify-center">
         <ShieldCheck className="h-5 w-5 text-accent" />
       </div>
-      <span className="text-white font-semibold text-lg">Ariza</span>
+      <span className="text-text-primary font-semibold text-lg">Ariza</span>
     </div>
   );
 
   const logoutButton = (
     <button
       onClick={logout}
-      className="flex items-center gap-2.5 rounded-pill px-3 py-2 text-[13px] font-medium text-white/45 hover:bg-white/[0.04] hover:text-white/80 transition-colors duration-150"
+      className="flex items-center gap-2.5 rounded-pill px-3 py-2 text-[13px] font-medium text-text-secondary hover:bg-bg-subtle hover:text-text-primary transition-colors duration-150"
     >
       <LogOut className="h-4 w-4" />
       Chiqish
@@ -142,8 +144,9 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
   return (
     <>
       {/* Desktop — doimiy sidebar. "Floating" panel (chekka-chekkasiga
-          yopishmagan, yumaloq burchakli) — pilot rebrand uslubi. */}
-      <aside className="hidden md:flex md:flex-col w-[248px] shrink-0 bg-navy-900 text-white/60 h-[calc(100vh-1.5rem)] sticky top-3 my-3 ml-3 rounded-[28px] px-3 py-4">
+          yopishmagan, yumaloq burchakli) — Topbar bilan bir xil sirt rangi,
+          ikkalasi ham `bg-app` fonida suzib turadigan bitta vizual tizim. */}
+      <aside className="hidden md:flex md:flex-col w-[248px] shrink-0 bg-bg-surface border border-border text-text-secondary h-[calc(100vh-1.5rem)] sticky top-3 my-3 ml-3 rounded-[28px] px-3 py-4">
         {brand}
         <NavTree groups={groups} />
         {logoutButton}
@@ -156,7 +159,7 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
         type="button"
         onClick={() => setDrawerOpen(true)}
         aria-label="Menyuni ochish"
-        className="md:hidden fixed left-4 top-4 z-40 h-11 w-11 rounded-full bg-navy-900 text-white flex items-center justify-center shadow-lift"
+        className="md:hidden fixed left-4 top-4 z-40 h-11 w-11 rounded-full bg-bg-surface border border-border text-text-primary flex items-center justify-center shadow-lift"
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -168,14 +171,14 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
             onClick={() => setDrawerOpen(false)}
             aria-hidden="true"
           />
-          <aside className="relative flex flex-col w-[272px] max-w-[85vw] bg-navy-900 text-white/60 h-full px-3 py-4">
+          <aside className="relative flex flex-col w-[272px] max-w-[85vw] bg-bg-surface border-r border-border text-text-secondary h-full px-3 py-4">
             <div className="flex items-start justify-between">
               {brand}
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 aria-label="Menyuni yopish"
-                className="h-9 w-9 rounded-full text-white/60 hover:text-white flex items-center justify-center"
+                className="h-9 w-9 rounded-full text-text-secondary hover:text-text-primary flex items-center justify-center"
               >
                 <X className="h-5 w-5" />
               </button>

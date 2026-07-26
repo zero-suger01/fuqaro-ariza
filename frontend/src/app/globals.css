@@ -179,6 +179,16 @@ body {
   border-color: var(--border);
 }
 
+/* Sidebar nav — scrollable but without a visible scrollbar (the native
+   overlay scrollbar reads as a stray white bar against the panel). */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .yandex-map-container {
   border-radius: var(--radius-inner);
 }
