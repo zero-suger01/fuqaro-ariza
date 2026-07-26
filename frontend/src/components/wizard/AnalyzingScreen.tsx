@@ -12,7 +12,7 @@ import { ThinkingOrb } from "thinking-orbs";
 // qolmaydi.
 //
 // Vertikal timeline: har bir qadam chiziq bilan bog'langan, faol qadamda
-// thinking-orbs kutish animatsiyasi ("composing") ko'rsatiladi.
+// thinking-orbs "composing" animatsiyasi tugun ichida ko'rsatiladi.
 export function AnalyzingScreen() {
   const t = useTranslations("wizard.analyzing");
 
@@ -21,8 +21,8 @@ export function AnalyzingScreen() {
       <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
       <p className="text-lg text-text-secondary">{t("subtitle")}</p>
 
-      <div className="flex w-full flex-col items-stretch gap-6 rounded-card bg-bg-surface p-5 text-left shadow-card md:flex-row md:items-start md:gap-8">
-        <div className="flex flex-1 flex-col">
+      <div className="w-full rounded-card bg-bg-surface p-5 text-left shadow-card">
+        <div className="flex flex-col">
           <TimelineStep
             state="done"
             label={t("step1")}
@@ -38,9 +38,6 @@ export function AnalyzingScreen() {
             label={t("step3")}
             isLast={true}
           />
-        </div>
-        <div className="flex flex-none items-center justify-center md:w-40 md:pt-6">
-          <ThinkingOrb state="composing" size={64} aria-label={t("step2")} />
         </div>
       </div>
     </div>
@@ -62,18 +59,15 @@ function TimelineStep({
       <div className="flex flex-col items-center">
         <span
           className={[
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-            state === "done" && "bg-success/15",
-            state === "active" && "bg-accent-soft",
-            state === "pending" && "bg-bg-subtle",
+            "flex shrink-0 items-center justify-center rounded-full",
+            state === "done" && "h-7 w-7 bg-success/15",
+            state === "active" && "h-10 w-10 bg-accent-soft",
+            state === "pending" && "h-7 w-7 bg-bg-subtle",
           ].filter(Boolean).join(" ")}
         >
           {state === "done" && <Check className="h-4 w-4 text-success" aria-hidden />}
           {state === "active" && (
-            <span className="relative flex h-full w-full items-center justify-center">
-              <span className="absolute h-7 w-7 animate-ping rounded-full bg-accent/40" aria-hidden />
-              <span className="h-2.5 w-2.5 rounded-full bg-accent" aria-hidden />
-            </span>
+            <ThinkingOrb state="composing" size={20} aria-label={label} />
           )}
           {state === "pending" && (
             <span className="h-2.5 w-2.5 rounded-full bg-border-strong" aria-hidden />
@@ -85,7 +79,7 @@ function TimelineStep({
       </div>
 
       {/* Matn */}
-      <div className="pb-6 pt-0.5">
+      <div className={["pb-6", state === "active" ? "pt-2" : "pt-0.5"].join(" ")}>
         <p
           className={[
             "text-base",
