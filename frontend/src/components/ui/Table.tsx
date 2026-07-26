@@ -55,7 +55,7 @@ export function Table<T>({
                 <td
                   key={column.key}
                   className={clsx(
-                    "py-3 px-3 text-text-secondary",
+                    "py-3 px-3 text-text-secondary whitespace-nowrap",
                     column.numeric && "text-right font-mono tabular-nums"
                   )}
                 >
