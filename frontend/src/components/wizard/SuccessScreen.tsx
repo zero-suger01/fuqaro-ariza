@@ -26,12 +26,13 @@ export function SuccessScreen({ ticketNumber, department }: { ticketNumber: stri
 
   return (
     <div className="flex flex-col items-center gap-6 text-center">
+      <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/15">
         <Check className="h-9 w-9 text-success" aria-hidden />
       </div>
-      <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
 
       <div className="flex w-full flex-col gap-3">
+        <p className="text-lg text-text-secondary">{t("ticketLabel")}</p>
         <div className="rounded-card border-2 border-accent bg-accent-soft px-6 py-6">
           <p className="text-[44px] font-bold tracking-[0.35em] text-text-primary">{ticketNumber}</p>
         </div>

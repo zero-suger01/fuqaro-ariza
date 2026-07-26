@@ -6,7 +6,7 @@
     "loading": "Loading...",
     "back": "Back",
     "continue": "Continue",
-    "myComplaints": "My complaints",
+    "myComplaints": "Complaints",
     "darkMode": "Dark mode",
     "lightMode": "Light mode"
   },
@@ -84,7 +84,8 @@
       "step3": "Will be routed to the responsible department"
     },
     "success": {
-      "title": "Your complaint has been received, your tracking number:",
+      "title": "Your complaint has been received!",
+      "ticketLabel": "Your tracking number:",
       "copyButton": "Copy",
       "copied": "Copied!",
       "screenshotNote": "Please take a screenshot of this number.",

@@ -13,9 +13,9 @@ import aiAnalyzingAnimation from "@/lib/lottie/ai-analyzing.json";
 // qolmaydi.
 //
 // Lottie animatsiyasi (src/lib/lottie/ai-analyzing.json, mijoz bergan
-// "AI-powered marketing tools abstract") endi checklist kartochkasining
-// ICHIDA, uning kengligiga mos kattalikda — mijoz talabi (avval
-// sarlavha qatorida, kartochkadan tashqarida edi).
+// "AI-powered marketing tools abstract") checklist kartochkasining
+// ICHIDA, o'ng tomonda — mijoz talabi (markazda emas, kartochkaning
+// o'ng burchagida turishi kerak).
 export function AnalyzingScreen() {
   const t = useTranslations("wizard.analyzing");
 
@@ -25,7 +25,7 @@ export function AnalyzingScreen() {
       <p className="text-lg text-text-secondary">{t("subtitle")}</p>
 
       <div className="flex w-full flex-col gap-4 rounded-card bg-bg-surface p-5 text-left shadow-card">
-        <div className="mx-auto aspect-square w-full max-w-[280px]">
+        <div className="ml-auto h-32 w-32">
           <Lottie animationData={aiAnalyzingAnimation} loop autoplay />
         </div>
 
