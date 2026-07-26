@@ -88,6 +88,7 @@ function WizardContent() {
       const formData = new FormData();
       formData.append("description", draft.description);
       formData.append("first_name", draft.firstName);
+      if (draft.lastName) formData.append("last_name", draft.lastName);
       formData.append("phone", toE164(draft.phoneDigits));
       formData.append("language", locale);
       formData.append("source", qrCode ? "qr" : "web");
@@ -188,6 +189,8 @@ function WizardContent() {
             <Step3Contact
               firstName={draft.firstName}
               onFirstNameChange={(firstName) => updateDraft({ firstName })}
+              lastName={draft.lastName}
+              onLastNameChange={(lastName) => updateDraft({ lastName })}
               phoneDigits={draft.phoneDigits}
               onPhoneDigitsChange={(phoneDigits) => updateDraft({ phoneDigits })}
               submitting={submitting}

@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { clsx } from "clsx";
+import { ClipboardList, LogIn, UserPlus } from "lucide-react";
 import { GuestShell } from "@/components/guest/GuestShell";
 import { GuestButton, GuestLinkButton } from "@/components/guest/GuestButton";
+import { GuestPageTitle } from "@/components/guest/GuestPageTitle";
 import { apiGet, apiPost, setToken, ApiError } from "@/lib/api";
 import { digitsAfterCountryCode, formatUzPhoneDisplay, isValidUzPhone, toE164 } from "@/lib/phone";
 import { formatDate } from "@/lib/formatDate";
@@ -107,9 +109,9 @@ export default function KabinetPage() {
   if (!user) {
     return (
       <GuestShell>
-        <h1 className="text-[28px] font-bold leading-snug text-text-primary">
+        <GuestPageTitle icon={mode === "login" ? LogIn : UserPlus}>
           {mode === "login" ? t("loginTitle") : t("registerTitle")}
-        </h1>
+        </GuestPageTitle>
 
         <form onSubmit={handleAuth} className="flex flex-col gap-4">
           {mode === "register" && (
@@ -179,7 +181,7 @@ export default function KabinetPage() {
   return (
     <GuestShell>
       <div className="flex items-center justify-between">
-        <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
+        <GuestPageTitle icon={ClipboardList}>{t("title")}</GuestPageTitle>
         <button type="button" onClick={handleLogout} className="text-base text-text-muted underline underline-offset-2">
           {t("logout")}
         </button>

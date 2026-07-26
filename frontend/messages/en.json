@@ -62,8 +62,10 @@
     },
     "step3": {
       "title": "About you",
-      "nameLabel": "Full name",
-      "namePlaceholder": "Enter your full name",
+      "firstNameLabel": "First name",
+      "firstNamePlaceholder": "Your first name",
+      "lastNameLabel": "Last name",
+      "lastNamePlaceholder": "Your last name",
       "phoneLabel": "Phone number",
       "phoneNote": "We'll send the result to this number by SMS",
       "phoneInvalid": "There's an error in the phone number. Example: +998 90 123 45 67",

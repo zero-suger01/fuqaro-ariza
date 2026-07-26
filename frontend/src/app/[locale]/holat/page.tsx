@@ -3,9 +3,11 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { Search } from "lucide-react";
 import { formatDate } from "@/lib/formatDate";
 import { GuestShell } from "@/components/guest/GuestShell";
 import { GuestButton } from "@/components/guest/GuestButton";
+import { GuestPageTitle } from "@/components/guest/GuestPageTitle";
 import { GuestTimeline } from "@/components/guest/GuestTimeline";
 import { ImagePicker } from "@/components/wizard/ImagePicker";
 import { apiGet, apiPost, apiPostForm, ApiError } from "@/lib/api";
@@ -103,7 +105,7 @@ function StatusForm() {
 
   return (
     <GuestShell>
-      <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
+      <GuestPageTitle icon={Search}>{t("title")}</GuestPageTitle>
 
       <form onSubmit={handleCheck} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">

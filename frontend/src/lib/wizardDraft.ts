@@ -9,6 +9,7 @@ export interface WizardDraft {
   latitude: number | null;
   longitude: number | null;
   firstName: string;
+  lastName: string;
   phoneDigits: string;
 }
 
@@ -21,6 +22,7 @@ export const EMPTY_DRAFT: WizardDraft = {
   latitude: null,
   longitude: null,
   firstName: "",
+  lastName: "",
   phoneDigits: "",
 };
 

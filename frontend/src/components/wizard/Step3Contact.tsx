@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { GuestButton } from "@/components/guest/GuestButton";
+import { GuestPageTitle } from "@/components/guest/GuestPageTitle";
 import { digitsAfterCountryCode, formatUzPhoneDisplay, isValidUzPhone } from "@/lib/phone";
 
 export function Step3Contact({
   firstName,
   onFirstNameChange,
+  lastName,
+  onLastNameChange,
   phoneDigits,
   onPhoneDigitsChange,
   submitting,
@@ -17,6 +21,8 @@ export function Step3Contact({
 }: {
   firstName: string;
   onFirstNameChange: (value: string) => void;
+  lastName: string;
+  onLastNameChange: (value: string) => void;
   phoneDigits: string;
   onPhoneDigitsChange: (digits: string) => void;
   submitting: boolean;
@@ -39,18 +45,29 @@ export function Step3Contact({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
+      <GuestPageTitle icon={User}>{t("title")}</GuestPageTitle>
 
-      <div className="flex flex-col gap-2">
-        <label className="text-base font-medium text-text-secondary">{t("nameLabel")}</label>
-        <input
-          value={firstName}
-          onChange={(e) => onFirstNameChange(e.target.value)}
-          placeholder={t("namePlaceholder")}
-          className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
-        />
-        {touched && !nameValid && <p className="text-base text-danger">{t("nameRequired")}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-2">
+          <label className="text-base font-medium text-text-secondary">{t("firstNameLabel")}</label>
+          <input
+            value={firstName}
+            onChange={(e) => onFirstNameChange(e.target.value)}
+            placeholder={t("firstNamePlaceholder")}
+            className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-base font-medium text-text-secondary">{t("lastNameLabel")}</label>
+          <input
+            value={lastName}
+            onChange={(e) => onLastNameChange(e.target.value)}
+            placeholder={t("lastNamePlaceholder")}
+            className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
+          />
+        </div>
       </div>
+      {touched && !nameValid && <p className="text-base text-danger">{t("nameRequired")}</p>}
 
       <div className="flex flex-col gap-2">
         <label className="text-base font-medium text-text-secondary">{t("phoneLabel")}</label>

@@ -62,8 +62,10 @@
     },
     "step3": {
       "title": "О вас",
-      "nameLabel": "Имя и фамилия",
-      "namePlaceholder": "Введите имя и фамилию",
+      "firstNameLabel": "Имя",
+      "firstNamePlaceholder": "Ваше имя",
+      "lastNameLabel": "Фамилия",
+      "lastNamePlaceholder": "Ваша фамилия",
       "phoneLabel": "Номер телефона",
       "phoneNote": "На этот номер мы отправим результат по SMS",
       "phoneInvalid": "Ошибка в номере телефона. Пример: +998 90 123 45 67",

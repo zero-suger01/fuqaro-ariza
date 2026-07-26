@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Search } from "lucide-react";
+import { MapPin, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { clsx } from "clsx";
 import { GuestButton } from "@/components/guest/GuestButton";
+import { GuestPageTitle } from "@/components/guest/GuestPageTitle";
 import type { PublicNeighborhood } from "@/lib/types";
 
 const MapPicker = dynamic(() => import("@/components/MapPicker"), { ssr: false });
@@ -83,7 +84,7 @@ export function Step2Location({
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-[28px] font-bold leading-snug text-text-primary">{t("title")}</h1>
+      <GuestPageTitle icon={MapPin}>{t("title")}</GuestPageTitle>
 
       <MapPicker
         lat={latitude ?? UYCHI_CENTER[0]}

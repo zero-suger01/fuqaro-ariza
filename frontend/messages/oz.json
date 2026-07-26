@@ -62,8 +62,10 @@
     },
     "step3": {
       "title": "Сиз ҳақингизда",
-      "nameLabel": "Исм фамилиянгиз",
-      "namePlaceholder": "Исм фамилиянгизни ёзинг",
+      "firstNameLabel": "Исм",
+      "firstNamePlaceholder": "Исмингиз",
+      "lastNameLabel": "Фамилия",
+      "lastNamePlaceholder": "Фамилиянгиз",
       "phoneLabel": "Телефон рақамингиз",
       "phoneNote": "Бу рақамга натижани СМС қилиб юборамиз",
       "phoneInvalid": "Телефон рақамда хато бор. Намуна: +998 90 123 45 67",

@@ -1,6 +1,6 @@
 "use client";
 
-import { Landmark } from "lucide-react";
+import { FileText, Landmark } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
@@ -24,12 +24,8 @@ export function GuestHeader() {
           <Landmark className="h-7 w-7 text-accent" aria-hidden />
           <span className="text-lg font-semibold">{t("appName")}</span>
         </Link>
-        <nav className="flex items-center gap-1 text-base font-medium">
-          <Link href="/kabinet" className="rounded-control px-2 py-1 text-text-secondary hover:text-text-primary">
-            {t("myComplaints")}
-          </Link>
-          <span className="mx-1 text-text-muted">·</span>
-          <div className="flex items-center gap-1" aria-label="Til tanlash">
+        <div className="flex items-center gap-4">
+          <nav className="flex items-center gap-1 text-base font-medium" aria-label="Til tanlash">
             {routing.locales.map((loc, i) => (
               <span key={loc} className="flex items-center">
                 {i > 0 && <span className="mx-1 text-text-muted">·</span>}
@@ -47,8 +43,15 @@ export function GuestHeader() {
                 </Link>
               </span>
             ))}
-          </div>
-        </nav>
+          </nav>
+          <Link
+            href="/kabinet"
+            className="flex items-center gap-1.5 rounded-pill bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent-soft/70"
+          >
+            <FileText className="h-4 w-4" aria-hidden />
+            {t("myComplaints")}
+          </Link>
+        </div>
       </div>
     </header>
   );

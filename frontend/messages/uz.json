@@ -62,8 +62,10 @@
     },
     "step3": {
       "title": "Siz haqingizda",
-      "nameLabel": "Ism familiyangiz",
-      "namePlaceholder": "Ism familiyangizni yozing",
+      "firstNameLabel": "Ism",
+      "firstNamePlaceholder": "Ismingiz",
+      "lastNameLabel": "Familiya",
+      "lastNamePlaceholder": "Familiyangiz",
       "phoneLabel": "Telefon raqamingiz",
       "phoneNote": "Bu raqamga natijani SMS qilib yuboramiz",
       "phoneInvalid": "Telefon raqamda xato bor. Namuna: +998 90 123 45 67",
