@@ -133,15 +133,14 @@ Keyword lug'ati bo'lmagani uchun "o'rganish" endi lug'at boyitish emas — **pro
 
 **Arxitektura:** provayder interfeysi `transcribe(audio_path, language) -> str` (`app/services/ai/stt.py`), env `STT_PROVIDER` bilan almashinadi. Oqim: FE/bot audio yuboradi → `stt_jobs` → worker: ffmpeg → 16 kHz mono wav → provayder → matn. Publicda poll API ([03](03-kontraktlar.md) §3.3).
 
+> **v1.6.1 — `faster-whisper` olib tashlandi.** Sabab: CTranslate2/whisper stack og'ir (GB'larcha model, CPU'da bir necha o'n soniya) va bog'liqliklari (`ctranslate2`, `tokenizers`) ko'p. `gigaam` (v1.6 da qo'shilgan, quyida) xuddi shu vazifani yengilroq int8 ONNX bilan bajaradi — `onnxruntime` boshqa yo'nalishda (STT) allaqachon kerak edi.
+
 | Provayder | Qachon | Izoh |
 |---|---|---|
-| **`whisper` (faster-whisper, lokal) — STANDART** | boshlanish, byudjetsiz | `STT_WHISPER_MODEL=medium` (int8, CPU ~2–4 GB RAM). O'zbek uchun o'rtacha, rus/ingliz uchun yaxshi. ≤120 s klipda CPU'da bir necha o'n soniya — poll UX buni qamraydi |
-| **O'zbekcha fine-tune whisper (HF: masalan `islomov/navaistt_v2_medium`)** | uz aniqligi yetmasa | faster-whisper (CTranslate2) ga konvert qilib xuddi shu interfeys bilan; sheva uchun sezilarli yaxshiroq |
-| **`mohirai` (mohir.ai API, pullik)** | pilot jiddiylashsa | O'zbek tiliga ixtisoslashgan, sheva bilan eng yaxshi natija; API oddiy (audio → text). `MOHIRAI_API_KEY` |
+| **`gigaam` (GigaAM Multilingual, int8 ONNX, lokal) — STANDART** | boshlanish, byudjetsiz | `app/services/ai/gigaam_asr.py` — `voice/` sibling loyihadagi log-mel + CTC decode pipeline'ning Python porti, `onnxruntime` orqali ishlaydi. `GIGAAM_MODEL_DIR` (manifest.json + `.onnx` fayl) sozlanishi SHART — avtomatik yuklanmaydi (whisper'dan farqli, HF'dan o'zi tortib olmaydi), model fayllarini qo'lda joylashtirish kerak. |
+| **`mohirai` (mohir.ai API, pullik)** | pilot jiddiylashsa yoki `gigaam` sifati yetmasa | O'zbek tiliga ixtisoslashgan, sheva bilan eng yaxshi natija; API oddiy (audio → text). `MOHIRAI_API_KEY` |
 
-**Tavsiya etilgan yo'l:** P2'da faster-whisper medium bilan chiqamiz (bepul, offline) → pilotda real fuqaro audiolarida sifat o'lchanadi (STT natijasini fuqaro baribir ko'rib tasdiqlaydi — xato fatal emas) → sifat yetmasa avval uz fine-tune modelga, keyin ham yetmasa mohir.ai'ga o'tiladi. Hammasi bitta env o'zgarishi bilan.
-
-Til hint'i: fuqaro tanlagan locale'dan (`uz/oz→uz`, `ru→ru`, `en→en`). Telegram voice (ogg/opus) ham xuddi shu pipeline'dan o'tadi.
+`STT_PROVIDER` shu ikkisidan boshqa qiymat bo'lsa `SttError` ko'taradi (jim boshqa provayderga tushmaydi). Telegram voice (ogg/opus) ham xuddi shu pipeline'dan o'tadi.
 
 ## 7. Kelajak (V2, hozir QILINMAYDI)
 

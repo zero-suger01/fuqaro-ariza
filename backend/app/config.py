@@ -52,9 +52,8 @@ class Settings(BaseSettings):
     llm_timeout_s: float = 300.0
     llm_max_attempts: int = 2
 
-    # STT
-    stt_provider: str = "whisper"
-    stt_whisper_model: str = "medium"
+    # STT — "gigaam" (lokal, standart) yoki "mohirai" (API, hali ulanmagan)
+    stt_provider: str = "gigaam"
     mohirai_api_key: str | None = None
     # GigaAM Multilingual int8 ONNX (voice/ sibling project) — dir containing
     # manifest.json + the int8 .onnx file. Used when stt_provider="gigaam".

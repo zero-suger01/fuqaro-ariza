@@ -14,7 +14,8 @@ uvicorn app.main:app --reload --port 8000
 arq app.worker.WorkerSettings
 cd frontend && npm install && npm run dev     # :3000
 # ixtiyoriy lokal AI: ollama pull gemma3:4b && ollama serve (bo'lmasa ham ishlaydi — graceful fallback)
-# STT: birinchi so'rovda faster-whisper modelini (STT_WHISPER_MODEL, standart "medium") Hugging Face'dan avtomatik yuklab oladi
+# STT (v1.6.1): GIGAAM_MODEL_DIR sozlanishi SHART — whisper'dan farqli, model fayllari
+# avtomatik yuklanmaydi (voice/ sibling loyihadan qo'lda olinadi, docs/07-ai-layer.md §6).
 ```
 
 `.env` namunalari: `backend/.env.example` (yangi kalitlar [03-kontraktlar.md](03-kontraktlar.md) §9 bo'yicha to'ldirib boriladi), `frontend/.env.local` → `NEXT_PUBLIC_API_URL=http://localhost:8000`.
@@ -60,11 +61,11 @@ cd backend && TEST_DATABASE_URL=postgresql+psycopg://ariza:ariza@localhost:5433/
 
 | Konfiguratsiya | Nima uchun yetadi |
 |---|---|
-| **Minimal:** 4 vCPU, 16 GB RAM, 100 GB SSD | gemma3:4b (CPU) + whisper medium + qolgan stack. LLM javobi sekinroq (async bo'lgani uchun OK) |
+| **Minimal:** 4 vCPU, 16 GB RAM, 100 GB SSD | gemma3:4b (CPU) + gigaam (int8 ONNX, yengil) + qolgan stack. LLM javobi sekinroq (async bo'lgani uchun OK) |
 | **Tavsiya:** 8 vCPU, 32 GB RAM, 200 GB SSD | gemma3:12b (CPU, q4) sig'adi; STT tezroq |
 | GPU (12+ GB VRAM) bo'lsa | LLM 2–5 s; shart emas, bo'lsa yaxshi |
 
-Ollama va whisper modellarni birinchi ishga tushishda yuklab oladi — serverda internetli birinchi start kerak (yoki modelni oldindan volume'ga qo'yish).
+Ollama modelni birinchi ishga tushishda yuklab oladi — serverda internetli birinchi start kerak (yoki modelni oldindan volume'ga qo'yish). GigaAM model fayllari (`GIGAAM_MODEL_DIR`) avtomatik yuklanmaydi — deploy skriptiga qo'lda qo'shilishi kerak.
 
 ## 4. Muhit va sirlar
 

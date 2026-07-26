@@ -9,8 +9,6 @@ from app.config import get_settings
 
 settings = get_settings()
 
-_LANGUAGE_HINT = {"uz": "uz", "oz": "uz", "ru": "ru", "en": "en"}
-
 
 class SttError(Exception):
     pass
@@ -25,23 +23,6 @@ def _to_16k_mono_wav(input_path: str) -> str:
     if result.returncode != 0:
         raise SttError(f"ffmpeg konvertatsiya xatosi: {result.stderr.decode(errors='ignore')[:300]}")
     return output_path
-
-
-_whisper_model = None
-
-
-def _whisper() -> "WhisperModel":  # noqa: F821 - forward ref, imported lazily
-    global _whisper_model
-    if _whisper_model is None:
-        from faster_whisper import WhisperModel
-
-        _whisper_model = WhisperModel(settings.stt_whisper_model, device="cpu", compute_type="int8")
-    return _whisper_model
-
-
-def _transcribe_whisper(wav_path: str, language: str) -> str:
-    segments, _ = _whisper().transcribe(wav_path, language=_LANGUAGE_HINT.get(language, "uz"))
-    return " ".join(segment.text.strip() for segment in segments).strip()
 
 
 def _transcribe_mohirai(wav_path: str, language: str) -> str:
@@ -66,6 +47,6 @@ def transcribe(audio_path: str, language: str = "uz") -> str:
             return _transcribe_mohirai(wav_path, language)
         if settings.stt_provider == "gigaam":
             return _transcribe_gigaam(wav_path, language)
-        return _transcribe_whisper(wav_path, language)
+        raise SttError(f"Noma'lum STT_PROVIDER: {settings.stt_provider!r}")
     finally:
         Path(wav_path).unlink(missing_ok=True)
