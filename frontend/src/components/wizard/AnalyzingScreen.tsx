@@ -11,17 +11,20 @@ import { AiComposingOrb } from "@/components/wizard/AiComposingOrb";
 // qolmaydi.
 //
 // Animatsiya: AiComposingOrb — thinking-orbs "composing" effektining
-// 300px, accent (#F49A51) rangli canvas nusxasi.
+// 250px, accent (#F49A51) rangli canvas nusxasi. Pastdagi izoh AI
+// murojaatni qaysi tashkilotga yo'naltirishini aniqlayotganini bildiradi.
 export function AnalyzingScreen() {
   const t = useTranslations("wizard.analyzing");
 
   return (
-    <div className="flex flex-col items-center justify-center gap-6 text-center">
+    <div className="flex flex-col items-center justify-center gap-6 pt-10 text-center">
       <h1 className="max-w-xs text-lg leading-snug text-text-secondary sm:max-w-sm">
         {t("title")}
       </h1>
 
-      <AiComposingOrb size={300} ariaLabel={t("title")} />
+      <AiComposingOrb size={250} ariaLabel={t("title")} />
+
+      <p className="max-w-xs text-base text-text-muted sm:max-w-sm">{t("note")}</p>
     </div>
   );
 }
