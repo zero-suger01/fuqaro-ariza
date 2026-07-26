@@ -99,10 +99,9 @@
     "title": "Check complaint status",
     "ticketLabel": "Tracking number",
     "ticketPlaceholder": "UY-2026-000123",
-    "phoneLabel": "Phone number",
     "checkButton": "Check",
     "checking": "Checking...",
-    "notFound": "Complaint not found. Check the number and phone, then try again.",
+    "notFound": "Complaint not found. Check the number and try again.",
     "steps": {
       "qabul_qilindi": "Received",
       "korilmoqda": "Under review",

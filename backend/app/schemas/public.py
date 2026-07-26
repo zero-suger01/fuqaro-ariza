@@ -69,7 +69,6 @@ class FeedbackIn(BaseModel):
     """`POST /api/public/complaints/feedback` ([03] §3.6)."""
 
     ticket: str
-    phone: str = Field(pattern=PHONE_PATTERN)
     satisfied: bool
     comment: str | None = Field(default=None, max_length=2000)
 

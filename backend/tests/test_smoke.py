@@ -50,10 +50,11 @@ def test_guest_submit_track_admin_flow(client, admin_headers):
     # SLA/eskalatsiya radarida qoladi.
     assert body["deadline_at"] is not None
 
-    # Enumeration protection: wrong phone for a real ticket still 404s.
-    wrong = client.get("/api/public/complaints/track", params={"ticket": ticket, "phone": "+998900000001"})
-    assert wrong.status_code == 404
-    assert wrong.json()["code"] == "not_found"
+    # v1.7: track lookup is ticket-only by design (product decision) — a
+    # made-up ticket still 404s, but a real ticket needs no phone match.
+    missing = client.get("/api/public/complaints/track", params={"ticket": "UY-2026-999999"})
+    assert missing.status_code == 404
+    assert missing.json()["code"] == "not_found"
 
     complaint_id = _complaint_id(client, admin_headers, ticket)
 
