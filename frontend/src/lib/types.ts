@@ -15,6 +15,8 @@ export interface AuthUser {
   department_name: string | null;
   /** v1.4 — `true` bo'lsa boshqa hech qayerga o'tmasdan parol almashtiriladi. */
   must_change_password?: boolean;
+  /** v1.7 — profil rasmi (S3/MinIO). */
+  avatar_url: string | null;
 }
 
 // --- Admin API (docs/03-kontraktlar.md §5) ---

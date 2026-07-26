@@ -101,6 +101,11 @@ Sabab: interfeys "ma'lumot ko'rsatardi", "ish boshqarmasdi" — xodimning haqiqi
 - [x] **S2.10 (S)** Birinchi kirishda parol almashtirish sahifasi (`must_change_password`).
 - [ ] **F5.1–F5.4** (yuqorida) shu sprintda yopiladi.
 
+## S4 — Xodim profili (kontrakt v1.7)
+
+- [x] **S4.5 (M)** Yangi `/admin/profil` sahifasi (`AppShell` ichida, ikkala rol ham kiradi): avatar yuklash/o'chirish (`apiPostForm`/`apiDelete`), ism/familiya/email tahrirlash (`apiPatch`), parol almashtirish (`/parol` bilan bir xil forma naqshi, shu sahifa ichida). `Topbar.tsx` — avatar+ism bloki `/admin/profil`ga havola, `avatar_url` bo'lsa rasm ko'rsatiladi (bo'lmasa bosh harflar).
+- [x] **S4.6 (M)** Tizimga kira olmayotgan xodim uchun `/parol-tiklash` (2 bosqich: telefon → kod so'rash; kod+yangi parol → tiklash, avtomatik kirish). `/login` sahifasiga "Parolni unutdingizmi?" havolasi. `AuthUser.avatar_url` qo'shildi (`lib/types.ts`). **Docker'da real backend bilan sinovdan o'tkazildi:** ism/familiya/email tahrirlash + Topbar'da darhol yangilanishi, avatar yuklash (real fayl) + o'chirish (ikkalasi ham Topbar'da ko'rinadi), `/admin/profil` dagi parol almashtirish (eski parol endi ishlamaydi, yangisi ishlaydi), to'liq `/parol-tiklash` oqimi (kod Redis'dan olindi — Eskiz devda sozlanmagan — kiritildi, parol tiklandi, avtomatik `/admin`ga kirdi). 375px va 1280px'da tekshirildi (sarlavha-hamburger qoplanishi — Topbar'ning mavjud, umumiy muammosi, bu task bilan bog'liq emas).
+
 ## Doimiy qoidalar
 
 - Fuqaro sahifalarida [10-ui-ux.md](10-ui-ux.md) §2 qoidalari MAJBURIY (shrift ≥18px, tugma ≥56px, bitta ustun, texnik so'z yo'q).

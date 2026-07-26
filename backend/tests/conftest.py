@@ -134,7 +134,7 @@ def _reset_rate_limits():
     from app.core.redisdb import redis_client
 
     def purge():
-        for pattern in ("rl:submit:*", "rl:track:*", "rl:stt:*", "rl:info:*"):
+        for pattern in ("rl:submit:*", "rl:track:*", "rl:stt:*", "rl:info:*", "rl:pwreset:*", "pwreset:*"):
             keys = list(redis_client.scan_iter(match=pattern, count=500))
             if keys:
                 redis_client.delete(*keys)

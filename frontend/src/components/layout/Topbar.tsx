@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Search } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/status";
@@ -44,9 +45,14 @@ export function Topbar({ title }: { title: string }) {
         <QuickSearch />
       </div>
       <NotificationBell />
-      <div className="flex items-center gap-2.5">
-        <div className="h-8 w-8 rounded-full bg-navy-900 text-white flex items-center justify-center text-xs font-semibold">
-          {initials}
+      <Link href="/admin/profil" className="flex items-center gap-2.5 rounded-pill -mx-1.5 px-1.5 py-1 hover:bg-bg-subtle transition-colors">
+        <div className="h-8 w-8 rounded-full bg-navy-900 text-white flex items-center justify-center text-xs font-semibold overflow-hidden shrink-0">
+          {user?.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            initials
+          )}
         </div>
         <div className="hidden sm:block leading-tight">
           <div className="text-sm font-medium text-text-primary">{user?.fullname}</div>
@@ -55,7 +61,7 @@ export function Topbar({ title }: { title: string }) {
             {user?.department_name ? ` — ${user.department_name}` : ""}
           </div>
         </div>
-      </div>
+      </Link>
     </header>
   );
 }

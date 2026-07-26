@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/Card";
@@ -80,7 +81,13 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <p className="text-sm text-text-muted text-center mt-6">
+        <p className="text-sm text-center mt-4">
+          <Link href="/parol-tiklash" className="text-accent hover:underline">
+            Parolni unutdingizmi?
+          </Link>
+        </p>
+
+        <p className="text-sm text-text-muted text-center mt-2">
           Xodim hisobini faqat administrator yaratadi.
         </p>
       </Card>

@@ -88,10 +88,29 @@ def upload_object(data: bytes, mime: str, key: str) -> str:
     return f"{settings.s3_public_base_url}/{key}"
 
 
+def upload_avatar(data: bytes, mime: str, user_id: uuid.UUID) -> str:
+    """Deterministik kalit (QR poster naqshi bilan bir xil) — qayta yuklash
+    eskisini almashtiradi, orfan fayl qolmaydi (v1.7, [04] §2 users)."""
+    ext = mime.split("/")[-1].replace("quicktime", "mov")
+    key = f"avatars/{user_id}.{ext}"
+    return upload_object(data, mime, key)
+
+
+def delete_object(key: str) -> None:
+    _client.delete_object(Bucket=settings.s3_bucket, Key=key)
+
+
+def key_from_url(url: str) -> str:
+    """`download_to_temp` dagi kalit ajratib olish mantig'ining o'qish uchun
+    ochiq varianti — avatar o'chirishda `avatar_url`dan S3 kalitini olish
+    uchun kerak."""
+    return url.split(f"{settings.s3_bucket}/", 1)[-1]
+
+
 def download_to_temp(url: str) -> str:
     """Fetches an object this module previously uploaded back to a local
     temp file (used by the STT worker, which needs a real path for ffmpeg)."""
-    key = url.split(f"{settings.s3_bucket}/", 1)[-1]
+    key = key_from_url(url)
     fd, path = tempfile.mkstemp(suffix=Path(key).suffix or ".bin")
     os.close(fd)
     _client.download_file(settings.s3_bucket, key, path)

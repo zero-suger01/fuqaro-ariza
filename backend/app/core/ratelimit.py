@@ -51,6 +51,12 @@ def enforce_track_limit(request: Request) -> None:
     _hit(f"rl:track:ip:{_client_ip(request)}", 30, 3600)
 
 
+def enforce_forgot_password_limit(request: Request, phone: str) -> None:
+    """v1.7 — xodim parolni tiklash kodi so'rovi. SMS bombing'dan himoya."""
+    _hit(f"rl:pwreset:phone:{phone}", 3, 3600)
+    _hit(f"rl:pwreset:ip:{_client_ip(request)}", 10, 3600)
+
+
 def enforce_info_limit(request: Request) -> None:
     """v1.4 — fuqaro qo'shimcha ma'lumot yuborishi ([03] §3.5).
 

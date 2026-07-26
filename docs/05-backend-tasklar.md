@@ -126,6 +126,15 @@ Sabab: `QA-TEST` murojaati fuqarodan yopilgungacha yurgizildi. Asosiy oqim ishla
 - [x] **S2.4 (S)** `POST .../review` uchun `reason` majburiy (`ok`/`wrong_category`/`wrong_department`/`wrong_priority`/`other`) — AI sifatini o'lchash uchun.
 - [ ] **S2.5 (S)** `departments.wip_limit` + `stats/kpi?group_by=department` ga `active_load`/`wip_limit`/`over_limit`. Bloklamaydi, faqat ko'rsatkich.
 
+## S4 — Xodim profili (kontrakt v1.7)
+
+Sabab: admin/department xodimlar profili ustidan hech qanday nazoratga ega emas edi — ism/familiya o'zgartirib bo'lmasdi, avatar yo'q edi, parolni unutsa tiklash imkoni yo'q edi (faqat joriy parolni bilgan holdagi majburiy almashtirish, `/parol`).
+
+- [x] **S4.1 (M)** M14 migratsiya: `users.avatar_url varchar(500) NULL` ([04](04-database.md) §2). `storage.py`ga `upload_avatar()` (deterministik kalit `avatars/{user_id}.{ext}`) va `delete_object()`/`key_from_url()` qo'shildi — mavjud `upload_object`/`validate_file`/`FILE_LIMITS["image"]` qayta ishlatildi.
+- [x] **S4.2 (M)** `PATCH /api/auth/me` (ism/familiya/email, email band bo'lsa 400 `already_exists`), `POST`/`DELETE /api/auth/me/avatar` — barchasi `get_current_staff` dependency orqali (`change-password` ham shu dependency'ga refaktor qilindi, token qo'lda decode qilish takrori olib tashlandi).
+- [x] **S4.3 (M)** Parolni tiklash: yangi `app/services/password_reset.py` (`app.core.redisdb.redis_client` orqali — Redis kod 10 daqiqa, 5 noto'g'ri urinishdan keyin bekor bo'ladi), `POST /api/auth/forgot-password` (enumeration himoyasi — har doim bir xil javob, rate limit 3/soat/telefon+10/soat/IP) va `POST /api/auth/reset-password` (avtomatik kirish uchun token qaytaradi).
+- [x] **S4.4 (S)** `tests/test_auth.py`: profil tahrirlash, email conflict, to'liq forgot→reset oqimi (Redis'dan kodni o'qib), noto'g'ri kod, 5 urinishdan keyin bekor bo'lish. `conftest.py` purge patterniga `pwreset:*`/`rl:pwreset:*` qo'shildi. `pytest -m smoke` (38 test) yashil.
+
 ## S3 — Ko'p bo'limli murojaat (kontrakt v1.5)
 
 Sabab: lokal sinovda «Uyimizda 2 kundan beri chiroq va suv to'xtab qoldi» matni **`kommunal`** kategoriyasiga `confidence=1.0` bilan tushdi. AI ikkala muammoni ham tushungan edi (`tags`: `suv`, `elektr`), lekin bitta kategoriya so'ralgani uchun soyabon kategoriyani tanladi — `needs_review` ham qo'yilmadi, Elektr va Suvsoz murojaatni umuman ko'rmadi ([07](07-ai-layer.md) §1.1).

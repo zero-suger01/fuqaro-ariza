@@ -38,6 +38,8 @@ Mavjud jadval o'zgaradi: `role` → `department_staff|admin` (B6, `alembic/versi
 
 **v1.4:** `must_change_password bool NOT NULL default false` — seed'dan yaratilgan admin uchun `true`. Login javobida qaytadi; `true` bo'lsa FE parol almashtirish sahifasiga majburan yo'naltiradi. Standart parol bilan production'ga chiqib ketishning oldini oladi.
 
+**v1.7:** `avatar_url varchar(500) NULL` — xodim profil rasmi, S3/MinIO'da saqlanadi (`avatars/{user_id}.{ext}` deterministik kalit — qayta yuklash eskisini almashtiradi). Migratsiya: `alembic/versions/m14_staff_avatar.py`. Parolni tiklash kodi jadvalga tushmaydi — Redis'da vaqtinchalik (`pwreset:code:{phone}`, TTL 10 daqiqa, [03](03-kontraktlar.md) §4).
+
 ### departments — ichki bo'limlar va tashqi tashkilotlar (mavjud `organizations` o'rniga)
 
 | Ustun | Tur |

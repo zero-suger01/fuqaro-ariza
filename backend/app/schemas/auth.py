@@ -36,6 +36,8 @@ class MeOut(BaseModel):
     # ketmasligi uchun — `true` bo'lsa FE parol almashtirish sahifasiga
     # majburan yo'naltiradi ([04] §2 users).
     must_change_password: bool = False
+    # v1.7: profil rasmi ([04] §2 users).
+    avatar_url: str | None = None
 
     class Config:
         from_attributes = True
@@ -49,4 +51,26 @@ class TokenResponse(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class UpdateProfileRequest(BaseModel):
+    """v1.7 — xodim o'z profilini tahrirlaydi (PATCH /api/auth/me)."""
+
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
+    email: str | None = Field(default=None, max_length=255)
+
+
+class ForgotPasswordRequest(BaseModel):
+    """v1.7 — parolni tiklash: kod so'rash."""
+
+    phone: str = Field(pattern=PHONE_PATTERN)
+
+
+class ResetPasswordRequest(BaseModel):
+    """v1.7 — parolni tiklash: kod bilan yangi parol o'rnatish."""
+
+    phone: str = Field(pattern=PHONE_PATTERN)
+    code: str = Field(min_length=6, max_length=6)
     new_password: str = Field(min_length=8, max_length=128)
