@@ -183,39 +183,35 @@ body {
   border-radius: var(--radius-inner);
 }
 
-/* Sodda AI kutish animatsiyasi — AnalyzingScreen.tsx (#F49A51) */
-@keyframes ai-glow {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 0.9; transform: scale(1.15); }
+/* AI kutish ekrani animatsiyasi — AnalyzingScreen.tsx
+   Hujjat kartochkasi ustidan skaner nuri o'tadi, uchqunlar suzadi. */
+@keyframes scan {
+  0% { transform: translateY(-56px); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(200px); opacity: 0; }
 }
 
-@keyframes ai-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
+@keyframes sparkle {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0; }
+  25% { opacity: 1; }
+  50% { transform: translateY(-10px) scale(1.2); opacity: 1; }
+  75% { opacity: 0.6; }
 }
 
-@keyframes pulse-ring {
-  0% { transform: scale(0.85); opacity: 0.5; }
-  100% { transform: scale(1.45); opacity: 0; }
+@keyframes progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
 }
 
-@keyframes orbit {
-  0% { transform: rotate(0deg) translateX(72px) rotate(0deg); }
-  100% { transform: rotate(360deg) translateX(72px) rotate(-360deg); }
+.animate-scan {
+  animation: scan 2.4s ease-in-out infinite;
 }
 
-.animate-ai-glow {
-  animation: ai-glow 3s ease-in-out infinite;
+.animate-sparkle {
+  animation: sparkle 2.6s ease-in-out infinite;
 }
 
-.animate-ai-breathe {
-  animation: ai-breathe 2.5s ease-in-out infinite;
-}
-
-.animate-pulse-ring {
-  animation: pulse-ring 2s ease-out infinite;
-}
-
-.animate-orbit {
-  animation: orbit 2s linear infinite;
+.animate-progress {
+  animation: progress 2s ease-in-out infinite;
 }
