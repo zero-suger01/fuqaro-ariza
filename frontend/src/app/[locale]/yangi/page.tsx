@@ -3,8 +3,9 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { FileEdit, MapPin, User } from "lucide-react";
 import { GuestShell } from "@/components/guest/GuestShell";
-import { WizardProgress } from "@/components/wizard/WizardProgress";
+import { WizardHeader } from "@/components/wizard/WizardHeader";
 import { DraftPrompt } from "@/components/wizard/DraftPrompt";
 import { Step1Problem } from "@/components/wizard/Step1Problem";
 import { Step2Location } from "@/components/wizard/Step2Location";
@@ -18,8 +19,14 @@ import { EMPTY_DRAFT, clearDraft, loadDraft, saveDraft, type WizardDraft } from 
 import type { ComplaintSubmitResponse, PublicCategory, PublicNeighborhood, QrLanding } from "@/lib/types";
 import { ApiError } from "@/lib/api";
 
+const STEP_ICONS = [FileEdit, MapPin, User];
+
 function WizardContent() {
   const t = useTranslations("wizard");
+  const tStep1 = useTranslations("wizard.step1");
+  const tStep2 = useTranslations("wizard.step2");
+  const tStep3 = useTranslations("wizard.step3");
+  const stepTitles = [tStep1("title"), tStep2("title"), tStep3("title")];
   const locale = useLocale();
   const searchParams = useSearchParams();
   const qrCode = searchParams.get("qr");
@@ -151,7 +158,7 @@ function WizardContent() {
 
       {!pendingDraft && (
         <>
-          <WizardProgress step={draft.step} />
+          <WizardHeader step={draft.step} icons={STEP_ICONS} title={stepTitles[draft.step - 1]} />
 
           {draft.step === 1 && (
             <Step1Problem

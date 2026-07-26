@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { GuestButton } from "@/components/guest/GuestButton";
-import { GuestPageTitle } from "@/components/guest/GuestPageTitle";
 import { digitsAfterCountryCode, formatUzPhoneDisplay, isValidUzPhone } from "@/lib/phone";
 
 export function Step3Contact({
@@ -45,8 +43,6 @@ export function Step3Contact({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <GuestPageTitle icon={User}>{t("title")}</GuestPageTitle>
-
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-2">
           <label className="text-base font-medium text-text-secondary">{t("firstNameLabel")}</label>

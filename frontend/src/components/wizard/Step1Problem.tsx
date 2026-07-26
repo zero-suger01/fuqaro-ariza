@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FileEdit, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { GuestButton } from "@/components/guest/GuestButton";
-import { GuestPageTitle } from "@/components/guest/GuestPageTitle";
 import { MediaPicker } from "@/components/wizard/MediaPicker";
 import { VoiceRecorder } from "@/components/wizard/VoiceRecorder";
 import { apiGet, apiPostForm } from "@/lib/api";
@@ -118,8 +117,6 @@ export function Step1Problem({
 
   return (
     <div className="flex flex-col gap-5">
-      <GuestPageTitle icon={FileEdit}>{t("title")}</GuestPageTitle>
-
       <textarea
         value={description}
         onChange={(e) => onDescriptionChange(e.target.value)}
