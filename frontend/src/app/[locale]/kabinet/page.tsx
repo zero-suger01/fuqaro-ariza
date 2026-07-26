@@ -117,18 +117,18 @@ export default function KabinetPage() {
           {mode === "register" && (
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-2">
-                <label className="text-base font-medium text-text-secondary">{t("firstNameLabel")}</label>
-                <input
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
                 <label className="text-base font-medium text-text-secondary">{t("lastNameLabel")}</label>
                 <input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
+                  className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-base font-medium text-text-secondary">{t("firstNameLabel")}</label>
+                <input
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
                   className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
                 />
               </div>

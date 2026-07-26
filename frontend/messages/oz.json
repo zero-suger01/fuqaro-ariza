@@ -26,6 +26,9 @@
     "progress": "{current}/{total}-қадам",
     "back": "Орқага",
     "continueButton": "Давом этиш",
+    "stepLabel1": "Муаммо",
+    "stepLabel2": "Манзил",
+    "stepLabel3": "Алоқа",
     "draftPrompt": {
       "message": "Бошлаган мурожаатингизни давом эттирасизми?",
       "resume": "Давом эттириш",

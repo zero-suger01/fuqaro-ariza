@@ -26,6 +26,9 @@
     "progress": "Шаг {current} из {total}",
     "back": "Назад",
     "continueButton": "Продолжить",
+    "stepLabel1": "Проблема",
+    "stepLabel2": "Адрес",
+    "stepLabel3": "Контакты",
     "draftPrompt": {
       "message": "Продолжить начатое обращение?",
       "resume": "Продолжить",

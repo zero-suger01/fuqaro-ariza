@@ -26,6 +26,9 @@
     "progress": "Step {current} of {total}",
     "back": "Back",
     "continueButton": "Continue",
+    "stepLabel1": "Problem",
+    "stepLabel2": "Location",
+    "stepLabel3": "Contact",
     "draftPrompt": {
       "message": "Continue your unfinished complaint?",
       "resume": "Continue",

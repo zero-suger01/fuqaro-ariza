@@ -26,6 +26,9 @@
     "progress": "{current}/{total}-qadam",
     "back": "Orqaga",
     "continueButton": "Davom etish",
+    "stepLabel1": "Muammo",
+    "stepLabel2": "Manzil",
+    "stepLabel3": "Aloqa",
     "draftPrompt": {
       "message": "Boshlagan murojaatingizni davom ettirasizmi?",
       "resume": "Davom ettirish",
