@@ -29,11 +29,12 @@ Faqat JSON qaytar. Kategoriyalar ro'yxati:
 Maydonlar:
 - category_code: ASOSIY muammoning kategoriyasi, ro'yxatdan FAQAT bitta kod.
 - secondary_category_codes: fuqaro bitta matnda BIR NECHTA ALOHIDA muammo \
-yozgan bo'lsa, qolganlarining kodlari (ro'yxatdan, ko'pi bilan 3 ta). \
-Masalan "chiroq va suv yo'q" — bu ikki xil xizmat: biri category_code, \
-ikkinchisi shu ro'yxatda. Bitta muammo bo'lsa BO'SH ro'yxat [] qaytar. \
-Umumlashtiruvchi kategoriya tanlab, alohida muammolarni bitta kodga \
-yig'ib yuborma — har xizmatni alohida ko'rsat.
+yozgan bo'lsa, qolganlarining kodlari (ro'yxatdan). Masalan "chiroq va suv \
+yo'q" — bu ikki xil xizmat: biri category_code, ikkinchisi shu ro'yxatda. \
+Bitta muammo bo'lsa BO'SH ro'yxat [] qaytar. Umumlashtiruvchi kategoriya \
+tanlab, alohida muammolarni bitta kodga yig'ib yuborma — har xizmatni \
+alohida ko'rsat. Nechta bo'lsa HAMMASINI sana, o'zingcha qisqartirma: \
+qanchasiga topshiriq ochilishini tizim o'zi hal qiladi.
 - confidence: 0..1 (asosiy kategoriyaga ishonch).
 - priority: low|medium|high|critical (hayot/xavfsizlik tahdidi bo'lsa critical).
 - sentiment: negative|neutral|positive.
@@ -43,9 +44,18 @@ yig'ib yuborma — har xizmatni alohida ko'rsat.
 - tags: 3-6 ta qisqa teg.
 Javobni FAQAT JSON obyekt sifatida qaytar, boshqa hech qanday matn yozma."""
 
-# LLM ko'p kod qaytarsa ham shuncha olinadi: bitta murojaatni 3 tadan
-# ortiq bo'limga bo'lish amaliy emas va odatda LLM adashganini bildiradi.
-MAX_SECONDARY_CATEGORIES = 3
+# LLM qaytarishi mumkin bo'lgan ikkilamchi kodlar CHEGARASI — bu
+# operatsion chegara EMAS, faqat aql bovar qilmaydigan javobdan himoya.
+#
+# Avval bu 3 edi va prompt ham «ko'pi bilan 3 ta» derdi, ya'ni LLM ortiqcha
+# muammoni O'ZI tashlab yuborardi: 5 ta xizmatga tegishli murojaatda 5-si
+# javobga umuman kirmasdi va hech qayerda iz qolmasdi. Bu aynan v1.5 da
+# sub-tasklar joriy qilinishiga sabab bo'lgan nosozlikning o'zi edi —
+# «ikkinchisi jimgina yo'qolardi» — faqat 2-muammodan 5-muammoga ko'chgan.
+#
+# Endi LLM hammasini sanaydi, nechtasiga topshiriq ochilishini worker hal
+# qiladi (`MAX_AI_SUBTASKS`) va ochilmagani ADMINGA KO'RSATILADI.
+MAX_SECONDARY_CATEGORIES = 10
 
 class LlmError(Exception):
     pass

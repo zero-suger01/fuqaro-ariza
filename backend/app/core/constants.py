@@ -144,5 +144,8 @@ EVENT_TYPES = [
     # v1.4 ([03] §8)
     "info_provided", "claimed", "reopened", "feedback_received",
     "subtask_created", "subtask_closed",
+    # v1.8 — AI topgan, lekin chegara (MAX_AI_SUBTASKS) tufayli avtomatik
+    # ajratilMAGAN xizmatlar. Payload: created, limit, not_assigned[].
+    "subtasks_truncated",
 ]
 ACTOR_TYPES = ["citizen", "staff", "system", "ai"]

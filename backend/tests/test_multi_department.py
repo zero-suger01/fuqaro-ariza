@@ -19,7 +19,7 @@ from sqlalchemy import select
 from app.models.category import Category
 from app.models.complaint import Complaint
 from app.models.complaint_subtask import ComplaintSubtask
-from app.worker import _create_ai_subtasks
+from app.worker import MAX_AI_SUBTASKS, _create_ai_subtasks
 
 
 def _complaint(db_session, category_code: str = "elektr") -> tuple[Complaint, Category]:
@@ -62,7 +62,7 @@ def test_second_problem_reaches_its_department(client, db_session):
     """«chiroq va suv» — suv bo'yicha alohida topshiriq ochiladi."""
     complaint, category = _complaint(db_session, "elektr")
 
-    created = _create_ai_subtasks(db_session, complaint, ["suv_kanalizatsiya"], category)
+    created, overflow = _create_ai_subtasks(db_session, complaint, ["suv_kanalizatsiya"], category)
     assert created == 1
 
     subtasks = _subtasks(db_session, complaint)
@@ -84,8 +84,10 @@ def test_primary_category_is_not_duplicated(client, db_session):
     """LLM asosiy kategoriyani ikkinchi ro'yxatda ham qaytarsa — tashlanadi."""
     complaint, category = _complaint(db_session, "elektr")
 
-    created = _create_ai_subtasks(db_session, complaint, ["elektr"], category)
+    created, overflow = _create_ai_subtasks(db_session, complaint, ["elektr"], category)
     assert created == 0
+    # Filtrlangan kod chegaradan oshgani EMAS — overflow bo'sh qolishi shart.
+    assert overflow == []
     assert _subtasks(db_session, complaint) == []
 
 
@@ -110,8 +112,10 @@ def test_same_department_is_skipped(client, db_session):
     db_session.add(twin)
     db_session.flush()
 
-    created = _create_ai_subtasks(db_session, complaint, [twin.code], category)
+    created, overflow = _create_ai_subtasks(db_session, complaint, [twin.code], category)
     assert created == 0
+    # Filtrlangan kod chegaradan oshgani EMAS — overflow bo'sh qolishi shart.
+    assert overflow == []
     assert _subtasks(db_session, complaint) == []
 
 
@@ -137,8 +141,10 @@ def test_inactive_and_departmentless_categories_are_skipped(client, db_session):
     db_session.add_all([orphan, inactive])
     db_session.flush()
 
-    created = _create_ai_subtasks(db_session, complaint, [orphan.code, inactive.code], category)
+    created, overflow = _create_ai_subtasks(db_session, complaint, [orphan.code, inactive.code], category)
     assert created == 0
+    # Filtrlangan kod chegaradan oshgani EMAS — overflow bo'sh qolishi shart.
+    assert overflow == []
 
 
 @pytest.mark.smoke
@@ -146,8 +152,10 @@ def test_unknown_code_is_ignored(client, db_session):
     """LLM o'ylab topgan kod tizimni yiqitmaydi."""
     complaint, category = _complaint(db_session, "elektr")
 
-    created = _create_ai_subtasks(db_session, complaint, ["kosmik_nurlanish", ""], category)
+    created, overflow = _create_ai_subtasks(db_session, complaint, ["kosmik_nurlanish", ""], category)
     assert created == 0
+    # Filtrlangan kod chegaradan oshgani EMAS — overflow bo'sh qolishi shart.
+    assert overflow == []
     assert _subtasks(db_session, complaint) == []
 
 
@@ -156,7 +164,7 @@ def test_duplicate_departments_collapse(client, db_session):
     """Ikki xil kod bitta bo'limga tushsa — bitta topshiriq."""
     complaint, category = _complaint(db_session, "elektr")
 
-    created = _create_ai_subtasks(db_session, complaint, ["suv_kanalizatsiya", "suv_kanalizatsiya"], category)
+    created, overflow = _create_ai_subtasks(db_session, complaint, ["suv_kanalizatsiya", "suv_kanalizatsiya"], category)
     assert created == 1
 
 
@@ -188,7 +196,7 @@ def test_ai_subtask_blocks_resolve(client, admin_headers, db_session):
 
     complaint = db_session.get(Complaint, uuid.UUID(complaint_id))
     category = db_session.execute(select(Category).where(Category.code == "elektr")).scalar_one()
-    assert _create_ai_subtasks(db_session, complaint, ["suv_kanalizatsiya"], category) == 1
+    assert _create_ai_subtasks(db_session, complaint, ["suv_kanalizatsiya"], category) == (1, [])
     db_session.flush()
 
     client.patch(
@@ -217,3 +225,32 @@ def test_ai_subtask_blocks_resolve(client, admin_headers, db_session):
         headers=admin_headers,
     )
     assert now_ok.status_code == 200, now_ok.text
+
+
+@pytest.mark.smoke
+def test_overflow_is_reported_not_dropped(client, db_session):
+    """Chegaradan oshgan xizmat JIMGINA yo'qolmaydi (v1.8).
+
+    Avval prompt LLM'ning o'ziga «ko'pi bilan 3 ta» derdi va 5 ta xizmatga
+    tegishli murojaatda 5-si javobga umuman kirmasdi — hech qanday iz
+    qolmasdi. Bu aynan shu modul tuzatgan nosozlikning o'zi edi, faqat
+    2-muammodan 5-muammoga ko'chgan. Endi chegara worker'da va oshgani
+    `overflow` bo'lib qaytadi (chaqiruvchi uni `subtasks_truncated`
+    eventiga yozadi).
+    """
+    complaint, category = _complaint(db_session, "elektr")
+
+    # Asosiy `elektr` + 4 ta boshqa bo'lim = chegaradan (3) bittaga oshiq.
+    codes = ["suv_kanalizatsiya", "chiqindi", "yol", "yol_harakati"]
+    created, overflow = _create_ai_subtasks(db_session, complaint, codes, category)
+
+    assert created == MAX_AI_SUBTASKS
+    assert len(_subtasks(db_session, complaint)) == MAX_AI_SUBTASKS
+
+    # Oshgani tashlanmaydi — nomi bilan qaytadi, ya'ni adminga ko'rsatish
+    # uchun ma'lumot bor.
+    assert len(overflow) == 1
+    expected = db_session.execute(
+        select(Category).where(Category.code == "yol_harakati")
+    ).scalar_one()
+    assert overflow == [expected.name("uz")]

@@ -142,6 +142,8 @@ export const EVENT_LABELS: Record<string, string> = {
   feedback_received: "Fuqaro baho berdi",
   subtask_created: "Idoralararo topshiriq berildi",
   subtask_closed: "Idoralararo topshiriq yopildi",
+  // v1.8 — fuqaro yozgan, lekin avtomatik ajratilmagan xizmatlar bor.
+  subtasks_truncated: "Ba'zi muammolar qo'lda ajratilishi kerak",
 };
 
 export const ACTOR_LABELS: Record<string, string> = {
