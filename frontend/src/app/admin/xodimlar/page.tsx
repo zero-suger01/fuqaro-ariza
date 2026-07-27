@@ -290,7 +290,10 @@ function StaffUsersView() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-text-primary">
-                      {u.fullname} {!u.is_active && <span className="text-text-muted">(nofaol)</span>}
+                      {u.fullname}{" "}
+                    {!u.is_active && (
+                      <span className="text-danger font-semibold uppercase">NOFAOL</span>
+                    )}
                     </p>
                     <p className="text-xs text-text-muted">
                       {u.phone} · {ROLE_LABELS[u.role]} · {departmentName(u.department_id)}
