@@ -147,7 +147,6 @@ function QrCodesView() {
   const [district, setDistrict] = useState("");
   const [mfy, setMfy] = useState("");
   const [street, setStreet] = useState("");
-  const [note, setNote] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -228,13 +227,11 @@ function QrCodesView() {
         district: district.trim() || null,
         mfy: mfy.trim() || null,
         street: street.trim() || null,
-        note: note.trim() || null,
       });
       setQrCodes((prev) => [qr, ...prev]);
       setDistrict("");
       setMfy("");
       setStreet("");
-      setNote("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
     } finally {
@@ -256,8 +253,12 @@ function QrCodesView() {
   }
 
   function locationLabel(qr: QrCodeAdmin) {
-    const parts = [qr.district, qr.mfy, qr.street].filter(Boolean);
-    return parts.length ? parts.join(" — ") : qr.neighborhood_name ?? "Butun tuman";
+    const parts: string[] = ["Navoiy viloyati"];
+    if (qr.district) parts.push(qr.district);
+    if (qr.mfy) parts.push(`${qr.mfy} MFY`);
+    if (qr.street) parts.push(`${qr.street} ko'chasi`);
+    if (parts.length > 1) return parts.join(", ");
+    return qr.neighborhood_name ?? "Butun tuman";
   }
 
   return (
@@ -272,7 +273,7 @@ function QrCodesView() {
 
       <Card>
         <h2 className="text-base font-semibold text-text-primary mb-4">Yangi QR yaratish</h2>
-        <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 items-end">
+        <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
           <div>
             <Label>Tuman nomi</Label>
             <SearchableSelect
@@ -302,15 +303,6 @@ function QrCodesView() {
               disabled={!mfy}
             />
           </div>
-          <div>
-            <Label>Izoh (ixtiyoriy)</Label>
-            <Input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Masalan: Markaziy ko'cha plakati"
-              maxLength={200}
-            />
-          </div>
           <Button type="submit" disabled={creating}>
             {creating ? "Yaratilmoqda..." : "Yaratish"}
           </Button>
@@ -338,10 +330,7 @@ function QrCodesView() {
             {visibleQrCodes.map((qr) => (
               <div key={qr.id} className="flex items-center justify-between gap-4 py-3.5">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-primary">
-                    {locationLabel(qr)}
-                    {qr.note && <span className="text-text-muted"> — {qr.note}</span>}
-                  </p>
+                  <p className="text-sm font-medium text-text-primary">{locationLabel(qr)}</p>
                   {qr.contact_name && (
                     <p className="text-xs text-text-secondary mt-0.5">Mas&apos;ul: {qr.contact_name}</p>
                   )}
