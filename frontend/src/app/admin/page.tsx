@@ -172,7 +172,9 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     apiGet<QueueStats>("/api/admin/stats/queues").then(setQueues).catch(() => setQueues(null));
     apiGet<AiHealth>("/api/admin/stats/ai-health").then(setHealth).catch(() => {});
-    apiGet<Page<ComplaintListItem>>("/api/admin/complaints?page=1&page_size=6").then((res) => setRecent(res.items));
+    apiGet<Page<ComplaintListItem>>("/api/admin/complaints?page=1&page_size=6")
+      .then((res) => setRecent(res.items))
+      .catch(() => setRecent([]));
   }, []);
 
   return (
