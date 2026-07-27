@@ -39,7 +39,7 @@ export function Topbar({ title }: { title: string }) {
   const initials = user ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() : "";
 
   return (
-    <header className="sticky top-4 md:top-6 z-20 flex h-14 shrink-0 items-center gap-4 rounded-2xl border border-border bg-bg-surface px-4 shadow-card">
+    <header className="sticky top-3 z-20 flex h-16 shrink-0 items-center gap-4 rounded-2xl border border-border bg-bg-surface px-4 shadow-card">
       <h1 className="shrink-0 text-base font-semibold text-text-primary">{title}</h1>
       <div className="flex-1 flex justify-center">
         <QuickSearch />

@@ -167,7 +167,7 @@ export function AppShell({
   return (
     <div className="flex min-h-screen">
       <Sidebar groups={groups} />
-      <div className="flex-1 flex flex-col gap-6 p-4 md:p-6 min-w-0">
+      <div className="flex-1 flex flex-col gap-6 pt-3 px-4 pb-4 md:px-6 md:pb-6 min-w-0">
         <Topbar title={title} />
         <main className="flex-1 flex flex-col gap-6 min-w-0">
           {forbidden ? (
