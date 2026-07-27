@@ -93,14 +93,14 @@ CATEGORIES = [
 CATEGORY_DESCRIPTIONS = {
     "yol_transport": (
         "Ko'cha va yo'l qoplamasi, chuqurlar, piyodalar yo'lagi, svetofor va yo'l "
-        "belgilari, jamoat transporti. KO'CHA YORITISHI (ko'cha chiroqlari, "
-        "ustunlardagi lampalar) ham shu yerga kiradi — bu ko'cha infratuzilmasi. "
-        "Uy ichidagi yoki uyga keladigan elektr emas -> elektr."
+        "belgilari, jamoat transporti. Ko'cha chiroqlari (yoritish) bu yerga "
+        "KIRMAYDI -> elektr."
     ),
     "elektr": (
-        "Uy va binolarga elektr TA'MINOTI: svet o'chishi, kuchlanish pasayishi, "
-        "hisoblagich, uzilgan sim, transformator. Ko'cha chiroqlari bu yerga "
-        "KIRMAYDI -> yol_transport."
+        "Elektr bilan bog'liq HAMMA narsa: uy va binolarga ta'minot (svet "
+        "o'chishi, kuchlanish, hisoblagich, uzilgan sim, transformator) VA "
+        "KO'CHA YORITISHI — ko'cha chiroqlari, ustunlardagi lampalar, "
+        "yonmayotgan yoritgichlar. Chiroq/yoritish so'zi uchrasa shu kod."
     ),
     "suv_kanalizatsiya": (
         "Ichimlik suvi ta'minoti, suv bosimi, quvur yorilishi, kanalizatsiya "

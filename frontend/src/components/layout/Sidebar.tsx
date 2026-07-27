@@ -155,8 +155,9 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
     <>
       {/* Desktop — doimiy sidebar. "Floating" panel (chekka-chekkasiga
           yopishmagan, yumaloq burchakli), `bg-app` fonida suzib turadi.
-          Fon rangi (#353450) doimiy — light/dark/theme-admin'dan mustaqil
-          brend rangi, shuning uchun alohida --sidebar-* tokenlar orqali. */}
+          Fon — «Ishkor» palitrasining petrol qobig'i (`--shell`, #0d3138):
+          light/dark/theme-admin'dan mustaqil brend sirti, shuning uchun
+          alohida `--sidebar-*` tokenlar orqali beriladi (docs/10 §7.1). */}
       <aside className="hidden md:flex md:flex-col w-[248px] shrink-0 bg-sidebar-bg border border-sidebar-border text-sidebar-text h-[calc(100vh-1.5rem)] sticky top-3 my-3 ml-3 rounded-[28px] px-3 py-4">
         {brand}
         <NavTree groups={groups} />

@@ -114,9 +114,22 @@ loyihasi, 2-3 gap, "Hurmatli fuqaro" bilan boshlansin), tags (3-6 ta qisqa teg).
 
 **Chegara izohi (`categories.descriptions`, M15 — v1.8).** Kategoriya nomi ikki so'z bo'lgani uchun chegaraviy holatni hal qila olmasdi. Izoh «nima kiradi; nima kirmaydi -> qaysi kod» shaklida yoziladi va faqat chegarasi chalkash kategoriyalarga beriladi (22 tadan 11 tasi) — nomi o'z-o'zidan aniq bo'lganlarga izoh qo'shish promptni bekorga suyultiradi.
 
-O'lchangan ta'sir (deepseek-v4-flash, chegaraviy 5 ta matn): 3 tasida yo'naltirish o'zgardi va uchalasi ham izohda yozilgan qoidaga mos tushdi. Eng muhimi — «ko'chamiz qorong'i, bezorilar yig'iladi» avval `jamoat_xavfsizlik` ga (militsiya faqat patrul qila oladi), endi `yol_transport` ga (yoritishni tuzatadi) + `jamoat_xavfsizlik` sub-taski bilan ketadi. Ya'ni murojaat **muammoni hal qila oladigan** bo'limga boradi.
+O'lchangan ta'sir (deepseek-v4-flash, chegaraviy matnlar): izohsiz holatga nisbatan yo'naltirish o'zgardi va izohda yozilgan qoidaga mos tushdi. Eng muhimi — «ko'chamiz qorong'i, bezorilar yig'iladi» avval `jamoat_xavfsizlik` ga ketardi (militsiya faqat patrul qila oladi), endi `elektr` ga (yoritishni **tuzatadi**) + `jamoat_xavfsizlik` sub-taski bilan. Ya'ni murojaat muammoni hal qila oladigan bo'limga boradi.
 
-> Izohlar `app/seed.py` dagi `CATEGORY_DESCRIPTIONS` da turadi va seed **mavjud** kategoriyalarga ham har safar qayta yozadi — ya'ni promptni sozlash = izohni tahrirlab `python -m app.seed` yurgizish, kod o'zgartirish emas. Chegaralar hokimlikning haqiqiy bo'lim mas'uliyatiga mos kelishi tekshirilishi kerak (masalan ko'cha yoritishi: yo'l xo'jaligimi yoki elektr tarmoqlarimi).
+**Ko'cha yoritishi -> `elektr` (v1.8, hokimlik tasdiqlagan).** Dastlab u `yol_transport` da edi (AI ham izohsiz shu tanlovni qilardi — «ko'cha infratuzilmasi» mantig'i bilan), lekin bu noto'g'ri: ko'cha chiroqlari Elektr tarmoqlari korxonasi zimmasida. Izoh tuzatilgach tekshirildi — regressiya yo'q:
+
+| Matn | Kategoriya |
+|---|---|
+| ko'cha chiroqlari yonmayapti | `elektr` |
+| tungi yoritish lampalari ishlamayapti | `elektr` |
+| ko'cha qorong'i, bezorilar yig'iladi | `elektr` + `jamoat_xavfsizlik` |
+| uyga svet kelmayapti | `elektr` |
+| yo'lda katta chuqur | `yol_transport` |
+| **svetofor ishlamayapti** | `yol_transport` |
+
+Oxirgi ikkitasi muhim: model **svetoforni** (yo'l signali) **ko'cha chirog'idan** (yoritish) ajratadi.
+
+> Izohlar `app/seed.py` dagi `CATEGORY_DESCRIPTIONS` da turadi va seed **mavjud** kategoriyalarga ham har safar qayta yozadi — ya'ni yo'naltirishni sozlash = izohni tahrirlab `python -m app.seed` yurgizish, kod o'zgartirish EMAS. Boshqa chegara noto'g'ri chiqsa, shu joydan tuzatiladi.
 
 User xabari: fuqaroning asl matni (hech qanday normalizatsiyasiz — LLM kirill/lotin/shevani o'zi tushunadi, bu keyword lug'atidan farqli o'laroq uning kuchli tomoni) + mavjud bo'lsa mahalla/manzil.
 

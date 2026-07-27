@@ -8,7 +8,6 @@ Create Date: 2026-07-24 13:10:00.000000
 from alembic import op
 import sqlalchemy as sa
 
-from app.config import get_settings
 
 revision = 'm3_complaints_columns'
 down_revision = 'm2_data_migration'
@@ -27,7 +26,6 @@ STATUS_MAP = {
 
 def upgrade() -> None:
     conn = op.get_bind()
-    settings = get_settings()
 
     op.add_column('complaints', sa.Column('ticket_number', sa.String(length=20), nullable=True))
     op.add_column('complaints', sa.Column('citizen_id', sa.Uuid(), nullable=True))
@@ -88,7 +86,19 @@ def upgrade() -> None:
             "UPDATE complaints c SET ticket_number = :prefix || '-' || numbered.yr || '-' || LPAD(numbered.rn::text, 6, '0') "
             "FROM numbered WHERE c.id = numbered.id"
         ),
-        {"prefix": settings.ticket_prefix},
+        # "UY" ataylab QOTIRILGAN, `settings.ticket_prefix` emas.
+        #
+        # Migratsiya — tarixiy yozuv: u o'sha paytdagi ma'lumotni o'sha
+        # paytdagi qoida bo'yicha to'ldiradi va keyin hech qachon
+        # o'zgarmasligi kerak. Jonli konfiguratsiyaga tayanganda u
+        # konfiguratsiya bilan birga «suzib ketadi»: `ticket_prefix`
+        # M13'dan keyin (chiptalar 8 xonali tasodifiy raqamga o'tgach)
+        # `config.py` dan olib tashlandi va shu qator butun
+        # `alembic upgrade head` ni TOZA bazada yiqitadigan bo'lib qoldi
+        # — mavjud bazada m3 allaqachon qo'llangani uchun bu bilinmasdi,
+        # lekin yangi dev o'rnatish, test bazasi va serverga birinchi
+        # deploy ishlamasdi.
+        {"prefix": "UY"},
     )
 
     # keep ticket_counters in sync so newly-issued tickets don't collide with backfilled ones
