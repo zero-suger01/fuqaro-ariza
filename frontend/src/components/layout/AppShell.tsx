@@ -58,7 +58,7 @@ const ADMIN_NAV: GatedGroup[] = [
         roles: ["admin"],
         countKey: "ai_exceptions",
       },
-      { href: "/admin/murojaatlar?queue=sla_risk", label: "SLA xavfi", icon: Clock, countKey: "sla_risk" },
+      { href: "/admin/murojaatlar?queue=sla_risk", label: "Muddat tugayapti", icon: Clock, countKey: "sla_risk" },
       {
         href: "/admin/murojaatlar?queue=overdue",
         label: "Muddati o'tgan",

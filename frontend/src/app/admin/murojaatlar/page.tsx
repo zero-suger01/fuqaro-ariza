@@ -106,7 +106,7 @@ const QUEUES: Record<string, { label: string; hint: string; params: Record<strin
     params: { unassigned: "true" },
   },
   sla_risk: {
-    label: "SLA xavfi",
+    label: "Muddat tugayapti",
     hint: "Muddatning 75% i o'tgan, hali kechikmagan",
     params: { sla_risk: "true" },
   },
