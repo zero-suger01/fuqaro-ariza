@@ -14,7 +14,8 @@
       "runtimeExecutable": "venv/bin/uvicorn",
       "runtimeArgs": ["app.main:app", "--reload", "--port", "8000"],
       "cwd": "backend",
-      "port": 8000
+      "port": 8000,
+      "autoPort": false
     }
   ]
 }
