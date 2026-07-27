@@ -1,6 +1,7 @@
 "use client";
 
-import { FileText, Landmark } from "lucide-react";
+import { FileText } from "lucide-react";
+import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
@@ -47,16 +48,17 @@ export function GuestHeader() {
   return (
     <header className="w-full bg-shell">
       <div className="mx-auto flex max-w-[640px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
-        {/* KIM — identifikatsiya */}
-        <Link
-          href="/"
-          className="flex items-center gap-2.5 rounded-control py-1 text-sidebar-text-hover"
-        >
-          <Landmark className="h-7 w-7 shrink-0 text-brass" aria-hidden />
-          <span className="leading-tight">
-            <span className="block text-lg font-semibold">{t("appName")}</span>
-            <span className="block text-[11px] text-sidebar-text-muted">{t("issuer")}</span>
-          </span>
+        {/* KIM — identifikatsiya. Logo (belgi + "e-Murojaat" so'z belgisi)
+           haqiqiy brend rasmi — quraman/muhr ikonkasi va matn o'rniga. */}
+        <Link href="/" className="flex items-center rounded-control py-1 text-sidebar-text-hover">
+          <Image
+            src="/logo-header.png"
+            alt={t("appName")}
+            width={1467}
+            height={421}
+            priority
+            className="h-9 w-auto"
+          />
         </Link>
 
         {/* VOSITALAR — alohida guruh */}

@@ -3,10 +3,10 @@
 import { useEffect, useRef } from "react";
 
 // thinking-orbs (orbs.jakubantalik.com) "composing" effektining kattaroq,
-// accent rangli (#F49A51) nusxasi — kutubxona faqat 20/64px va oq-qora
+// #0d3138 rangli nusxasi — kutubxona faqat 20/64px va oq-qora
 // bo'lgani uchun canvas'da qayta yozildi. Aylana shaklida: 5 ta konsentrik
 // nuqtali halqa radius bo'ylab to'lqinlanib oqadi (undulating rings).
-const ACCENT_RGB = "244, 154, 81"; // #F49A51 — loyihaning accent rangi
+const ACCENT_RGB = "13, 49, 56"; // #0d3138
 const RINGS = 5;
 const DOTS_PER_RING = 44;
 

@@ -453,6 +453,13 @@ export interface CitizenComplaint {
   ticket_number: string;
   status_simple: "qabul_qilindi" | "korilmoqda" | "ijroda" | "yakunlandi" | "rad_etildi";
   category: { code: string; name: string };
+  department: { code: string; name: string } | null;
+  // Murojaatni shaxsan olib borayotgan xodim — faqat "qabul qildim"
+  // belgilangach to'ldiriladi (app/routers/citizen.py).
+  assigned_staff: { name: string; phone: string } | null;
+  // Fuqaro yozgan matn; ovozli murojaatda backend transkriptsiya bilan
+  // to'ldiradi (bu ro'yxatda ovoz ijro etilmaydi — app/routers/citizen.py).
+  description: string;
   created_at: string;
   deadline_at: string | null;
 }

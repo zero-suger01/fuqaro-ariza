@@ -51,6 +51,12 @@ class Complaint(Base):
     satisfaction: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     reopened_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
+    # M15/v1.7.1 — fuqaro "Tozalash" tugmasi bilan o'z "Murojaatlarim"
+    # ro'yxatidan yashiradi. Admin panel/audit/SLA kuzatuviga TA'SIR
+    # QILMAYDI — yozuv bazada to'liq qoladi, faqat citizen-ro'yxat
+    # so'rovida filtrlanadi (app/routers/citizen.py).
+    hidden_by_citizen: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

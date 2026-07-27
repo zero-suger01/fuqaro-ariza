@@ -44,6 +44,26 @@ function WizardContent() {
   const [result, setResult] = useState<ComplaintSubmitResponse | null>(null);
   const aiRouting = useAiRouting(result?.ticket_number ?? null);
 
+  // AI natijasi kelgan zahoti SuccessScreen'ga sakramaymiz — fuqaro 3-bosqich
+  // ("... bo'limiga yuborildi") matnini AnalyzingScreen'da ko'rishi uchun
+  // qisqa pauza beramiz (docs/10-ui-ux.md §2.9, mijoz so'ragan).
+  // `aiRouting.status` o'zgarishiga render paytida moslashtiramiz ("you
+  // might not need an effect" andozasi) — timer esa alohida effektda,
+  // faqat kechikib (asinxron) o'chiradi, shuning uchun
+  // react-hooks/set-state-in-effect qoidasiga zid emas.
+  const CONFIRM_HOLD_MS = 1800;
+  const [prevRoutingStatus, setPrevRoutingStatus] = useState(aiRouting.status);
+  const [confirmPending, setConfirmPending] = useState(false);
+  if (aiRouting.status !== prevRoutingStatus) {
+    setPrevRoutingStatus(aiRouting.status);
+    if (aiRouting.status === "routed") setConfirmPending(true);
+  }
+  useEffect(() => {
+    if (!confirmPending) return;
+    const timer = setTimeout(() => setConfirmPending(false), CONFIRM_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [confirmPending]);
+
   // `/api/public/categories` endi chaqirilmaydi: toifa ro'yxati faqat
   // 1-qadamdagi «Muammo turi» select'i uchun kerak edi, u esa olib
   // tashlandi (Step1Problem izohiga qarang) — tasnifni AI o'zi qiladi.
@@ -122,10 +142,13 @@ function WizardContent() {
   }
 
   if (result) {
-    if (aiRouting.status === "polling") {
+    if (aiRouting.status === "polling" || (aiRouting.status === "routed" && confirmPending)) {
       return (
         <GuestShell>
-          <AnalyzingScreen />
+          <AnalyzingScreen
+            confirmed={aiRouting.status === "routed"}
+            department={aiRouting.status === "routed" ? aiRouting.department : null}
+          />
         </GuestShell>
       );
     }

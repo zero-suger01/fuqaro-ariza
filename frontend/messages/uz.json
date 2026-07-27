@@ -91,7 +91,7 @@
       "smsNote": "SMS ham yubordik.",
       "checkStatusButton": "Holatini tekshirish",
       "homeButton": "Bosh sahifa",
-      "aiRouted": "Murojaatingiz tasdiqlandi va \"{department}\" bo'limiga yuborildi. Ko'rib chiqilmoqda."
+      "aiRouted": "Murojaatingiz tasdiqlandi va \"<b>{department}</b>\" bo'limiga yuborildi. Ko'rib chiqilmoqda."
     },
     "error": {
       "generic": "Xatolik yuz berdi. Qaytadan urinib ko'ring.",
@@ -144,7 +144,7 @@
     "telegramComingSoon": "Telegram bot tez orada ishga tushadi"
   },
   "kabinet": {
-    "title": "Mening murojaatlarim",
+    "title": "Murojaatlarim",
     "loginTitle": "Kirish",
     "registerTitle": "Ro'yxatdan o'tish",
     "phoneLabel": "Telefon raqamingiz",
@@ -159,6 +159,12 @@
     "error": "Telefon yoki parol noto'g'ri",
     "empty": "Hali murojaat yubormagansiz",
     "logout": "Chiqish",
-    "newComplaint": "Yangi murojaat yuborish"
+    "newComplaint": "Yangi murojaat",
+    "clear": "Tozalash",
+    "clearConfirmTitle": "Hamma arizalar o'chirib tashlanadi",
+    "clearConfirmText": "Bu amalni ortga qaytarib bo'lmaydi. Rozimisiz?",
+    "clearConfirm": "Ha, tozalash",
+    "clearCancel": "Bekor qilish",
+    "clearing": "Tozalanmoqda..."
   }
 }

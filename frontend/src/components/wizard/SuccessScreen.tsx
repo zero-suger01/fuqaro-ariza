@@ -58,7 +58,9 @@ export function SuccessScreen({ ticketNumber, department }: { ticketNumber: stri
       {department && (
         <div className="flex w-full items-start gap-3 rounded-card border-2 border-success bg-success/10 px-4 py-3 text-left">
           <BadgeCheck className="mt-0.5 h-6 w-6 shrink-0 text-success" aria-hidden />
-          <p className="text-base text-text-primary">{t("aiRouted", { department })}</p>
+          <p className="text-base text-text-primary">
+            {t.rich("aiRouted", { department, b: (chunks) => <b>{chunks}</b> })}
+          </p>
         </div>
       )}
 
