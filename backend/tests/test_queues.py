@@ -3,14 +3,29 @@
 
 Asosiy shart: **karta raqami va karta bosilganda ochiladigan ro'yxat
 bir xil shartdan chiqadi**. Ular farq qilsa panelga ishonch qolmaydi,
-shuning uchun har navbat uchun ikkisi ham tekshiriladi.
+shuning uchun har navbat uchun ikkisi ham tekshiriladi. Shu zanjirning
+uchinchi bo'g'ini — `export.xlsx` (pastdagi oxirgi ikki test).
 """
+import io
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from openpyxl import load_workbook
 
 from app.models.complaint import Complaint
+
+# Frontend'dagi `QUEUES` xaritasi (admin/murojaatlar/page.tsx) yuboradigan
+# parametrlar — ro'yxat va eksport ikkisi ham shu to'plamni tushunishi kerak.
+QUEUE_PARAMS = {
+    "unassigned": {"unassigned": True},
+    "sla_risk": {"sla_risk": True},
+    "overdue": {"overdue": True},
+    "need_info": {"need_info_over_hours": 24},
+    "ai": {"needs_review": True},
+    "stuck_ai": {"stuck_ai": True},
+    "mine": {"mine": True},
+}
 
 
 def _submit(client, description: str = "Ko'chada chiroq yonmayapti, kechasi qorong'i") -> tuple[str, str]:
@@ -39,6 +54,24 @@ def _list_ids(client, admin_headers, **params) -> set[str]:
     )
     assert response.status_code == 200, response.text
     return {item["id"] for item in response.json()["items"]}
+
+
+def _list_tickets(client, admin_headers, **params) -> list[str]:
+    """Ro'yxatdagi ticketlar — TARTIBI bilan (eksport tartibi bilan
+    solishtirish uchun)."""
+    response = client.get(
+        "/api/admin/complaints", params={**params, "page_size": 100}, headers=admin_headers
+    )
+    assert response.status_code == 200, response.text
+    return [item["ticket_number"] for item in response.json()["items"]]
+
+
+def _export_tickets(client, admin_headers, **params) -> list[str]:
+    """Eksport faylining 1-ustuni (`Ticket`) — sarlavha qatorisiz."""
+    response = client.get("/api/admin/complaints/export.xlsx", params=params, headers=admin_headers)
+    assert response.status_code == 200, response.text
+    ws = load_workbook(io.BytesIO(response.content)).active
+    return [row[0] for row in ws.iter_rows(min_row=2, max_col=1, values_only=True)]
 
 
 @pytest.mark.smoke
@@ -208,3 +241,86 @@ def test_subtask_blocks_resolve(client, admin_headers, db_session):
         headers=admin_headers,
     )
     assert now_ok.status_code == 200, now_ok.text
+
+
+def _seed_one_per_queue(client, admin_headers, db_session) -> dict[str, str]:
+    """Har navbatga kamida bitta murojaat — navbatlar bo'sh bo'lsa
+    pastdagi solishtirish `set() == set()` ga aylanib, hech narsani
+    tekshirmagan bo'lardi.
+
+    Shartlar `services/queues.py` dagi maydonlarga to'g'ridan-to'g'ri
+    qo'yiladi: bu yerda holat o'tishlari emas, ro'yxat va eksportning
+    BIR XIL to'plam berishi tekshiriladi.
+    """
+    from app.models.department import Department
+
+    now = datetime.now(timezone.utc)
+    tickets: dict[str, str] = {}
+
+    def seed(key: str, **fields) -> Complaint:
+        ticket, _ = _submit(client)
+        complaint = _find(db_session, ticket)
+        for name, value in fields.items():
+            setattr(complaint, name, value)
+        tickets[key] = ticket
+        return complaint
+
+    seed("unassigned")  # yangi murojaat — bo'limi ham, xodimi ham yo'q
+    seed("overdue", deadline_at=now - timedelta(hours=1))
+    seed("sla_risk", created_at=now - timedelta(hours=9), deadline_at=now + timedelta(hours=1))
+    seed("need_info", status="need_info", info_requested_at=now - timedelta(hours=30))
+    seed("ai", needs_review=True)
+    seed("stuck_ai", created_at=now - timedelta(hours=2))
+
+    # `mine` — VA bir vaqtda «biriktirilgan» yozuv: bo'limi ham, xodimi
+    # ham bor, ya'ni `unassigned` navbatidan tushadi. Shu bitta yozuv
+    # tufayli quyidagi «navbat butun bazadan kichik» tekshiruvi haqiqiy
+    # ma'no kasb etadi.
+    me = client.get("/api/auth/me", headers=admin_headers)
+    assert me.status_code == 200, me.text
+    department_id = db_session.query(Department.id).filter(Department.is_active.is_(True)).first()[0]
+    seed("mine", assigned_user_id=uuid.UUID(me.json()["id"]), assigned_department_id=department_id)
+
+    db_session.flush()
+    return tickets
+
+
+@pytest.mark.smoke
+def test_export_respects_every_queue_filter(client, admin_headers, db_session):
+    """`export.xlsx` ekranda ko'rinayotgan AYNAN shu to'plamni beradi.
+
+    QA'da topilgan xato: eksport endpoint'i `unassigned`, `sla_risk`,
+    `need_info_over_hours`, `mine`, `stuck_ai` parametrlarini E'LON
+    QILMAGANDI. FastAPI e'lon qilinmagan query parametrni indamay
+    tashlab yuboradi — natijada «Biriktirilmagan» navbatidan (dev bazada
+    98 ta) eksport qilinganda faylga BARCHA 119 murojaat tushardi va
+    admin buni sezmasdi. Faqat `overdue` tasodifan ishlagan, chunki u
+    e'lon qilingan yagona navbat parametri edi.
+    """
+    _seed_one_per_queue(client, admin_headers, db_session)
+    everything = _export_tickets(client, admin_headers)
+
+    for name, params in QUEUE_PARAMS.items():
+        expected = _list_tickets(client, admin_headers, **params)
+        assert expected, f"{name}: navbat bo'sh — tekshiruv ma'nosiz"
+
+        exported = _export_tickets(client, admin_headers, **params)
+        # Tartib ham teng: eksport ekrandagi navbat tartibida chiqadi ([03] v1.9).
+        assert exported == expected, f"{name}: eksport ro'yxatdan farq qiladi"
+        # Filtr HAQIQATAN qisqartirgan bo'lishi kerak — aks holda yuqoridagi
+        # tenglik «hamma narsa == hamma narsa» bo'lib o'tib ketardi.
+        assert len(exported) < len(everything), f"{name}: eksport butun bazani qaytardi"
+
+
+@pytest.mark.smoke
+def test_export_combines_queue_with_panel_filters(client, admin_headers, db_session):
+    """Navbat + filtr paneli birga: frontend ikkisini bitta URL'ga
+    qo'shib yuboradi (`filterParams()`), eksport ham ikkisini ham
+    hisobga olishi kerak."""
+    tickets = _seed_one_per_queue(client, admin_headers, db_session)
+
+    only_one = _export_tickets(client, admin_headers, unassigned=True, q=tickets["stuck_ai"])
+    assert only_one == [tickets["stuck_ai"]]
+
+    # Bir-birini kesib tashlaydigan juftlik — bo'sh fayl (sarlavha bilan).
+    assert _export_tickets(client, admin_headers, unassigned=True, mine=True) == []
