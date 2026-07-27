@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
 from app.core.constants import (
+    STAGES,
     STATUS_AI_PROCESSED,
     STATUS_ASSIGNED,
     STATUS_IN_PROGRESS,
@@ -78,6 +79,7 @@ from app.schemas.admin import (
     ReplyIn,
     ReplyOut,
     ReviewRequest,
+    StageCounts,
     StatusUpdateRequest,
     SubtaskIn,
     SubtaskOut,
@@ -285,6 +287,7 @@ def _build_complaints_query(
     need_info_over_hours: int | None = None,
     mine: bool = False,
     stuck_ai: bool = False,
+    stage: str | None = None,
 ):
     """Shared by list_complaints and export_complaints_xlsx (B5.5) so the two
     never drift apart on what "the same filtered set" means.
@@ -300,6 +303,11 @@ def _build_complaints_query(
         query = query.filter(Complaint.assigned_department_id == staff.department_id)
     if status:
         query = query.filter(Complaint.status == status)
+    if stage in STAGES:
+        # Faqat ma'lum bosqich filtrlaydi. Noma'lum qiymat (eski havola,
+        # qo'lda o'zgartirilgan URL) jimgina e'tiborsiz qoldiriladi —
+        # `in_([])` yozilsa foydalanuvchi sababsiz bo'sh ekranga qarardi.
+        query = query.filter(Complaint.status.in_(STAGES[stage]))
     if category:
         query = query.filter(Category.code == category)
     if department_id:
@@ -351,6 +359,7 @@ def list_complaints(
     need_info_over_hours: int | None = Query(None, ge=0),
     mine: bool = False,
     stuck_ai: bool = False,
+    stage: str | None = None,
     q: str | None = Query(None),
     date_from: date | None = None,
     date_to: date | None = None,
@@ -378,6 +387,7 @@ def list_complaints(
         need_info_over_hours=need_info_over_hours,
         mine=mine,
         stuck_ai=stuck_ai,
+        stage=stage,
     )
 
     total = query.count()
@@ -420,6 +430,64 @@ def list_complaints(
         for c in rows
     ]
     return Page(items=items, total=total, page=page, page_size=page_size)
+
+
+# DIQQAT: bu yo'l `/complaints/{complaint_id}` dan OLDIN e'lon qilinishi
+# shart, aks holda "stage-counts" murojaat id'si sifatida ushlanadi.
+@router.get("/complaints/stage-counts", response_model=StageCounts)
+def complaint_stage_counts(
+    status: str | None = None,
+    category: str | None = None,
+    department_id: uuid.UUID | None = None,
+    assigned_user_id: uuid.UUID | None = None,
+    source: str | None = None,
+    priority: str | None = None,
+    overdue: bool = False,
+    needs_review: bool = False,
+    unassigned: bool = False,
+    sla_risk: bool = False,
+    need_info_over_hours: int | None = Query(None, ge=0),
+    mine: bool = False,
+    stuck_ai: bool = False,
+    q: str | None = Query(None),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    db: Session = Depends(get_db),
+    staff: User = Depends(get_current_staff_up),
+):
+    """Bosqich tablari uchun sonlar — `list_complaints` bilan bir xil
+    filtrlar, faqat `stage` YO'Q (har bosqich alohida sanaladi, aks holda
+    tab o'z sonini o'zi filtrlab tashlardi).
+
+    Rol chegarasi ham bir xil: `_build_complaints_query` `department_staff`
+    uchun so'rovni o'z bo'limiga qisadi, ya'ni xodim tabda o'zi ko'ra
+    olmaydigan murojaatlar sonini ko'rmaydi.
+    """
+    query = _build_complaints_query(
+        db,
+        staff,
+        status=status,
+        category=category,
+        department_id=department_id,
+        assigned_user_id=assigned_user_id,
+        source=source,
+        priority=priority,
+        overdue=overdue,
+        needs_review=needs_review,
+        q=q,
+        date_from=date_from,
+        date_to=date_to,
+        unassigned=unassigned,
+        sla_risk=sla_risk,
+        need_info_over_hours=need_info_over_hours,
+        mine=mine,
+        stuck_ai=stuck_ai,
+    )
+    counts = {
+        stage: query.filter(Complaint.status.in_(statuses)).count()
+        for stage, statuses in STAGES.items()
+    }
+    return StageCounts(**counts)
 
 
 @router.get("/complaints/export.xlsx")

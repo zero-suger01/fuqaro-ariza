@@ -305,6 +305,32 @@ Qoidalar: guruh sarlavhasi bosilmaydi (faqat yorliq); rol filtri **element va gu
 > ustidan «Biriktirish») hali yo'q — hozircha har qator faqat tafsilotga
 > olib boradi.
 
+> **Bosqich tablari va ixcham filtr (v1.9).** Kanban butunlay olib
+> tashlandi, «Barcha murojaatlar» esa 4 ta tabga bo'lindi: **Hammasi ·
+> Yangi · Ijroda · Yakunlangan**.
+>
+> 1. **Tab — SERVER filtri** (`?stage=`), UI guruhlash emas. Kanban faqat
+>    joriy sahifani (20 ta yozuv) guruhlagani uchun ustun raqamlari
+>    yolg'on edi: bazada 96/2/21 bo'lgani holda ekranda «20/0/0»
+>    ko'rinardi. Sonlar `GET /complaints/stage-counts` dan keladi va
+>    boshqa faol filtrlarni hisobga oladi. «Hammasi» tabi SHART — kanban
+>    uchala guruhni birdaniga ko'rsatardi, usiz bu imkoniyat yo'qolardi.
+>    Bosqich→status xaritasi faqat serverda ([03](03-kontraktlar.md) §5).
+> 2. **Aniq holat tanlansa tab «Hammasi» ga qaytadi** — ular bir
+>    o'lchovning ikki darajasi; birga qoldirilsa «Yakunlangan tab +
+>    Qabul qilindi holati» kabi zid juftlik hosil bo'lib, foydalanuvchi
+>    sababi ko'rinmaydigan bo'sh ro'yxatga qarardi.
+> 3. **Filtr paneli yopiq holatda.** Avval doim ochiq karta ~250px, ya'ni
+>    kontent maydonining ~30% ini egallardi va to'rttala navbat
+>    ko'rinishida bir xil takrorlanardi. Endi bitta qator (qidiruv +
+>    tugma) ≈ jami 139px (o'lchandi: maydonning ~8% i), qolgani tugma
+>    ostidagi popoverda. Yoqilgan filtrlar **o'chiriladigan chip** bo'lib
+>    ko'rinadi — panelni ochmasdan nima faol ekani bilinadi (avval buni
+>    faqat «Faol filtr yo'q» yozuvidan taxmin qilish mumkin edi).
+> 4. Tab indikatori `sm` dan boshlab suriladi (sof CSS transform, DOM
+>    o'lchash yo'q); 375px da 4 ta teng ustunga «Yakunlangan» sig'magani
+>    uchun mobil ko'rinish gorizontal siljiydigan qatorga o'tadi.
+
 ### 10.3 Tafsilot sahifasidagi o'zgarishlar
 
 - **«Qabul qilaman»** — Holat kartasidagi asosiy tugma, faqat `assigned` va o'z bo'limi bo'lganda. Sahifani ochishning o'zi endi hech narsani o'zgartirmaydi ([03](03-kontraktlar.md) §2.1).

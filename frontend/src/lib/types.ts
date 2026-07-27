@@ -261,6 +261,16 @@ export interface DepartmentQueueRow {
   over_limit: boolean;
 }
 
+// v1.9 — GET /api/admin/complaints/stage-counts (docs/03 §5, docs/10 §10.2).
+// Bosqich tablari uchun sonlar. Bosqich -> status xaritasi SERVERDA
+// (`app/core/constants.py::STAGES`), bu yerda faqat sonlar — takrorlansa
+// ikkisi vaqt o'tib bir-biridan farq qila boshlaydi.
+export interface StageCounts {
+  new: number;
+  progress: number;
+  done: number;
+}
+
 export interface QueueStats {
   unassigned: number;
   ai_exceptions: number;

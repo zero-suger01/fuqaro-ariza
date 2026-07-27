@@ -424,6 +424,20 @@ class QueueStats(BaseModel):
     by_department: list[DepartmentQueueRow]
 
 
+class StageCounts(BaseModel):
+    """Admin ro'yxatidagi bosqich tablari uchun sonlar (v1.9, [10] §10.2).
+
+    Sonlar `GET /complaints` bilan AYNAN bir xil filtrlardan (bosqichning
+    o'zidan tashqari) chiqadi — tabdagi raqam bosilganda ochiladigan
+    ro'yxat soni bilan mos kelishi shart. Sahifadagi yozuvlardan
+    hisoblab bo'lmaydi: bitta sahifada 20 ta yozuv bo'lgani uchun u
+    «20/0/0» kabi yolg'on ko'rsatkich berardi."""
+
+    new: int
+    progress: int
+    done: int
+
+
 class NeighborhoodStat(BaseModel):
     neighborhood_id: uuid.UUID | None
     neighborhood_name: str | None

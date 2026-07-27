@@ -1,20 +1,20 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { clsx } from "clsx";
 import {
   FilterX,
   ClipboardList,
   AlertTriangle,
-  ArrowRight,
   ChevronDown,
   Download,
   FileText,
   Search,
   SlidersHorizontal,
   UserX,
+  X,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
@@ -24,47 +24,37 @@ import { Input, Label, Select } from "@/components/ui/Input";
 import { apiGet, apiGetBlob } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatUzDateTime } from "@/lib/formatDate";
-import type { CategoryAdmin, ComplaintListItem, ComplaintStatus, DepartmentAdmin, Page, Priority } from "@/lib/types";
+import type {
+  CategoryAdmin,
+  ComplaintListItem,
+  ComplaintStatus,
+  DepartmentAdmin,
+  Page,
+  Priority,
+  StageCounts,
+} from "@/lib/types";
 import { PRIORITY_COLORS, PRIORITY_LABELS, STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
 
-/** Kanban-uslub ustunlari — 10 ta xom `status`ni operativ jihatdan uchta
- * mantiqiy bosqichga yig'adi (fuqaroga ko'rsatiladigan `status_simple`dan
- * FARQLI — bu yerda admin uchun aniqlik muhim, shuning uchun `accepted`
- * "Ijroda"ga, "assigned" esa hali hech kim qo'l urmagani uchun "Yangi"ga
- * tushadi). Joriy sahifadagi (filtrlangan, paginatsiyalangan) `items`ni
- * qayta guruhlaydi — so'rov/filtr/pagination o'zgarmaydi.
+/**
+ * Bosqich tablari (v1.9) — 10 ta xom `status` xodim uchun uchta bosqichga
+ * yig'iladi. Xarita SERVERDA (`app/core/constants.py::STAGES`), bu yerda
+ * faqat yorliq va rang: ro'yxat ham, tabdagi son ham o'sha yagona
+ * ta'rifdan chiqadi.
+ *
+ * Avval bu guruhlash faqat UI ichida (kanban ustunlari) edi va JORIY
+ * SAHIFANING 20 ta yozuvini qayta guruhlardi — natijada ustun raqamlari
+ * yolg'on chiqardi: bazada 96/2/21 bo'lgani holda ekranda «20/0/0»
+ * turardi. Endi tab serverga `?stage=` yuboradi, son esa
+ * `/complaints/stage-counts` dan keladi.
  */
-const KANBAN_BUCKETS: {
-  key: string;
-  label: string;
-  dotColor: string;
-  emptyHint: string;
-  statuses: ComplaintStatus[];
-}[] = [
-  {
-    key: "new",
-    label: "Yangi",
-    // Ustun nuqtasi ichidagi hukmron holat rangiga mos keladi (STATUS_COLORS)
-    // — avval ustun va uning ichidagi kartochka chiplari boshqa-boshqa
-    // rangda edi, guruh bilan element bir-biriga bog'lanmasdi.
-    dotColor: "var(--st-new)",
-    emptyHint: "Yangi murojaatlar shu yerda paydo bo'ladi",
-    statuses: ["new", "ai_processed", "assigned"],
-  },
-  {
-    key: "progress",
-    label: "Ijroda",
-    dotColor: "var(--info)",
-    emptyHint: "Ijrodagi murojaatlar shu yerda ko'rinadi",
-    statuses: ["accepted", "in_progress", "need_info"],
-  },
-  {
-    key: "done",
-    label: "Yakunlangan",
-    dotColor: "var(--success)",
-    emptyHint: "Yakunlangan murojaatlar shu yerda to'planadi",
-    statuses: ["resolved", "closed", "archived", "rejected"],
-  },
+const STAGE_TABS: { key: string; label: string; dotColor: string | null }[] = [
+  // Bo'sh kalit = filtrsiz. Kanban uchala guruhni birdaniga ko'rsatardi,
+  // shuning uchun «Hammasi» tabi SHART — usiz «barchasini ko'rish»
+  // imkoniyati yo'qolardi.
+  { key: "", label: "Hammasi", dotColor: null },
+  { key: "new", label: "Yangi", dotColor: "var(--st-new)" },
+  { key: "progress", label: "Ijroda", dotColor: "var(--info)" },
+  { key: "done", label: "Yakunlangan", dotColor: "var(--success)" },
 ];
 
 interface Filters {
@@ -131,127 +121,19 @@ function isOverdue(deadline: string | null, status: ComplaintStatus): boolean {
   return new Date(deadline).getTime() < Date.now();
 }
 
-function KanbanCard({ c }: { c: ComplaintListItem }) {
-  const overdue = isOverdue(c.deadline_at, c.status);
-  return (
-    <Link
-      href={`/admin/murojaatlar/${c.id}`}
-      className="group flex flex-col gap-4 rounded-card border border-border bg-bg-surface p-5 shadow-card transition hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-lift"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-bg-subtle">
-            <FileText className="h-5 w-5 text-text-secondary" aria-hidden />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-text-primary">{c.category.name}</p>
-            <p className="font-mono text-xs text-text-muted">{c.ticket_number}</p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <Badge label={STATUS_LABELS[c.status]} color={STATUS_COLORS[c.status]} />
-          <ArrowRight
-            className="h-3.5 w-3.5 text-text-muted opacity-0 transition-all -translate-x-1 group-hover:translate-x-0 group-hover:opacity-100"
-            aria-hidden
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 border-t border-border pt-4">
-        <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-wide text-text-muted">Mas&apos;ul</p>
-          {c.assigned_user_name ? (
-            <p className="mt-0.5 truncate text-sm font-medium text-text-primary">{c.assigned_user_name}</p>
-          ) : (
-            /* Muted, `text-warning` emas: egasi yo'qligi 94 ta kartaning
-               normal holati, istisno emas. Amber qilinganda u bir kartada
-               «Yuqori» muhimlik va muddat ogohlantirishi bilan bir xil
-               signal berardi va rostdan shoshilinch narsalar ko'zga
-               tashlanmay qolardi. Yo'qlikni UserX ikonasi va «yo'q» so'zi
-               allaqachon aytib turibdi; navbat sifatida esa u sidebar
-               hisoblagichi va bosh ekran kartasida ko'rinadi. */
-            <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-text-muted">
-              <UserX className="h-3 w-3 shrink-0" aria-hidden /> yo&apos;q
-            </p>
-          )}
-        </div>
-        <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-wide text-text-muted">Muddat</p>
-          <p className={clsx("mt-0.5 text-sm font-medium", overdue ? "text-danger" : "text-text-primary")}>
-            {c.deadline_at ? formatUzDateTime(c.deadline_at) : "—"}
-          </p>
-        </div>
-        <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-wide text-text-muted">Bo&apos;lim</p>
-          <p className="mt-0.5 truncate text-sm font-medium text-text-primary">{c.department?.name ?? "—"}</p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 flex-wrap">
-        <Badge label={PRIORITY_LABELS[c.priority]} color={PRIORITY_COLORS[c.priority]} />
-        {/* v1.8 — ajratilmagan xizmat bo'lsa AYNAN shuni ko'rsatamiz,
-            umumiy «AI tekshiruv kerak» o'rniga: ikkalasi ham
-            `needs_review` dan kelib chiqadi, lekin bu aniqroq va
-            shoshilinchroq — fuqaroning bir muammosi hali hech kimda yo'q.
-            Ikkitasini birga chiqarish kartani shovqinga to'ldirardi. */}
-        {c.ai && c.ai.unassigned_services.length > 0 ? (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-danger">
-            <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
-            {/* Shablon satri — JSX ichida `{son} ta` yozilsa bo'shliq
-                yo'qolib «1ta» bo'lib qolishi mumkin (tafsilot sahifasida
-                aynan shunday bo'lgan). */}
-            <span>{`${c.ai.unassigned_services.length} ta xizmat ajratilmagan`}</span>
-          </span>
-        ) : (
-          c.needs_review && (
-            <span className="inline-flex items-center gap-1 text-xs text-warning">
-              <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden /> AI tekshiruv kerak
-            </span>
-          )
-        )}
-      </div>
-    </Link>
-  );
-}
-
-/** Skeleton — "Yuklanmoqda..." matni o'rniga; yakuniy layout bilan bir xil
- * shaklda, shuning uchun ma'lumot kelganda sakrab qolmaydi. */
-function KanbanCardSkeleton() {
-  return (
-    <div className="flex flex-col gap-4 rounded-card border border-border bg-bg-surface p-5 shadow-card animate-pulse">
-      <div className="flex items-center gap-3">
-        <span className="h-11 w-11 shrink-0 rounded-full bg-bg-subtle" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="h-3.5 w-2/3 rounded-full bg-bg-subtle" />
-          <span className="h-3 w-1/3 rounded-full bg-bg-subtle" />
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-2 border-t border-border pt-4">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="flex flex-col gap-1.5">
-            <span className="h-2.5 w-10 rounded-full bg-bg-subtle" />
-            <span className="h-3.5 w-14 rounded-full bg-bg-subtle" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /**
- * Navbat ko'rinishining zich ro'yxati (v1.9).
+ * Zich ro'yxat (v1.9) — sahifadagi YAGONA ko'rinish (kanban olib tashlandi).
  *
- * Nima uchun navbatda kanban EMAS: kanban ustunlari `status` bo'yicha
- * guruhlaydi, navbat filtrlari esa backendda `_active()` orqali terminal
- * statuslarni butunlay chiqarib tashlaydi (`services/queues.py`). Ya'ni
- * «Yakunlangan» ustuni `unassigned`/`sla_risk`/`overdue` navbatlarida
- * MATEMATIK jihatdan hech qachon to'lmaydi, `need_info` da esa faqat
- * «Ijroda» to'ladi. O'lchov (dev baza): Biriktirilmagan 20/0/0,
- * Muddat tugayapti 18/0/0, Muddati o'tgan 19/1/0 — ekranning 2/3 qismi
- * doimiy bo'sh quti edi va to'rttala navbat bir xil ko'rinardi.
- *
- * Kanban «Barcha murojaatlar» da qoladi — u yerda uchala ustun ham
- * haqiqatan to'ladi va bosqichlar kesimi ma'noli.
+ * Kanban `status` bo'yicha 3 ustunga guruhlardi, lekin faqat JORIY
+ * SAHIFANI (20 ta yozuv) — shuning uchun raqamlari yolg'on edi va ustunlar
+ * amalda doim bo'sh turardi:
+ *   - navbatlarda backend terminal statuslarni umuman chiqarib tashlaydi
+ *     (`queues.py::_active()`), ya'ni «Yakunlangan» ustuni MATEMATIK
+ *     jihatdan to'lmasdi — o'lchov: 20/0/0, 18/0/0, 19/1/0;
+ *   - «Barcha murojaatlar» da ham 20/0/0 chiqardi, chunki sahifa eng
+ *     yangilaridan boshlanadi va ular hammasi `new` holatida (bazadagi
+ *     haqiqiy taqsimot: 96/2/21).
+ * Endi bosqich — server filtri (tab), ro'yxat esa hamma joyda bir xil.
  *
  * Bitta grid shabloni — sarlavha va qator uchun AYNAN bir xil, aks holda
  * ustunlar bir-biriga tegishlashmay qoladi.
@@ -375,6 +257,305 @@ function ComplaintList({ items }: { items: ComplaintListItem[] }) {
   );
 }
 
+/**
+ * Bosqich tablari.
+ *
+ * Suriladigan ko'rsatkich SOF CSS bilan: `sm` dan boshlab tablar teng
+ * kenglikda (`grid-cols-4`), shuning uchun indikatorni o'z kengligiga
+ * `translateX(i * 100%)` qilib surish yetarli — DOM o'lchash, ref va
+ * effekt kerak emas (o'lcha-keyin-setState naqshi `useEffect` ichida
+ * setState talab qilardi, bu esa taqiqlangan).
+ *
+ * 375px da esa 4 ta teng ustunga «Yakunlangan» sig'maydi (o'lchandi —
+ * qirqilardi), shuning uchun mobil ko'rinish gorizontal siljiydigan
+ * qatorga o'tadi: yorliqlar to'liq o'qiladi, faol tab esa indikator
+ * o'rniga o'z foni bilan ajralib turadi.
+ */
+function StageTabs({
+  value,
+  counts,
+  onChange,
+}: {
+  value: string;
+  counts: StageCounts | null;
+  onChange: (stage: string) => void;
+}) {
+  const index = Math.max(
+    0,
+    STAGE_TABS.findIndex((t) => t.key === value)
+  );
+  const totalAll = counts ? counts.new + counts.progress + counts.done : null;
+
+  return (
+    <div
+      role="tablist"
+      aria-label="Bosqich"
+      className="no-scrollbar relative flex gap-1 overflow-x-auto rounded-pill bg-bg-subtle p-1 sm:grid sm:grid-cols-4 sm:gap-0 sm:overflow-visible"
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-1 left-1 hidden rounded-pill bg-bg-surface shadow-card transition-transform duration-300 ease-out motion-reduce:transition-none sm:block"
+        style={{ width: "calc((100% - 0.5rem) / 4)", transform: `translateX(${index * 100}%)` }}
+      />
+      {STAGE_TABS.map((tab) => {
+        const active = tab.key === value;
+        const count = counts
+          ? tab.key === ""
+            ? totalAll
+            : counts[tab.key as keyof StageCounts]
+          : null;
+        return (
+          <button
+            key={tab.key || "all"}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(tab.key)}
+            className={clsx(
+              "relative z-10 flex shrink-0 items-center justify-center gap-1.5 rounded-pill px-3 py-2 text-[13px] transition-colors sm:min-w-0 sm:shrink sm:gap-2",
+              active
+                ? // Mobilda indikator yo'q (siljiydigan qator) — faol tab
+                  // o'z foni bilan ajraladi; sm dan boshlab foni indikatorga
+                  // o'tadi, aks holda ikkitasi ustma-ust tushardi.
+                  "bg-bg-surface font-semibold text-text-primary shadow-card sm:bg-transparent sm:shadow-none"
+                : "font-medium text-text-muted hover:text-text-secondary"
+            )}
+          >
+            {tab.dotColor && (
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: tab.dotColor }}
+                aria-hidden
+              />
+            )}
+            <span className="sm:truncate">{tab.label}</span>
+            {/* Kichik ekranda son yashiriladi — u yerda joy siljish bilan
+                yechilgan, son esa qatorni keraksiz uzaytirardi. */}
+            {count !== null && (
+              <span
+                className={clsx(
+                  "hidden shrink-0 rounded-pill px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums sm:inline",
+                  active ? "bg-bg-subtle text-text-secondary" : "text-text-muted"
+                )}
+              >
+                {count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Ixcham filtr paneli (v1.9).
+ *
+ * Avval bu joyda doim ochiq katta karta turardi — qidiruv + 2 ta select +
+ * ochilma blok, ~250px, ya'ni kontent maydonining ~30% i, va u TO'RTTALA
+ * navbat ko'rinishida bir xil takrorlanardi. Holbuki navbatning o'zi
+ * allaqachon filtr: kunlik ishda bu panel deyarli har doim tegilmasdan
+ * turardi.
+ *
+ * Endi: bitta qator (qidiruv + tugma), faol filtrlar esa o'chiriladigan
+ * chip bo'lib ko'rinadi — nima yoqilganini panelni ochmasdan bilish
+ * mumkin. Qolgan maydonlar tugma ostidagi popoverda.
+ */
+function FilterBar({
+  filters,
+  activeChips,
+  onChange,
+  onClearOne,
+  onClearAll,
+  categories,
+  departments,
+  isAdmin,
+}: {
+  filters: Filters;
+  activeChips: { key: keyof Filters; label: string }[];
+  onChange: <K extends keyof Filters>(key: K, value: Filters[K]) => void;
+  onClearOne: (key: keyof Filters) => void;
+  onClearAll: () => void;
+  categories: CategoryAdmin[];
+  departments: DepartmentAdmin[];
+  isAdmin: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+          <input
+            value={filters.q}
+            onChange={(e) => onChange("q", e.target.value)}
+            placeholder="Ticket, telefon yoki matn bo'yicha qidiring..."
+            className="w-full rounded-pill border border-border bg-bg-subtle py-2.5 pl-10 pr-4 text-sm text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-accent focus:bg-bg-surface focus:ring-2 focus:ring-accent-soft"
+          />
+        </div>
+
+        <div className="relative shrink-0" ref={wrapRef}>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className={clsx(
+              "flex h-11 items-center gap-2 rounded-pill border px-3.5 text-sm font-medium transition-colors sm:px-4",
+              activeChips.length > 0
+                ? "border-accent/40 bg-accent-soft text-accent"
+                : "border-border bg-bg-subtle text-text-secondary hover:text-text-primary"
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="hidden sm:inline">Filtrlar</span>
+            {activeChips.length > 0 && (
+              <span className="rounded-pill bg-accent px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-accent-contrast">
+                {activeChips.length}
+              </span>
+            )}
+            <ChevronDown
+              className={clsx("h-3.5 w-3.5 shrink-0 transition-transform", open && "rotate-180")}
+              aria-hidden
+            />
+          </button>
+
+          {open && (
+            <div className="absolute right-0 top-[3.25rem] z-30 w-[min(22rem,calc(100vw-2rem))] rounded-card border border-border bg-bg-surface p-4 shadow-lift">
+              <div className="flex flex-col gap-3">
+                <div>
+                  <Label>Holat</Label>
+                  <Select
+                    value={filters.status}
+                    onChange={(e) => onChange("status", e.target.value as ComplaintStatus)}
+                  >
+                    <option value="">Barcha holatlar</option>
+                    {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label>Muhimlik</Label>
+                  <Select
+                    value={filters.priority}
+                    onChange={(e) => onChange("priority", e.target.value as Priority)}
+                  >
+                    <option value="">Barchasi</option>
+                    {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label>Kategoriya</Label>
+                  <Select value={filters.category} onChange={(e) => onChange("category", e.target.value)}>
+                    <option value="">Barchasi</option>
+                    {categories.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.names.uz ?? c.code}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                {isAdmin && (
+                  <div>
+                    <Label>Bo&apos;lim</Label>
+                    <Select
+                      value={filters.department_id}
+                      onChange={(e) => onChange("department_id", e.target.value)}
+                    >
+                      <option value="">Barchasi</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.names.uz ?? d.code}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Sana (dan)</Label>
+                    <Input
+                      type="date"
+                      value={filters.date_from}
+                      onChange={(e) => onChange("date_from", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Sana (gacha)</Label>
+                    <Input
+                      type="date"
+                      value={filters.date_to}
+                      onChange={(e) => onChange("date_to", e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 border-t border-border pt-3">
+                  <label className="flex items-center gap-2 text-sm text-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={filters.overdue}
+                      onChange={(e) => onChange("overdue", e.target.checked)}
+                    />
+                    Muddati o&apos;tgan
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={filters.needs_review}
+                      onChange={(e) => onChange("needs_review", e.target.checked)}
+                    />
+                    AI tekshiruv kerak
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {activeChips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {activeChips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={() => onClearOne(chip.key)}
+              className="group flex items-center gap-1.5 rounded-pill border border-border bg-bg-subtle py-1 pl-3 pr-2 text-xs font-medium text-text-secondary transition-colors hover:border-danger/40 hover:text-danger"
+              aria-label={`${chip.label} filtrini olib tashlash`}
+            >
+              {chip.label}
+              <X className="h-3 w-3 shrink-0 text-text-muted transition-colors group-hover:text-danger" aria-hidden />
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={onClearAll}
+            className="flex items-center gap-1 px-1.5 py-1 text-xs font-medium text-text-muted transition-colors hover:text-danger"
+          >
+            <FilterX className="h-3.5 w-3.5" aria-hidden /> Tozalash
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminComplaintsView() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
@@ -386,14 +567,19 @@ function AdminComplaintsView() {
   // aks holda foydalanuvchi qidirgan so'zi "yo'qolib" ketardi.
   const qFromUrl = searchParams.get("q") ?? "";
 
+  // Bosqich URL'da — sahifa yangilanganda yoki havola ulashilganda tab
+  // saqlanib qolishi kerak (`?queue=` bilan bir xil yondashuv).
+  const stage = searchParams.get("stage") ?? "";
+  const router = useRouter();
+
   const [filters, setFilters] = useState<Filters>({
     ...EMPTY_FILTERS,
     department_id: departmentFromUrl,
     q: qFromUrl,
   });
-  const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<Page<ComplaintListItem> | null>(null);
+  const [stageCounts, setStageCounts] = useState<StageCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<CategoryAdmin[]>([]);
   const [departments, setDepartments] = useState<DepartmentAdmin[]>([]);
@@ -412,14 +598,24 @@ function AdminComplaintsView() {
     setPage(1);
   }, [qFromUrl]);
 
-  const filtersActive =
-    filters.category ||
-    filters.department_id ||
-    filters.priority ||
-    filters.overdue ||
-    filters.needs_review ||
-    filters.date_from ||
-    filters.date_to;
+  // Chiplar — qaysi filtr yoqilganini panelni ochmasdan ko'rsatadi.
+  // `q` bu yerda yo'q: u qidiruv qutisining o'zida ko'rinib turibdi.
+  const activeChips: { key: keyof Filters; label: string }[] = [];
+  if (filters.status) activeChips.push({ key: "status", label: `Holat: ${STATUS_LABELS[filters.status]}` });
+  if (filters.priority)
+    activeChips.push({ key: "priority", label: `Muhimlik: ${PRIORITY_LABELS[filters.priority]}` });
+  if (filters.category) {
+    const name = categories.find((c) => c.code === filters.category)?.names.uz ?? filters.category;
+    activeChips.push({ key: "category", label: `Kategoriya: ${name}` });
+  }
+  if (filters.department_id) {
+    const name = departments.find((d) => d.id === filters.department_id)?.names.uz ?? "tanlangan";
+    activeChips.push({ key: "department_id", label: `Bo'lim: ${name}` });
+  }
+  if (filters.date_from) activeChips.push({ key: "date_from", label: `Sanadan: ${filters.date_from}` });
+  if (filters.date_to) activeChips.push({ key: "date_to", label: `Sanagacha: ${filters.date_to}` });
+  if (filters.overdue) activeChips.push({ key: "overdue", label: "Muddati o'tgan" });
+  if (filters.needs_review) activeChips.push({ key: "needs_review", label: "AI tekshiruv kerak" });
 
   useEffect(() => {
     apiGet<CategoryAdmin[]>("/api/admin/categories").then(setCategories).catch(() => setCategories([]));
@@ -443,16 +639,44 @@ function AdminComplaintsView() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- loading flag for the fetch below
     setLoading(true);
     const params = filterParams();
+    if (stage) params.set("stage", stage);
     params.set("page", String(page));
     params.set("page_size", String(PAGE_SIZE));
     apiGet<Page<ComplaintListItem>>(`/api/admin/complaints?${params.toString()}`)
       .then(setResult)
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- filterParams reads `filters`/`queueKey`, both deps
-  }, [filters, page, queueKey]);
+  }, [filters, page, queueKey, stage]);
+
+  // Tab sonlari — `stage`SIZ, aks holda har tab o'z sonini o'zi filtrlab
+  // tashlardi. Tab almashganda qayta so'ralmaydi (sonlar o'zgarmaydi).
+  useEffect(() => {
+    apiGet<StageCounts>(`/api/admin/complaints/stage-counts?${filterParams().toString()}`)
+      .then(setStageCounts)
+      .catch(() => setStageCounts(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filterParams reads `filters`/`queueKey`, both deps
+  }, [filters, queueKey]);
+
+  function setStage(next: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next) params.set("stage", next);
+    else params.delete("stage");
+    router.replace(`/admin/murojaatlar?${params.toString()}`, { scroll: false });
+    setPage(1);
+  }
 
   function update<K extends keyof Filters>(key: K, value: Filters[K]) {
     setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
+    // Aniq holat tanlangani — bosqichning aniqroq ko'rinishi, ya'ni ikkalasi
+    // BIR o'lchov. Birga qoldirilsa zid juftlik hosil bo'lardi (masalan
+    // «Yakunlangan» tabi + «Qabul qilindi» holati) va foydalanuvchi sababi
+    // ko'rinmaydigan bo'sh ro'yxatga qarab qolardi.
+    if (key === "status" && value) setStage("");
+  }
+
+  function clearFilter(key: keyof Filters) {
+    setFilters((prev) => ({ ...prev, [key]: typeof prev[key] === "boolean" ? false : "" }));
     setPage(1);
   }
 
@@ -494,127 +718,33 @@ function AdminComplaintsView() {
         </Card>
       )}
 
-      <Card className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-text-primary">Filtrlar</h2>
-          {filtersActive ? (
-            <button
-              type="button"
-              onClick={() => {
-                setFilters({ ...EMPTY_FILTERS, q: filters.q });
-                setPage(1);
-              }}
-              className="flex items-center gap-1.5 text-xs font-medium text-text-muted hover:text-danger transition-colors"
-            >
-              <FilterX className="h-3.5 w-3.5" /> Filtrlarni tozalash
-            </button>
-          ) : (
-            <span className="text-xs text-text-muted">Faol filtr yo&apos;q</span>
-          )}
-        </div>
-
-        {/* Qidiruv — eng ko'p ishlatiladigan amal, shuning uchun eng katta
-            va yolg'iz o'z qatorida (docs/10 admin redesign #5). */}
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-          <input
-            value={filters.q}
-            onChange={(e) => update("q", e.target.value)}
-            placeholder="Ticket raqami, telefon yoki murojaat matni bo'yicha qidiring..."
-            className="w-full rounded-control border border-border bg-bg-subtle py-3.5 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent focus:bg-bg-surface focus:ring-2 focus:ring-accent-soft"
-          />
-        </div>
-
-        {/* Birlamchi filtrlar — kunlik triage uchun eng ko'p kerak bo'ladigan
-            ikkitasi doim ochiq (#4). */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Holat</Label>
-            <Select value={filters.status} onChange={(e) => update("status", e.target.value as ComplaintStatus)}>
-              <option value="">Barcha holatlar</option>
-              {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label>Muhimlik</Label>
-            <Select value={filters.priority} onChange={(e) => update("priority", e.target.value as Priority)}>
-              <option value="">Barchasi</option>
-              {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowMoreFilters((v) => !v)}
-          className="flex items-center gap-1.5 self-start text-xs font-medium text-text-secondary hover:text-accent transition-colors"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          Qo&apos;shimcha filtrlar
-          <ChevronDown className={clsx("h-3.5 w-3.5 transition-transform", showMoreFilters && "rotate-180")} />
-        </button>
-
-        {/* Ikkilamchi filtrlar — kamroq ishlatiladi, shuning uchun
-            standart yopiq (#4: "move secondary filters into a
-            collapsible area"). */}
-        {showMoreFilters && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 border-t border-border pt-4">
-            <div>
-              <Label>Kategoriya</Label>
-              <Select value={filters.category} onChange={(e) => update("category", e.target.value)}>
-                <option value="">Barchasi</option>
-                {categories.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.names.uz ?? c.code}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            {user?.role === "admin" && (
-              <div>
-                <Label>Bo&apos;lim</Label>
-                <Select value={filters.department_id} onChange={(e) => update("department_id", e.target.value)}>
-                  <option value="">Barchasi</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.names.uz ?? d.code}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            )}
-            <div>
-              <Label>Sana (dan)</Label>
-              <Input type="date" value={filters.date_from} onChange={(e) => update("date_from", e.target.value)} />
-            </div>
-            <div>
-              <Label>Sana (gacha)</Label>
-              <Input type="date" value={filters.date_to} onChange={(e) => update("date_to", e.target.value)} />
-            </div>
-            <div className="col-span-2 sm:col-span-3 lg:col-span-4 flex items-center gap-5">
-              <label className="flex items-center gap-2 text-sm text-text-secondary">
-                <input type="checkbox" checked={filters.overdue} onChange={(e) => update("overdue", e.target.checked)} />
-                Muddati o&apos;tgan
-              </label>
-              <label className="flex items-center gap-2 text-sm text-text-secondary">
-                <input
-                  type="checkbox"
-                  checked={filters.needs_review}
-                  onChange={(e) => update("needs_review", e.target.checked)}
-                />
-                AI tekshiruv kerak
-              </label>
-            </div>
+      {/* Tab + filtr bitta idishda: tab — navigatsiya (birlamchi), filtr —
+          aniqlashtirish (ikkilamchi). Avval bu joyda faqat doim ochiq
+          ~250px lik filtr kartasi turardi. */}
+      <Card padded={false}>
+        {/* Navbatda tab ko'rsatilmaydi: navbat filtrlari terminal
+            statuslarni allaqachon chiqarib tashlaydi, ya'ni «Yakunlangan»
+            tabi doim 0 bo'lardi (LIST_GRID izohi). */}
+        {!queue && (
+          <div className="border-b border-border px-4 py-3">
+            <StageTabs value={stage} counts={stageCounts} onChange={setStage} />
           </div>
         )}
+        <div className="px-4 py-3">
+          <FilterBar
+            filters={filters}
+            activeChips={activeChips}
+            onChange={update}
+            onClearOne={clearFilter}
+            onClearAll={() => {
+              setFilters({ ...EMPTY_FILTERS, q: filters.q });
+              setPage(1);
+            }}
+            categories={categories}
+            departments={departments}
+            isAdmin={user?.role === "admin"}
+          />
+        </div>
       </Card>
 
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -637,25 +767,13 @@ function AdminComplaintsView() {
       </div>
 
       {loading ? (
-        queue ? (
-          <Card padded={false} className="overflow-hidden">
-            <div className="divide-y divide-border">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <ComplaintRowSkeleton key={i} />
-              ))}
-            </div>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {KANBAN_BUCKETS.map((bucket) => (
-              <div key={bucket.key} className="flex flex-col gap-3">
-                <div className="h-4 w-24 rounded-full bg-bg-subtle animate-pulse" />
-                <KanbanCardSkeleton />
-                <KanbanCardSkeleton />
-              </div>
+        <Card padded={false} className="overflow-hidden">
+          <div className="divide-y divide-border">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <ComplaintRowSkeleton key={i} />
             ))}
           </div>
-        )
+        </Card>
       ) : items.length === 0 ? (
         <Card>
           <div className="py-14 flex flex-col items-center gap-2 text-text-muted text-sm">
@@ -664,37 +782,8 @@ function AdminComplaintsView() {
             <span className="text-xs">Filtrlarni o&apos;zgartirib qayta urinib ko&apos;ring</span>
           </div>
         </Card>
-      ) : queue ? (
-        // Navbat = bitta aniq savol, bosqichlar kesimi emas (LIST_GRID izohi).
-        <ComplaintList items={items} />
       ) : (
-        // Joriy sahifa (server filtr/pagination'idan kelgan `items`) 3 ta
-        // operativ ustunga guruhlanadi — pagination o'sha holicha ishlaydi,
-        // faqat ko'rinish o'zgaradi (kanban, docs/10 dan tashqari — pilot).
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {KANBAN_BUCKETS.map((bucket) => {
-            const bucketItems = items.filter((c) => bucket.statuses.includes(c.status));
-            return (
-              <div key={bucket.key} className="flex flex-col gap-3">
-                <div className="flex items-center gap-2 rounded-control bg-bg-subtle px-3 py-2.5">
-                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: bucket.dotColor }} />
-                  <h3 className="text-sm font-semibold text-text-primary">{bucket.label}</h3>
-                  <span className="ml-auto rounded-pill bg-bg-surface px-2 py-0.5 text-xs font-mono font-semibold tabular-nums text-text-secondary">
-                    {bucketItems.length}
-                  </span>
-                </div>
-                {bucketItems.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 rounded-card border border-dashed border-border-strong p-8 text-center">
-                    <ClipboardList className="h-5 w-5 text-text-muted" aria-hidden />
-                    <p className="text-xs text-text-muted">{bucket.emptyHint}</p>
-                  </div>
-                ) : (
-                  bucketItems.map((c) => <KanbanCard key={c.id} c={c} />)
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <ComplaintList items={items} />
       )}
 
       {totalPages > 1 && (

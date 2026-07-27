@@ -68,6 +68,27 @@ CITIZEN_ONLY_TRANSITIONS: set[tuple[str, str]] = {
 # emas (docs/05-backend-tasklar.md B4.5, dashboard overdue hisobi).
 TERMINAL_STATUSES = [STATUS_RESOLVED, STATUS_CLOSED, STATUS_REJECTED, STATUS_ARCHIVED]
 
+# Operatsion bosqichlar (v1.9) — 10 ta xom `status` xodim uchun uchta
+# tushunarli bosqichga yig'iladi. Admin ro'yxatidagi tablar shu yerdan
+# chiqadi (`GET /complaints?stage=...`), fuqaroga ko'rsatiladigan
+# `STATUS_SIMPLE_MAP` dan FARQLI — bu yerda xodim uchun aniqlik muhim:
+# `accepted` allaqachon ish boshlangani uchun «Ijroda»da, `assigned` esa
+# hali hech kim qo'l urmagani uchun «Yangi»da qoladi.
+#
+# Bu xarita FRONTENDDA takrorlanmasligi kerak: avval u faqat UI ichida
+# (kanban ustunlari) yashirin turgani uchun ro'yxat serverdan bosqichga
+# ko'ra filtrlanmasdi — natijada tab/ustun raqamlari joriy sahifadagi 20
+# ta yozuvdan hisoblanib, «20/0/0» kabi yolg'on ko'rsatkich chiqardi.
+STAGE_NEW = "new"
+STAGE_PROGRESS = "progress"
+STAGE_DONE = "done"
+
+STAGES: dict[str, list[str]] = {
+    STAGE_NEW: [STATUS_NEW, STATUS_AI_PROCESSED, STATUS_ASSIGNED],
+    STAGE_PROGRESS: [STATUS_ACCEPTED, STATUS_IN_PROGRESS, STATUS_NEED_INFO],
+    STAGE_DONE: [STATUS_RESOLVED, STATUS_CLOSED, STATUS_ARCHIVED, STATUS_REJECTED],
+}
+
 # 2.2 status_simple
 STATUS_SIMPLE_MAP: dict[str, str] = {
     STATUS_NEW: "qabul_qilindi",

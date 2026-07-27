@@ -32,13 +32,14 @@ function SearchableSelect({
   inputProps,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState(value);
+  // Yozilayotgan matn faqat dropdown OCHIQ turganda ma'noli. Yopiq holatda
+  // ko'rsatiladigan matn — tanlangan qiymatning o'zi, ya'ni hosila.
+  // Shuning uchun ularni sinxronlab turadigan effekt kerak emas
+  // («you might not need an effect» — Topbar.tsx dagi bilan bir xil yondashuv;
+  // avval bu yerda `useEffect` + `eslint-disable` turgan edi).
+  const [draft, setDraft] = useState(value);
+  const query = open ? draft : value;
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- dropdown yopilganda input qiymatini tanlangan qiymatga qaytarish
-    if (!open) setQuery(value);
-  }, [open, value]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -60,7 +61,6 @@ function SearchableSelect({
 
   function selectOption(option: string) {
     onChange(option);
-    setQuery(option);
     setOpen(false);
   }
 
@@ -92,10 +92,15 @@ function SearchableSelect({
           id={id}
           value={query}
           onChange={(e) => {
-            setQuery(e.target.value);
+            setDraft(e.target.value);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          // Ochilayotganda yozuv maydoni joriy qiymatdan boshlanadi
+          // (fokus har doim yozishdan oldin keladi).
+          onFocus={() => {
+            setDraft(value);
+            setOpen(true);
+          }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
@@ -128,7 +133,9 @@ function SearchableSelect({
               onClick={handleAddOption}
               className="w-full px-3.5 py-2 text-left text-sm text-accent hover:bg-bg-subtle transition"
             >
-              {hasQuery ? `+ qo&apos;shish: ${query.trim()}` : "+ qo&apos;shish"}
+              {/* JS satri — JSX matni emas, shuning uchun `&apos;` bu yerda
+                  dekodlanmaydi va ekranda "qo&apos;shish" bo'lib chiqardi. */}
+              {hasQuery ? `+ qo'shish: ${query.trim()}` : "+ qo'shish"}
             </button>
           </li>
         </ul>
