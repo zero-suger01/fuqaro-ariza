@@ -105,12 +105,18 @@ System prompt (qisqartirilgan; to'liq varianti kodda):
 Sen O'zbekiston tuman hokimligi murojaatlarini tasniflovchi yordamchisan.
 Fuqaro matni o'zbek (lotin/kirill/sheva), rus yoki ingliz tilida bo'lishi mumkin.
 Faqat JSON qaytar. Kategoriyalardan FAQAT bittasini tanla:
-{categories: kod — tavsif ro'yxati DB'dan dinamik}
+{categories: `kod: nom — chegara izohi` ro'yxati DB'dan dinamik}
 Maydonlar: category_code, confidence (0..1), priority (low|medium|high|critical —
 hayot/xavfsizlik tahdidi bo'lsa critical), sentiment (negative|neutral|positive),
 summary_uz (o'zbek lotin, max 2 gap), reply_draft_uz (rasmiy, xushmuomala javob
 loyihasi, 2-3 gap, "Hurmatli fuqaro" bilan boshlansin), tags (3-6 ta qisqa teg).
 ```
+
+**Chegara izohi (`categories.descriptions`, M15 — v1.8).** Kategoriya nomi ikki so'z bo'lgani uchun chegaraviy holatni hal qila olmasdi. Izoh «nima kiradi; nima kirmaydi -> qaysi kod» shaklida yoziladi va faqat chegarasi chalkash kategoriyalarga beriladi (22 tadan 11 tasi) — nomi o'z-o'zidan aniq bo'lganlarga izoh qo'shish promptni bekorga suyultiradi.
+
+O'lchangan ta'sir (deepseek-v4-flash, chegaraviy 5 ta matn): 3 tasida yo'naltirish o'zgardi va uchalasi ham izohda yozilgan qoidaga mos tushdi. Eng muhimi — «ko'chamiz qorong'i, bezorilar yig'iladi» avval `jamoat_xavfsizlik` ga (militsiya faqat patrul qila oladi), endi `yol_transport` ga (yoritishni tuzatadi) + `jamoat_xavfsizlik` sub-taski bilan ketadi. Ya'ni murojaat **muammoni hal qila oladigan** bo'limga boradi.
+
+> Izohlar `app/seed.py` dagi `CATEGORY_DESCRIPTIONS` da turadi va seed **mavjud** kategoriyalarga ham har safar qayta yozadi — ya'ni promptni sozlash = izohni tahrirlab `python -m app.seed` yurgizish, kod o'zgartirish emas. Chegaralar hokimlikning haqiqiy bo'lim mas'uliyatiga mos kelishi tekshirilishi kerak (masalan ko'cha yoritishi: yo'l xo'jaligimi yoki elektr tarmoqlarimi).
 
 User xabari: fuqaroning asl matni (hech qanday normalizatsiyasiz — LLM kirill/lotin/shevani o'zi tushunadi, bu keyword lug'atidan farqli o'laroq uning kuchli tomoni) + mavjud bo'lsa mahalla/manzil.
 
@@ -124,8 +130,18 @@ Javob validatsiyasi: Pydantic (`category_code` ro'yxatda bo'lishi shart; bo'lmas
 
 Keyword lug'ati bo'lmagani uchun "o'rganish" endi lug'at boyitish emas — **prompt va model sifatini kuzatish**:
 
-1. **AI aniqligi** (`ai_accuracy_7d`, dashboard): `ai_analyses.suggested_category_id` vs murojaatning yakuniy `category_id` — ya'ni admin nechta marta AI kategoriyasini qo'lda to'g'irlagan. 85% dan pastga tushsa prompt yoki model qayta ko'riladi.
+1. **AI aniqligi** (`ai_accuracy_7d` + `ai_reviewed_7d`, dashboard): `reviewed` eventlari ichida `reason == "ok"` ulushi — ya'ni **odam tekshirgan** murojaatlarda AI to'g'ri topganlari. 85% dan pastga tushsa prompt yoki model qayta ko'riladi.
+
+   > **v1.8 da tuzatildi.** Avval bu `ai_category_id` vs `category_id` solishtiruvi edi va DOIM 1.0 qaytarardi: worker ikkala maydonga aynan bir xil qiymat yozadi, ular esa faqat admin `/review` orqali to'g'irlaganda ajraladi. Tekshiruv oqimi ishlatilmasa metrika abadiy «100%» bo'lib turardi, ya'ni 85% darvozasi hech qachon yopilmasdi. O'lchov gate bo'la olmasa — gate yo'q degani.
+   >
+   > **Foizni har doim `ai_reviewed_7d` bilan birga o'qing.** Namuna `needs_review` ga tushganlarga qiyshaygan (qiyin holatlar) va kichik bo'lishi mumkin: 2 ta tekshiruvdan chiqqan 100% hech narsani anglatmaydi. Qiyshaymagan signal — `ai_routing_corrected_7d`: u AI yo'naltirgan murojaatni xodim keyin boshqa bo'limga ko'chirganini eventlardan topadi va tekshiruv sahifasiga bog'liq emas.
 2. **Past ishonch ulushi** (`needs_review` soni): AI o'zi ikkilangan holatlar. Ko'payib ketsa — kategoriya ro'yxati noaniq (masalan "kommunal" va "suv" chegarasi) degani, kategoriya tavsiflari aniqlashtiriladi.
+
+   > **`AI_LOW_CONFIDENCE` modelga sozlanadi va zaxira to'r, asosiy signal emas (v1.8).** Standart 0.6 dan 0.9 ga ko'tarildi: 0.6 da bu shart **hech qachon ishlamagan** — 35 ta tahlildan bittasi ham undan past emas. LLM o'zi haqidagi ishonchni deyarli doim yuqori beradi (modelning ma'lum xususiyati).
+   >
+   > deepseek-v4-flash o'lchovi (n=20): `0.60×1, 0.92×1, 0.95×16, 1.00×2`. Chegara **pichoq tig'ida**: `<0.90` → 5%, `<0.95` → 10%, **`<0.96` → 90%**. Qiymatlarning 80% i aynan 0.95 bo'lgani uchun 0.96 ga ko'tarish tekshiruv navbatini bosib ketadi. Shu sababli bu signalda barqaror «darvoza» qurib bo'lmaydi — u faqat chetdagi holatlarni ushlaydi.
+   >
+   > **Model almashtirilsa qayta o'lchang:** `SELECT confidence, count(*) FROM ai_analyses WHERE model='<yangi>' GROUP BY 1 ORDER BY 1;`
 3. **AI nazorati sahifasi** (admin, FE): past ishonch bilan yo'naltirilgan murojaatlar ro'yxati. Bu **navbat emas** — hech narsa kutmaydi, admin xohlasa kirib ko'radi va noto'g'ri yo'naltirilganini qayta yo'naltiradi (`POST .../review`).
 4. **Prompt versiyalash:** system prompt kodda (`app/services/ai/llm.py`), o'zgartirilganda `ai_analyses.model` maydoniga model nomi yozilgani kabi o'zgarish commit'da qayd etiladi — aniqlik tushsa qaysi o'zgarishdan keyinligi ko'rinadi.
 

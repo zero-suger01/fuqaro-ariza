@@ -214,7 +214,13 @@ export interface DashboardStats {
   overdue: number;
   needs_review: number;
   by_priority: Record<string, number>;
+  /** Tekshirilganlar ichida AI to'g'ri topganlari ulushi (`reviewed`
+   *  eventi, `reason == "ok"`). Foizni HAR DOIM `ai_reviewed_7d` bilan
+   *  birga ko'rsating — namuna hajmisiz u chalg'itadi. */
   ai_accuracy_7d: number | null;
+  /** Yuqoridagi foiz nechta tekshiruvdan chiqqani. 0 = hech kim
+   *  tekshirmagan, ya'ni aniqlik haqida hech narsa deyish mumkin emas. */
+  ai_reviewed_7d: number;
   by_neighborhood: NeighborhoodStat[];
   ai_auto_routed_7d: number;
   ai_routing_corrected_7d: number;

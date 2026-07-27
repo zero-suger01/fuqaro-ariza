@@ -893,14 +893,49 @@ def dashboard_stats(db: Session = Depends(get_db)):
 
     priority_rows = db.query(Complaint.priority, func.count()).group_by(Complaint.priority).all()
 
-    ai_scored = (
-        db.query(Complaint)
-        .filter(Complaint.created_at >= seven_days_ago, Complaint.ai_category_id.isnot(None))
-        .all()
-    )
+    # AI aniqligi — FAQAT odam tekshirgan murojaatlar bo'yicha.
+    #
+    # Avval bu `ai_category_id == category_id` solishtiruvi edi va DOIM 100%
+    # chiqardi: worker ikkala maydonga AYNAN bir xil qiymat yozadi
+    # (`app/worker.py`), ular esa faqat admin `/review` orqali to'g'irlaganda
+    # ajraladi. Ya'ni metrika «AI qanchalik to'g'ri» emas, «admin hech narsa
+    # tuzatmadi» ni o'lchardi va tekshiruv oqimi ishlatilmasa abadiy 1.0
+    # bo'lib turardi — docs/07 §5 esa uni asosiy sifat darvozasi (85%) deb
+    # qo'ygan. O'lchov gate bo'la olmasa, gate yo'q degani.
+    #
+    # Endi manba — `reviewed` eventining `reason` maydoni. U v1.4 da aynan
+    # shu maqsadda MAJBURIY qilingan ([03] §5: «sababsiz tuzatish AI sifatini
+    # o'lchashni imkonsiz qiladi»): `ok` = AI to'g'ri topgan, qolganlari =
+    # to'g'irlangan.
+    #
+    # Bu «tekshirilganlar ichida» aniqlik — namuna `needs_review` ga tushgan
+    # murojaatlarga qiyshaygan (ya'ni qiyin holatlar), shuning uchun yonida
+    # namuna hajmi (`ai_reviewed_7d`) ham qaytariladi: 2 ta tekshiruvdan
+    # chiqqan foizni ko'rsatish yo'q qilinishi kerak. Qiyshaymagan signal
+    # `ai_routing_corrected_7d` da qoladi (quyida) — u har qanday AI
+    # yo'naltirishini xodim keyin o'zgartirganini eventlardan topadi.
+    # `reason` v1.4 dan beri majburiy, lekin undan OLDIN yozilgan `reviewed`
+    # eventlarida u yo'q. Sababsiz yozuv «AI adashgan» emas, «noma'lum»
+    # degani — shuning uchun u maxrajga ham kirmaydi. Aks holda eski
+    # yozuvlar aniqlikni sun'iy ravishda pastga tortadi (bu bazada 38 ta
+    # tekshiruvdan 23 tasi aynan shunday).
+    review_reasons = [
+        reason
+        for reason in (
+            (event.payload or {}).get("reason")
+            for event in db.query(ComplaintEvent)
+            .filter(
+                ComplaintEvent.event_type == "reviewed",
+                ComplaintEvent.created_at >= seven_days_ago,
+            )
+            .all()
+        )
+        if reason
+    ]
+    ai_reviewed_7d = len(review_reasons)
     ai_accuracy_7d = (
-        round(sum(1 for c in ai_scored if c.ai_category_id == c.category_id) / len(ai_scored), 2)
-        if ai_scored
+        round(sum(1 for reason in review_reasons if reason == "ok") / ai_reviewed_7d, 2)
+        if ai_reviewed_7d
         else None
     )
 
@@ -1018,6 +1053,7 @@ def dashboard_stats(db: Session = Depends(get_db)):
         needs_review=db.query(Complaint).filter(Complaint.needs_review.is_(True)).count(),
         by_priority={priority: count for priority, count in priority_rows},
         ai_accuracy_7d=ai_accuracy_7d,
+        ai_reviewed_7d=ai_reviewed_7d,
         by_neighborhood=[
             NeighborhoodStat(neighborhood_id=nid, neighborhood_name=name, count=count)
             for nid, name, count in neighborhood_rows

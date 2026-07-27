@@ -42,7 +42,29 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com"
     # LLM shundan past ishonch bersa `needs_review` BELGISI qo'yiladi
     # (bloklamaydi — murojaat baribir yo'naltiriladi, docs/07 §1).
-    ai_low_confidence: float = 0.6
+    #
+    # 0.6 -> 0.9 (v1.8). Sabab: 0.6 da bu shart HECH QACHON ishlamagan —
+    # 35 ta tahlildan bittasi ham 0.6 dan past emas. LLM o'zi haqidagi
+    # ishonchni deyarli har doim yuqori beradi (bu modelning ma'lum
+    # xususiyati, loyihaning xatosi emas), shuning uchun 0.6 amalda o'lik
+    # kod edi.
+    #
+    # DIQQAT — bu qiymat MODELGA sozlangan, universal emas.
+    # deepseek-v4-flash o'lchovi (n=20): 0.60×1, 0.92×1, 0.95×16, 1.00×2.
+    # Chegara pichoq tig'ida turadi:
+    #     < 0.90 ->  5%   < 0.95 -> 10%   < 0.96 -> 90%
+    # 0.96 ga ko'tarish navbatni bosib ketadi (qiymatlarning 80% i aynan
+    # 0.95). 0.9 tanlandi: haqiqiy chetdagilarni (0.60) ushlaydi, asosiy
+    # to'plamdan xavfsiz uzoqda va tig'da emas.
+    #
+    # Model almashtirilsa QAYTA o'lchash shart (docs/07 §5):
+    #   SELECT confidence, count(*) FROM ai_analyses
+    #   WHERE model='<yangi model>' GROUP BY 1 ORDER BY 1;
+    #
+    # Bu chegara — zaxira to'r, asosiy sifat signali EMAS. Ishonchli
+    # signallar: `ai_routing_corrected_7d` (xodim qayta yo'naltirgani) va
+    # ko'p bo'limli murojaat aniqlanishi (v1.5 sub-tasklar).
+    ai_low_confidence: float = 0.9
     # R1: generatsiya (xulosa + javob drafti + teglar) klassifikatsiyadan
     # ancha ko'p token talab qiladi — CPU serverda 2-6 daqiqa. Fuqaro ham,
     # xodim ham kutmaydi (async worker), shuning uchun timeout saxiy.

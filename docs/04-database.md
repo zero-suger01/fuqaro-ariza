@@ -54,6 +54,7 @@ Mavjud jadval o'zgaradi: `role` → `department_staff|admin` (B6, `alembic/versi
 | id | uuid PK | |
 | code | varchar(50) UNIQUE | `suv`, `yol`... (kontrakt §2.3) |
 | names | jsonb | `{"uz": "...", "oz": "...", "ru": "...", "en": "..."}` |
+| descriptions | jsonb NULL | **M15** — LLM promptiga uzatiladigan CHEGARA izohi (`{"uz": "..."}`). Fuqaroga ko'rsatilmaydi. Uslub: «nima kiradi; nima kirmaydi -> qaysi kod». NULL bo'lsa prompt faqat nom bilan ishlaydi ([07](07-ai-layer.md) §1.1) |
 | icon | varchar(50) | lucide ikon nomi |
 | sla_hours | int NOT NULL default 72 | deadline hisobi uchun |
 | department_id | uuid FK NULL | standart mas'ul bo'lim (AI routing shu orqali) |
@@ -201,6 +202,8 @@ Bitta katta migratsiya EMAS — kichik bosqichlar, har biri alohida tekshiriladi
 8. **M9 — egalik va ma'lumot sikli (v1.4):** `complaints` ga `accepted_at`, `info_requested_at`, `info_provided_at`, `satisfaction`, `reopened_count`; `departments.wip_limit`; `users.must_change_password`; yangi jadvallar `citizen_messages`, `complaint_subtasks`; yangi indekslar (§3). **Backfill:** mavjud `accepted`/`in_progress`+ statusdagi murojaatlar uchun `accepted_at` — `complaint_events` dagi `status_changed → accepted` eventining vaqti (yo'q bo'lsa NULL qoladi). `ck_complaints_status` CHECK'iga tegilmaydi — yangi status qo'shilmagan, faqat yangi **o'tishlar** (`resolved→in_progress`, `closed→in_progress`) qo'shilgan, ular esa ilova darajasida. Fayl: `alembic/versions/m9_ownership_and_info_loop.py`.
 
 9. **M10 — AI sub-tasklari (v1.5):** `complaint_subtasks.created_by` `NOT NULL` → `NULL`. Sabab: AI ko'p bo'limli murojaatni o'zi bo'lganda topshiriqni **xodim emas, AI** yaratadi ([07](07-ai-layer.md) §1.1) va `created_by` ga yozadigan `users.id` yo'q. `complaint_events.actor_id` allaqachon shu naqshda (AI harakatida NULL). Ma'lumot yo'qolmaydi; `downgrade()` ustunni qayta `NOT NULL` qiladi va buning uchun avval AI yaratgan qatorlarni **o'chiradi** (ular uchun to'g'ri `created_by` qiymati yo'q — docstring'da ogohlantirilgan). Fayl: `alembic/versions/m10_ai_subtasks.py`.
+
+10. **M15 — kategoriya tavsiflari (v1.8):** `categories.descriptions` jsonb NULL. LLM promptiga uzatiladigan chegara izohi. Sabab: [07](07-ai-layer.md) §1.1 promptni «kod — **tavsif**» deb ta'riflardi va §5 aniqlikni oshirish vositasi sifatida «kategoriya tavsiflarini aniqlashtirish»ni ko'rsatardi, lekin bunday ustun umuman yo'q edi va prompt faqat `kod: nom` yuborardi — hujjat mavjud bo'lmagan vositaga tayanardi. Nullable, orqaga mos. Fayl: `alembic/versions/m15_category_descriptions.py`.
 
 > Dev bazalar odatda bo'sh — lekin migratsiya baribir data-safe yoziladi (server pilotida kerak bo'ladi). Har migratsiyadan keyin: `alembic upgrade head && python -m app.seed && pytest -k smoke`.
 

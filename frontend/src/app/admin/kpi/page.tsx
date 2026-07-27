@@ -219,11 +219,22 @@ export default function KpiPage() {
               <div className="h-11 w-11 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
                 <Clock className="h-5 w-5 text-accent" />
               </div>
+              {/* Foiz YOLG'IZ ko'rsatilmaydi — yonida namuna hajmi turadi.
+                  Bu «AI aniqligi» aslida «tekshirilganlar ichida AI to'g'ri
+                  topganlari» degani, va 2 ta tekshiruvdan chiqqan 100% 200 ta
+                  tekshiruvdan chiqqani bilan bir xil ko'rinmasligi kerak.
+                  Hech kim tekshirmagan bo'lsa — foiz emas, ochiq «hali
+                  tekshirilmagan» yoziladi. */}
               <div>
                 <p className="text-2xl font-semibold text-text-primary font-mono">
                   {stats?.ai_accuracy_7d != null ? `${Math.round(stats.ai_accuracy_7d * 100)}%` : "—"}
                 </p>
-                <p className="text-sm text-text-muted">AI aniqligi (7 kun)</p>
+                <p className="text-sm text-text-muted">
+                  AI aniqligi (7 kun)
+                  {stats?.ai_reviewed_7d
+                    ? ` · ${stats.ai_reviewed_7d} ta tekshiruvdan`
+                    : " · hali tekshirilmagan"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">

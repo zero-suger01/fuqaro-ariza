@@ -116,8 +116,30 @@ def current_engine_and_model() -> tuple[str, str]:
 
 
 def _category_catalog(db: Session) -> str:
-    categories = db.query(Category).filter(Category.is_active.is_(True)).order_by(Category.sort_order).all()
-    return "\n".join(f"- {c.code}: {c.name('uz')}" for c in categories)
+    """Kategoriya katalogi: kod, nom va (bo'lsa) chegara izohi.
+
+    Izoh M15 da qo'shildi. Avval prompt faqat `kod: nom` yuborardi, ya'ni
+    LLM chegaraviy holatni ikki so'zlik yorliqdan taxmin qilishi kerak edi:
+    «ko'cha chiroqlari yonmayapti» uchun u «Yo'l va transport» va «Elektr
+    energiyasi» dan birini tanlashi lozim, lekin ko'cha yoritishi kimning
+    zimmasida ekani hech qayerda yozilmagan edi. Izoh aynan shu chegarani
+    aytadi ("... KIRMAYDI -> boshqa_kod").
+
+    docs/07 §1.1 promptni boshidanoq «kod — tavsif» deb ta'riflagan; bu
+    yerda hujjat bilan kod nihoyat mos keldi. Izohi yo'q kategoriya
+    avvalgidek faqat nom bilan chiqadi.
+    """
+    categories = (
+        db.query(Category)
+        .filter(Category.is_active.is_(True))
+        .order_by(Category.sort_order)
+        .all()
+    )
+    lines = []
+    for c in categories:
+        description = c.description("uz")
+        lines.append(f"- {c.code}: {c.name('uz')}" + (f" — {description}" if description else ""))
+    return "\n".join(lines)
 
 
 def _call_ollama(messages: list[dict]) -> str:

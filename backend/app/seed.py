@@ -73,8 +73,81 @@ CATEGORIES = [
     ("boshqa", "Boshqa", "Бошқа", "Другое", "Other", "help-circle", 72, "hokimlik"),
 ]
 
+# DIQQAT: `settings` jadvali hozir FAQAT shu yerda yoziladi va kod uni
+# hech qayerda O'QIMAYDI. Haqiqiy sozlamalar `app/config.py` (env) orqali
+# keladi.
+#
+# `ai_low_confidence` shu ro'yxatdan olib tashlandi (v1.8): u bazada 0.6
+# bo'lib turardi, `config.py` da esa boshqa qiymat — chegarani sozlamoqchi
+# bo'lgan odam tabiiy ravishda bazadagi aynan shu nomli kalitni o'zgartirib,
+# hech narsa o'zgarmaganini ko'rardi. Ikki manba, biri o'lik — eng yomon
+# holat. Chegara faqat `AI_LOW_CONFIDENCE` env orqali sozlanadi.
+# Kategoriya chegara izohlari — LLM promptiga uzatiladi (M15, docs/07 §1.1).
+#
+# Faqat CHEGARASI chalkash kategoriyalar uchun yoziladi: izohning vazifasi
+# nomni takrorlash emas, «bu menikimi yoki qo'shnimnikimi» degan savolga
+# javob berish. Nomi o'z-o'zidan aniq bo'lganlar (masalan `talim`,
+# `fhdyo_hujjatlar`) izohsiz qoladi — ortiqcha matn promptni suyultiradi.
+#
+# Yozish uslubi: «NIMA kiradi; NIMA kirmaydi -> qaysi kodga».
+CATEGORY_DESCRIPTIONS = {
+    "yol_transport": (
+        "Ko'cha va yo'l qoplamasi, chuqurlar, piyodalar yo'lagi, svetofor va yo'l "
+        "belgilari, jamoat transporti. KO'CHA YORITISHI (ko'cha chiroqlari, "
+        "ustunlardagi lampalar) ham shu yerga kiradi — bu ko'cha infratuzilmasi. "
+        "Uy ichidagi yoki uyga keladigan elektr emas -> elektr."
+    ),
+    "elektr": (
+        "Uy va binolarga elektr TA'MINOTI: svet o'chishi, kuchlanish pasayishi, "
+        "hisoblagich, uzilgan sim, transformator. Ko'cha chiroqlari bu yerga "
+        "KIRMAYDI -> yol_transport."
+    ),
+    "suv_kanalizatsiya": (
+        "Ichimlik suvi ta'minoti, suv bosimi, quvur yorilishi, kanalizatsiya "
+        "tiqilishi va oqishi. Hovli/ko'chadagi to'planib qolgan yomg'ir suvi "
+        "ham shu yerda."
+    ),
+    "chiqindi_obodon": (
+        "Maishiy chiqindi olib ketilmasligi, konteyner yetishmasligi, ko'chani "
+        "tozalash, ko'kalamzorlashtirish, skameyka va bolalar maydonchasi. "
+        "Sanoat chiqindisi yoki tabiatga zarar -> ekologiya."
+    ),
+    "ekologiya": (
+        "Atrof-muhitga zarar: havo va suvni ifloslantirish, sanoat chiqindisi, "
+        "daraxtlarni ruxsatsiz kesish, yer osti suvlari. Oddiy maishiy chiqindi "
+        "emas -> chiqindi_obodon."
+    ),
+    "uy_kommunal": (
+        "Ko'p qavatli uy va umumiy mulk: tom oqishi, podyezd, lift, isitish "
+        "tizimi, uy boshqaruv tashkiloti ishi. Muammo faqat suv/gaz/elektr "
+        "TA'MINOTIDA bo'lsa -> mos ta'minot kategoriyasi."
+    ),
+    "gaz": (
+        "Tabiiy gaz ta'minoti: gaz yo'qligi, bosim pasayishi, hisoblagich, "
+        "gaz hidi va sizishi (bu hayot uchun xavf — priority critical)."
+    ),
+    "jamoat_xavfsizlik": (
+        "Jamoat tartibi buzilishi: bezorilik, shovqin, ruxsatsiz savdo, "
+        "jinoyat. Muammo texnik nosozlik bo'lib, xavf u sabab yuzaga kelgan "
+        "bo'lsa (masalan chiroq yo'qligi tufayli qorong'ilik) — asosiy "
+        "kategoriya o'sha nosozlik bo'ladi, bu emas."
+    ),
+    "qurilish_arxitektura": (
+        "Ruxsatsiz qurilish, loyihaga zid bino, qurilish maydonidagi tartibsizlik, "
+        "buzib berish masalalari. Yer chegarasi yoki hujjat -> yer_kadastr."
+    ),
+    "yer_kadastr": (
+        "Yer uchastkasi chegarasi, kadastr hujjatlari, yerni ajratish va "
+        "ro'yxatga olish nizolari."
+    ),
+    "boshqa": (
+        "FAQAT yuqoridagi kategoriyalarning HECH BIRIGA to'g'ri kelmasa. "
+        "Ikkilanayotgan bo'lsang, eng yaqin aniq kategoriyani tanla — bu "
+        "kodni oxirgi chora sifatida ishlat."
+    ),
+}
+
 DEFAULT_SETTINGS = {
-    "ai_low_confidence": 0.6,
     "sla_escalation_hours": 24,
 }
 
@@ -176,8 +249,18 @@ def run(demo: bool = False) -> None:
                 )
                 db.add(category)
                 db.flush()
+            # Tavsif MAVJUD kategoriyalarga ham har safar yoziladi: u prompt
+            # sozlash materiali va uni yaxshilash = seed'ni qayta yurgizish.
+            # Boshqa maydonlar (nom, SLA, bo'lim) admin UI'dan tahrirlanishi
+            # mumkin, shuning uchun ular faqat yaratishda qo'yiladi.
+            category.descriptions = (
+                {"uz": CATEGORY_DESCRIPTIONS[code]} if code in CATEGORY_DESCRIPTIONS else None
+            )
             categories_by_code[code] = category
-        print(f"Categories ready: {len(categories_by_code)}")
+        print(
+            f"Categories ready: {len(categories_by_code)} "
+            f"({len(CATEGORY_DESCRIPTIONS)} tasida LLM uchun chegara izohi)"
+        )
 
         _seed_admin(db)
         if demo:

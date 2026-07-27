@@ -431,7 +431,12 @@ class DashboardStats(BaseModel):
     overdue: int
     needs_review: int
     by_priority: dict[str, int]
+    # `ai_accuracy_7d` — odam tekshirgan murojaatlar ichida AI to'g'ri
+    # topganlari ulushi (`reviewed` eventi, `reason == "ok"`). `ai_reviewed_7d`
+    # — o'sha namunaning hajmi: usiz 2 ta tekshiruvdan chiqqan foiz 200 ta
+    # tekshiruvdan chiqqani bilan bir xil ko'rinadi.
     ai_accuracy_7d: float | None
+    ai_reviewed_7d: int
     by_neighborhood: list[NeighborhoodStat]
     ai_auto_routed_7d: int
     ai_routing_corrected_7d: int
