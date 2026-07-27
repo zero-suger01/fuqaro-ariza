@@ -41,7 +41,7 @@ export function Table<T>({
               <th
                 key={column.key}
                 scope="col"
-                className={clsx("py-2 px-3 font-medium whitespace-nowrap", column.numeric && "text-right")}
+                className={clsx("py-2 px-3 font-medium whitespace-nowrap", column.numeric && "text-center")}
               >
                 {column.header}
               </th>
@@ -56,7 +56,7 @@ export function Table<T>({
                   key={column.key}
                   className={clsx(
                     "py-3 px-3 text-text-secondary whitespace-nowrap",
-                    column.numeric && "text-right font-mono tabular-nums"
+                    column.numeric && "text-center font-mono tabular-nums"
                   )}
                 >
                   {column.render(row)}

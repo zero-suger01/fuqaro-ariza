@@ -69,7 +69,7 @@ function QueueCard({
       </div>
       <p
         className={clsx(
-          "mt-2 text-4xl font-semibold font-mono tabular-nums",
+          "mt-2 text-4xl font-semibold font-mono tabular-nums text-center",
           alarming ? "text-danger" : empty ? "text-text-muted" : "text-text-primary"
         )}
       >
