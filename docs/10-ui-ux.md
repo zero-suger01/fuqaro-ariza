@@ -239,14 +239,22 @@ Ostida **bo'lim jadvali**: `Bo'lim | Yangi | Ijroda | SLA xavfi | Overdue | Egas
 Tekis 9 elementli ro'yxat kunlik ish uchun shovqin edi: `QR kodlar` va `Kategoriyalar` `Murojaatlar` bilan bir qatorda turardi. Guruhlar:
 
 ```
-Operatsion navbat  Bosh ekran · Navbatim · AI nazorati · SLA xavfi · Muddati o'tgan · Ma'lumot kutilmoqda
-Murojaatlar        Barcha murojaatlar
+Operatsion navbat  Bosh ekran · Navbatim · Biriktirilmagan · AI nazorati · SLA xavfi ·
+                   Muddati o'tgan · Ma'lumot kutilmoqda · Barcha murojaatlar
 Monitoring         KPI · Xarita
 Sozlamalar         Bo'limlar · Xodimlar · Kategoriyalar
 Vositalar          QR kodlar · Audit log
 ```
 
 Qoidalar: guruh sarlavhasi bosilmaydi (faqat yorliq); rol filtri **element va guruh** darajasida — barcha elementi yashiringan guruh umuman render qilinmaydi (`department_staff` faqat `Navbatim` + `Murojaatlar` ni ko'radi); navbat elementlari yonida jonli hisoblagich (0 bo'lsa hisoblagich ko'rsatilmaydi); mobil (<1024px) — hamburger + drawer (`F1.8`).
+
+> **`Murojaatlar` guruhi yo'q (v1.8).** «Barcha murojaatlar» `Operatsion
+> navbat` guruhining oxiriga ko'chdi. Sabab: o'lik «Eksport» elementi
+> olib tashlangach guruhda bitta element qolib, sarlavha ortiqcha shovqin
+> bo'lib qoldi. Proximity bo'yicha joyi ham aynan shu yer — yuqoridagi
+> navbatlarning aksariyati AYNAN shu sahifaning filtrlangan ko'rinishlari
+> (`?queue=...`). Tartibi oxirida: avval «nima harakat talab qiladi»,
+> keyin «yoki hammasini ko'rish».
 
 > **Eksport menyuda YO'Q va qayta qo'shilmasin (v1.8).** Avval `Murojaatlar`
 > guruhida `Eksport` elementi bor edi va `?export=1` ga borardi — lekin bu
