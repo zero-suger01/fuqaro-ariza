@@ -62,7 +62,15 @@ Avtomatik ochiladigan sub-tasklar soni **`MAX_AI_SUBTASKS` = 3** (asosiy bo'lim 
 
 **Chegaradan oshgani TASHLANMAYDI.** Avval prompt LLM'ning o'ziga «ko'pi bilan 3 ta» derdi, ya'ni 5 ta xizmatga tegishli murojaatda 5-si javobga umuman kirmasdi va hech qayerda iz qolmasdi — bu aynan shu bo'lim tuzatgan nosozlikning o'zi edi («ikkinchisi jimgina yo'qolardi»), faqat 2-muammodan 5-muammoga ko'chgan.
 
-Endi: LLM hammasini sanaydi → worker 3 tasiga topshiriq ochadi → qolgani **`subtasks_truncated`** eventiga yoziladi (`payload: created, limit, not_assigned[]`) va `needs_review=true` qo'yiladi. Admin timeline'da «Ba'zi muammolar qo'lda ajratilishi kerak» degan yozuvni ko'radi va qolganini o'zi sub-task qilib ajratadi.
+Endi: LLM hammasini sanaydi → worker 3 tasiga topshiriq ochadi → qolgani **`subtasks_truncated`** eventiga yoziladi (`payload: created, limit, not_assigned[]`) va `needs_review=true` qo'yiladi. Admin buni **uch joyda** ko'radi (faqat timeline'da bo'lsa, murojaatni ochib pastga qarab kelmaguncha bilmasdi):
+
+| Qayerda | Nima ko'rinadi |
+|---|---|
+| Murojaatlar kartasi | «N ta xizmat ajratilmagan» (danger; umumiy «AI tekshiruv kerak» o'rniga — aniqroq va shoshilinchroq) |
+| AI nazorati ro'yxati | «Bu xizmatlarga topshiriq ochilmagan — qo'lda ajrating» + xizmat nomlari |
+| Tafsilot sahifasi | «Idoralararo topshiriqlar» kartasi ichida, **qo'shimcha bo'lim berish formasining ustida** — ogohlantirish va uni tuzatadigan joy bir yerda |
+
+Ro'yxat javobida bu `ai.unassigned_services[]` maydoni (sahifadagi barcha murojaat uchun BITTA `IN` so'rovi bilan yig'iladi — qator boshiga so'rov qilinsa N+1 bo'lardi).
 
 O'lchangan misol (5 xizmat: svet, suv, musor, yo'l chuquri, svetofor):
 

@@ -189,10 +189,25 @@ function KanbanCard({ c }: { c: ComplaintListItem }) {
 
       <div className="flex items-center gap-2 flex-wrap">
         <Badge label={PRIORITY_LABELS[c.priority]} color={PRIORITY_COLORS[c.priority]} />
-        {c.needs_review && (
-          <span className="inline-flex items-center gap-1 text-xs text-warning">
-            <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden /> AI tekshiruv kerak
+        {/* v1.8 — ajratilmagan xizmat bo'lsa AYNAN shuni ko'rsatamiz,
+            umumiy «AI tekshiruv kerak» o'rniga: ikkalasi ham
+            `needs_review` dan kelib chiqadi, lekin bu aniqroq va
+            shoshilinchroq — fuqaroning bir muammosi hali hech kimda yo'q.
+            Ikkitasini birga chiqarish kartani shovqinga to'ldirardi. */}
+        {c.ai && c.ai.unassigned_services.length > 0 ? (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-danger">
+            <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+            {/* Shablon satri — JSX ichida `{son} ta` yozilsa bo'shliq
+                yo'qolib «1ta» bo'lib qolishi mumkin (tafsilot sahifasida
+                aynan shunday bo'lgan). */}
+            <span>{`${c.ai.unassigned_services.length} ta xizmat ajratilmagan`}</span>
           </span>
+        ) : (
+          c.needs_review && (
+            <span className="inline-flex items-center gap-1 text-xs text-warning">
+              <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden /> AI tekshiruv kerak
+            </span>
+          )
         )}
       </div>
     </Link>

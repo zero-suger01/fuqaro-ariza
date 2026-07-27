@@ -127,7 +127,38 @@ def _department_brief(department: Department) -> DepartmentBrief:
     return DepartmentBrief(id=department.id, code=department.code, name=department.name("uz"))
 
 
-def _ai_list_brief(complaint: Complaint) -> AiListBrief | None:
+def _unassigned_services_map(db: Session, complaints: list[Complaint]) -> dict[uuid.UUID, list[str]]:
+    """`subtasks_truncated` eventlarini BITTA so'rovda yig'adi.
+
+    Ro'yxat 20 qatorgacha bo'lishi mumkin, shuning uchun har qator uchun
+    `complaint.events` ga murojaat qilish N+1 berardi — bu yerda id'lar
+    bo'yicha bitta `IN` so'rovi bajariladi.
+    """
+    if not complaints:
+        return {}
+    rows = (
+        db.query(ComplaintEvent.complaint_id, ComplaintEvent.payload)
+        .filter(
+            ComplaintEvent.event_type == "subtasks_truncated",
+            ComplaintEvent.complaint_id.in_([c.id for c in complaints]),
+        )
+        .all()
+    )
+    result: dict[uuid.UUID, list[str]] = {}
+    for complaint_id, payload in rows:
+        names = (payload or {}).get("not_assigned") or []
+        # Bir murojaatda qayta tahlil bo'lsa bir nechta event bo'lishi
+        # mumkin — hammasi birlashtiriladi, takrorlanmaydi.
+        existing = result.setdefault(complaint_id, [])
+        for name in names:
+            if name not in existing:
+                existing.append(name)
+    return result
+
+
+def _ai_list_brief(
+    complaint: Complaint, unassigned_services: list[str] | None = None
+) -> AiListBrief | None:
     """R2: ro'yxat qatori uchun qisqa AI ma'lumoti — Navbatim'dagi xulosa
     qatori va Tasdiqlash navbatidagi taklif. Oxirgi tahlil (LLM-always'da
     LLM tahlili) olinadi."""
@@ -143,6 +174,7 @@ def _ai_list_brief(complaint: Complaint) -> AiListBrief | None:
             for s in complaint.subtasks
             if s.status == "open"
         ],
+        unassigned_services=unassigned_services or [],
     )
 
 
@@ -352,6 +384,8 @@ def list_complaints(
         query.order_by(Complaint.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
     )
 
+    unassigned_by_complaint = _unassigned_services_map(db, rows)
+
     items = [
         ComplaintListItem(
             id=c.id,
@@ -365,7 +399,7 @@ def list_complaints(
             created_at=c.created_at,
             deadline_at=c.deadline_at,
             needs_review=c.needs_review,
-            ai=_ai_list_brief(c),
+            ai=_ai_list_brief(c, unassigned_by_complaint.get(c.id)),
             description_snippet=c.description[:160],
             assigned_user_id=c.assigned_user_id,
             assigned_user_name=c.assigned_user.fullname if c.assigned_user else None,

@@ -241,6 +241,17 @@ export default function AdminComplaintDetailPage() {
   const isMine = complaint.assigned_user_id != null && complaint.assigned_user_id === user?.id;
   const openSubtasks = complaint.subtasks.filter((s) => s.status === "open");
 
+  // v1.8 — AI chegara tufayli ajratmagan xizmatlar nomi. Bir murojaat
+  // qayta tahlil qilinsa bir nechta `subtasks_truncated` eventi bo'lishi
+  // mumkin, shuning uchun hammasi birlashtiriladi va takrorlanmaydi.
+  const unassignedServices = Array.from(
+    new Set(
+      complaint.events
+        .filter((e) => e.event_type === "subtasks_truncated")
+        .flatMap((e) => (e.payload?.not_assigned as string[] | undefined) ?? [])
+    )
+  );
+
   const images = complaint.files.filter((f) => f.kind === "image");
   const audioFiles = complaint.files.filter((f) => f.kind === "audio");
   const otherFiles = complaint.files.filter((f) => f.kind !== "image" && f.kind !== "audio");
@@ -734,6 +745,42 @@ export default function AdminComplaintDetailPage() {
               <Network className="h-4 w-4 text-accent" />
               <h2 className="text-base font-semibold text-text-primary">Idoralararo topshiriqlar</h2>
             </div>
+
+            {/* v1.8 — AI topgan, lekin chegara (`MAX_AI_SUBTASKS`=3)
+                tufayli avtomatik ajratilMAGAN xizmatlar ([07] §1.1).
+                Ataylab AYNAN shu kartada: pastdagi «Qo'shimcha bo'lim»
+                formasi — buni tuzatadigan joy, ya'ni ogohlantirish va
+                harakat bir joyda turadi. Manba `events`, chunki tafsilot
+                javobida `ai` boshqa sxema (`AiAnalysisItem`). */}
+            {unassignedServices.length > 0 && (
+              <div className="mb-4 flex flex-col gap-2 rounded-inner border border-danger/30 bg-danger/5 px-4 py-3">
+                {/* Matn shablon satri sifatida beriladi, JSX ichida
+                    yozilmaydi: `AI yana {son} ta ...` ko'rinishida yozilsa
+                    va qator o'ralsa, JSX ifoda yonidagi bo'shliqni yeb
+                    yuboradi va matn «1ta» bo'lib qoladi (tekshirilgan:
+                    DOM'da uch tugun — "AI yana ", "1", "ta xizmat...").
+                    Vizual `gap` tufayli bu bilinmaydi, lekin skrinrider
+                    «bir ta» deb o'qiydi. */}
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-danger">
+                  <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+                  <span>{`AI yana ${unassignedServices.length} ta xizmat aniqladi, lekin o'zi ajratmadi`}</span>
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {unassignedServices.map((name) => (
+                    <span
+                      key={name}
+                      className="inline-flex items-center rounded-pill bg-danger/10 px-2.5 py-1 text-xs font-medium text-danger"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-text-secondary">
+                  Fuqaro bu muammolarni ham yozgan — quyidagi forma orqali tegishli bo&apos;limga
+                  topshiriq bering, aks holda ular hech kimda qolmaydi.
+                </p>
+              </div>
+            )}
 
             {complaint.subtasks.length === 0 ? (
               <p className="text-sm text-text-muted">Topshiriq berilmagan</p>
