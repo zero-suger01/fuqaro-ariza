@@ -49,6 +49,7 @@ DEPARTMENTS = [
     ("iib", "Ichki ishlar bo'limi (IIB, mahalla profilaktika inspektori)", "Ички ишлар бўлими (ИИБ)", "Отдел внутренних дел", "Internal affairs department", True),
     ("favqulodda", "Favqulodda vaziyatlar bo'limi (yong'in xavfsizligi)", "Фавқулодда вазиятлар бўлими", "Отдел по чрезвычайным ситуациям", "Emergency situations department", True),
     ("mib", "Majburiy ijro byurosi (MIB)", "Мажбурий ижро бюроси (МИБ)", "Бюро принудительного исполнения", "Enforcement bureau", True),
+    ("fhdyo", "Adliya vazirligi (FHDYO bo'limi va DXM)", "Адлия вазирлиги (ФҲДЁ бўлими ва ДХМ)", "Министерство юстиции (отдел ЗАГС и ЦГУ)", "Ministry of Justice (civil registry & state services)", True),
     # --- 6. Iqtisodiyot, soliq va mehnat ---
     ("soliq", "Davlat soliq inspeksiyasi", "Давлат солиқ инспекцияси", "Государственная налоговая инспекция", "State tax inspectorate", True),
     ("bandlik", "Bandlik va mehnat inspeksiyasi", "Бандлик ва меҳнат инспекцияси", "Инспекция по труду и занятости", "Labor and employment inspectorate", True),
@@ -60,7 +61,7 @@ DEPARTMENTS = [
 
 # Matritsada yo'q — nofaol qilinadi (mavjud murojaatlar tarixi buzilmasin
 # uchun o'chirilmaydi, faqat `is_active=False`).
-RETIRED_DEPARTMENTS = ["kommunal", "fhdyo", "qishloq_xojaligi", "telekom", "huquq"]
+RETIRED_DEPARTMENTS = ["kommunal", "qishloq_xojaligi", "telekom", "huquq"]
 
 # code, uz, oz, ru, en, icon, sla_hours, department_code
 #
@@ -92,6 +93,7 @@ CATEGORIES = [
     ("jamoat_xavfsizlik", "Jamoat tartibi va xavfsizlik", "Жамоат тартиби ва хавфсизлик", "Общественный порядок и безопасность", "Public order & safety", "shield-alert", 24, "iib"),
     ("favqulodda", "Yong'in va favqulodda vaziyat", "Ёнғин ва фавқулодда вазият", "Пожары и ЧС", "Fire & emergencies", "flame-kindling", 12, "favqulodda"),
     ("ijro", "Sud qarori ijrosi va qarzdorlik", "Суд қарори ижроси ва қарздорлик", "Исполнение судебных решений", "Court enforcement & debts", "gavel", 120, "mib"),
+    ("fhdyo_hujjatlar", "FHDYO guvohnomalari va davlat xizmatlari", "ФҲДЁ гувоҳномалари ва давлат хизматлари", "Свидетельства ЗАГС и госуслуги", "Civil registry & state services", "file-text", 120, "fhdyo"),
     # --- 6. Iqtisodiyot, soliq va mehnat ---
     ("soliq", "Soliq va tadbirkorlik", "Солиқ ва тадбиркорлик", "Налоги и предпринимательство", "Tax & business", "receipt", 168, "soliq"),
     ("mehnat", "Mehnat va ish haqi", "Меҳнат ва иш ҳақи", "Труд и заработная плата", "Labor & wages", "briefcase", 168, "bandlik"),
@@ -108,7 +110,7 @@ CATEGORIES = [
 # yo'naltirilmaydi.
 RETIRED_CATEGORIES = [
     "chiqindi_obodon", "yol_transport", "uy_kommunal", "qurilish_arxitektura",
-    "soliq_moliya", "yongin_xavfsizligi", "bandlik_mehnat", "fhdyo_hujjatlar",
+    "soliq_moliya", "yongin_xavfsizligi", "bandlik_mehnat",
     "qishloq_xojaligi", "telekommunikatsiya", "huquqiy_masalalar",
     "taklif_tashabbus", "boshqa",
 ]
@@ -219,11 +221,21 @@ CATEGORY_DESCRIPTIONS = {
     # --- 5. Jamoat tartibi, huquq va xavfsizlik ---
     "jamoat_xavfsizlik": (
         "Jamoat tartibi buzilishi, tunda shovqin, mushtlashuv, o'g'rilik, "
-        "shaxsiy xavfsizlikka tahdid; pasport/ID-karta, propiska va migratsiya; "
-        "mahalla profilaktika inspektori harakatsizligi. Agar muammo TEXNIK "
-        "nosozlik bo'lib, xavf o'sha nosozlikdan kelib chiqsa (masalan yoritish "
-        "yo'qligi tufayli qorong'ilik) — asosiy kod o'sha nosozlik bo'ladi, bu "
-        "esa ikkilamchi."
+        "shaxsiy xavfsizlikka tahdid; mahalla profilaktika inspektori "
+        "harakatsizligi. HUJJATLARDAN faqat pasport, ID-karta, propiska va "
+        "migratsiya shu yerda. Tug'ilish/nikoh/o'lim guvohnomasi va ism "
+        "o'zgartirish bu yerga KIRMAYDI -> fhdyo_hujjatlar. Agar muammo "
+        "TEXNIK nosozlik bo'lib, xavf o'sha nosozlikdan kelib chiqsa "
+        "(masalan yoritish yo'qligi tufayli qorong'ilik) — asosiy kod o'sha "
+        "nosozlik bo'ladi, bu esa ikkilamchi."
+    ),
+    "fhdyo_hujjatlar": (
+        "FHDYO (ZAGS) va Adliya: tug'ilish, nikoh, nikohdan ajralish va o'lim "
+        "holatlarini davlat ro'yxatidan o'tkazish; guvohnoma va uning takroriy "
+        "dublikatini berish; otalikni belgilash, farzandlikka olish; ism, "
+        "familiya yoki otasining ismini o'zgartirish; Davlat xizmatlari "
+        "markazi (DXM) va e-xizmatlar bo'yicha e'tirozlar. Pasport, ID-karta "
+        "va propiska bu yerga KIRMAYDI -> jamoat_xavfsizlik."
     ),
     "favqulodda": (
         "Yong'in xavfi va sodir bo'lgan yong'inlar, tabiiy va texnogen xavflar "

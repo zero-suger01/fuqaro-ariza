@@ -114,7 +114,7 @@ CATEGORY_CODES = [
     "yol", "yol_harakati", "jamoat_transporti",
     "ekologiya", "yer_kadastr", "qurilish",
     "sogliqni_saqlash", "talim", "ijtimoiy_yordam",
-    "jamoat_xavfsizlik", "favqulodda", "ijro",
+    "jamoat_xavfsizlik", "favqulodda", "ijro", "fhdyo_hujjatlar",
     "soliq", "mehnat", "isteomolchi",
     "hokimlik", "mahalla",
 ]

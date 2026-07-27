@@ -61,6 +61,7 @@ tanlashi = mas'ul tashkilotni tanlashi. Oradagi noaniqlik yo'q.
 | `jamoat_xavfsizlik` | Ichki ishlar bo'limi (IIB) | Jamoat tartibi, tunda shovqin, mushtlashuv/o'g'rilik, pasport-ID va propiska, profilaktika inspektori |
 | `favqulodda` | Favqulodda vaziyatlar bo'limi | Yong'in va yong'in xavfi, sel/ko'chki/ustun ag'darilishi, binoning yong'in xavfsizligi |
 | `ijro` | Majburiy ijro byurosi (MIB) | Sud qarori ijrosi, aliment va qarz undirish, asossiz taqiq (zapret), inspektor harakatlari |
+| `fhdyo_hujjatlar` | Adliya vazirligi (FHDYO bo'limi va DXM) | Tug'ilish, nikoh, ajralish va o'lim ro'yxati; guvohnoma va dublikat; otalik, farzandlikka olish, ism/familiya o'zgartirish; DXM va e-xizmatlar bo'yicha e'tirozlar |
 
 ### 2.6 Iqtisodiyot, soliq va mehnat
 
@@ -98,20 +99,27 @@ unga yo'naltirilmaydi, lekin eski murojaatda to'g'ri ko'rinadi.
 
 Kategoriyalar: `chiqindi_obodon`, `yol_transport`, `uy_kommunal`,
 `qurilish_arxitektura`, `soliq_moliya`, `yongin_xavfsizligi`,
-`bandlik_mehnat`, `fhdyo_hujjatlar`, `qishloq_xojaligi`,
-`telekommunikatsiya`, `huquqiy_masalalar`, `taklif_tashabbus`, `boshqa`.
+`bandlik_mehnat`, `qishloq_xojaligi`, `telekommunikatsiya`, `huquqiy_masalalar`, `taklif_tashabbus`, `boshqa`.
 
-Bo'limlar: `kommunal`, `fhdyo`, `qishloq_xojaligi`, `telekom`, `huquq`.
+Bo'limlar: `kommunal`, `qishloq_xojaligi`, `telekom`, `huquq`.
+
+> `fhdyo` bo'limi va `fhdyo_hujjatlar` kategoriyasi qayta FAOLLASHTIRILDI (pastdagi eslatma) — ular nofaol paytida hech qanday murojaat bog'lanmagani uchun kod yaratish o'rniga nomi yangilandi.
 
 > **`boshqa` -> `hokimlik`.** Standart kategoriya (`DEFAULT_CATEGORY_CODE`,
 > intake paytida va LLM noma'lum kod qaytarganda) endi `hokimlik`. Avvalgi
 > `boshqa` nomi bo'yicha «bilmadim» qutisiga o'xshardi va hech kimga
 > biriktirilmagandek tuyulardi — matritsa §7 esa mas'ulni aniq ko'rsatadi.
 >
-> **FHDYO (ZAGS) matritsada yo'q.** Pasport/ID va propiska IIB ga berilgan,
-> tug'ilish/nikoh guvohnomalari esa umuman ta'riflanmagan. Hozircha bunday
-> murojaat `hokimlik` ga tushadi. Agar tumanda ZAGS alohida qabul qilsa —
-> matritsaga qo'shilishi kerak.
+> **FHDYO qo'shildi (2026-07-27).** Dastlabki matritsada ZAGS umuman yo'q
+> edi; hokimlik keyin Adliya vazirligi (FHDYO bo'limi va DXM) qatorini
+> berdi. Hujjat chegarasi nozik — ikkala kod ham «hujjat» haqida:
+>
+> | Nima | Kim |
+> |---|---|
+> | Pasport, ID-karta, propiska, migratsiya | `jamoat_xavfsizlik` (IIB) |
+> | Tug'ilish/nikoh/ajralish/o'lim guvohnomasi, dublikat, otalik, farzandlikka olish, ism-familiya o'zgartirish, DXM/e-xizmat | `fhdyo_hujjatlar` (Adliya) |
+>
+> Chegara ikkala izohda yozilgan va sinovdan o'tgan (§5).
 
 ## 5. Sinov natijasi
 
@@ -125,6 +133,17 @@ deepseek-v4-flash, matritsadan olingan 24 ta tipik murojaat matni —
 | «mashina yuradigan katta ko'cha bo'ylab tungi yoritish ishlamayapti» | `obodonlashtirish` |
 | «asfaltda katta chuqur bor» | `yol` |
 | «maktab oldidagi svetofor o'chib qoldi» | `yol_harakati` |
+
+FHDYO qo'shilgach yana 12 ta matn — **12/12**, jumladan IIB bilan chegara:
+
+| Matn | Natija |
+|---|---|
+| «tug'ilganlik guvohnomasini berishmayapti» | `fhdyo_hujjatlar` |
+| «nikoh guvohnomasi dublikati» | `fhdyo_hujjatlar` |
+| «familiyamni o'zgartirish arizasi» | `fhdyo_hujjatlar` |
+| «DXM da e-xizmat ishlamayapti» | `fhdyo_hujjatlar` |
+| «pasport almashtirishga bordim» | `jamoat_xavfsizlik` |
+| «propiska qilishda muammo» | `jamoat_xavfsizlik` |
 
 Sinovni qayta yurgizish: izohlarni `app/seed.py: CATEGORY_DESCRIPTIONS` da
 tahrirlab `python -m app.seed`, so'ng matnlarni `analyze_with_llm` orqali
