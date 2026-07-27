@@ -20,6 +20,7 @@ Bu papka — loyihaning **yagona haqiqat manbai** (single source of truth). Kod 
 | [11-devops.md](11-devops.md) | Docker, server, Ollama, deploy, backup | DevOps qiluvchi |
 | [12-roadmap.md](12-roadmap.md) | Umumiy fazalar (P0–P4), ish taqsimoti, integratsiya checkpointlari, DoD | Hamma |
 | [13-ai-coder-promptlar.md](13-ai-coder-promptlar.md) | AI coder'ga copy-paste qilinadigan tayyor promptlar | Hamma |
+| [14-tashkilotlar-matritsasi.md](14-tashkilotlar-matritsasi.md) | Davlat tashkilotlari matritsasi — kategoriya=tashkilot xaritasi, LLM klassifikator manbasi | Backend/AI, hokimlik |
 
 ## Ikkovlon ishlash tartibi (mismatch bo'lmasligi uchun)
 

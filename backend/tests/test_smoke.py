@@ -11,6 +11,8 @@ import uuid
 
 import pytest
 
+from app.core.constants import DEFAULT_CATEGORY_CODE
+
 
 def _submit(client, description: str, phone: str | None = None) -> tuple[str, str]:
     phone = phone or f"+99890{uuid.uuid4().int % 10**7:07d}"
@@ -43,9 +45,11 @@ def test_guest_submit_track_admin_flow(client, admin_headers):
     assert track.status_code == 200, track.text
     body = track.json()
     assert body["ticket_number"] == ticket
-    # v1.3: intake paytida klassifikatsiya YO'Q — kategoriya `boshqa` bo'lib
-    # turadi, LLM keyin almashtiradi (docs/07 §1).
-    assert body["category"]["code"] == "boshqa"
+    # v1.3: intake paytida klassifikatsiya YO'Q — kategoriya standart
+    # qiymatda turadi, LLM keyin almashtiradi (docs/07 §1). Konstantaga
+    # bog'landi: v1.8 da standart `boshqa` dan `hokimlik` ga o'tdi
+    # (matritsa §7 — «hech qaysi tashkilotga tushmaydigan» ish hokimlikniki).
+    assert body["category"]["code"] == DEFAULT_CATEGORY_CODE
     # v1.4: muddat intake paytida qo'yiladi — LLM ishlamasa ham murojaat
     # SLA/eskalatsiya radarida qoladi.
     assert body["deadline_at"] is not None
@@ -133,7 +137,15 @@ def test_categories_and_neighborhoods(client):
     categories = client.get("/api/public/categories")
     assert categories.status_code == 200
     codes = {c["code"] for c in categories.json()}
-    assert "yol_transport" in codes and "boshqa" in codes
+    # v1.8 taksonomiyasi (docs/14): kategoriya = mas'ul tashkilot.
+    # `yol` (yo'l qoplamasi) va `yol_harakati` (svetofor) endi ALOHIDA —
+    # avval ikkalasi «yol_transport» ichida edi va turli idoraga tegishli
+    # murojaatlar bitta manzilga ketardi. `hokimlik` — eski `boshqa` ning
+    # o'rnini bosgan fallback (matritsa §7).
+    assert {"yol", "yol_harakati", "hokimlik"} <= codes
+    # Nofaol qilinganlar ro'yxatga TUSHMASLIGI kerak (ular bazada bor, ammo
+    # `is_active=False` — faqat eski murojaatlar tarixi uchun).
+    assert "yol_transport" not in codes and "boshqa" not in codes
 
     neighborhoods = client.get("/api/public/neighborhoods")
     assert neighborhoods.status_code == 200
