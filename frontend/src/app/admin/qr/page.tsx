@@ -56,12 +56,7 @@ function SearchableSelect({
     return options.filter((o) => o.toLowerCase().includes(q));
   }, [query, options]);
 
-  const exactMatch = useMemo(
-    () => filtered.some((o) => o.toLowerCase() === query.trim().toLowerCase()),
-    [filtered, query]
-  );
-
-  const showAddOption = query.trim() && !exactMatch;
+  const hasQuery = query.trim().length > 0;
 
   function selectOption(option: string) {
     onChange(option);
@@ -69,10 +64,17 @@ function SearchableSelect({
     setOpen(false);
   }
 
+  function handleAddOption() {
+    if (hasQuery) {
+      selectOption(query.trim());
+    }
+    // Bo'sh qiymatda foydalanuvchi yozishni davom ettirishi uchun dropdown yopilmaydi.
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (showAddOption) {
+      if (hasQuery) {
         selectOption(query.trim());
       } else if (filtered.length === 1) {
         selectOption(filtered[0]);
@@ -104,7 +106,7 @@ function SearchableSelect({
       </div>
       {open && (
         <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-control border border-border bg-bg-surface shadow-lg">
-          {filtered.length === 0 && !showAddOption && (
+          {filtered.length === 0 && (
             <li className="px-3.5 py-2 text-sm text-text-muted">Natija topilmadi</li>
           )}
           {filtered.map((option) => (
@@ -119,18 +121,16 @@ function SearchableSelect({
               </button>
             </li>
           ))}
-          {showAddOption && (
-            <li className="border-t border-border">
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => selectOption(query.trim())}
-                className="w-full px-3.5 py-2 text-left text-sm text-accent hover:bg-bg-subtle transition"
-              >
-                + qo&apos;shish: {query.trim()}
-              </button>
-            </li>
-          )}
+          <li className="border-t border-border">
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleAddOption}
+              className="w-full px-3.5 py-2 text-left text-sm text-accent hover:bg-bg-subtle transition"
+            >
+              {hasQuery ? `+ qo&apos;shish: ${query.trim()}` : "+ qo&apos;shish"}
+            </button>
+          </li>
         </ul>
       )}
     </div>
