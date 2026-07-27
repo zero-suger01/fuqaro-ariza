@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ThinkingOrb } from "thinking-orbs";
 import {
   AlertTriangle,
   ArrowRight,
   ClipboardList,
   Clock,
-  Cpu,
   MessageCircleQuestion,
   SquareCheckBig,
   ZapOff,
@@ -86,12 +86,21 @@ function AiHealthStrip({ health }: { health: AiHealth | null }) {
   const lastText = health.last_llm_success_at
     ? new Date(health.last_llm_success_at).toLocaleString("uz-UZ")
     : "hali javob yo'q";
+  const aiColor = "#0d3138";
   return (
     <Card className={health.ollama_ok ? "border border-success/40" : "border-2 border-danger"}>
       <div className="flex items-center gap-3 flex-wrap text-sm">
-        <span className="flex items-center gap-2 font-semibold text-text-primary">
-          <Cpu className={`h-4 w-4 ${health.ollama_ok ? "text-success" : "text-danger"}`} />
-          AI dvigatel ({health.model}):
+        <span className="flex items-center gap-2 font-semibold" style={{ color: aiColor }}>
+          <ThinkingOrb
+            state="composing"
+            size={20}
+            theme="light"
+            style={{
+              filter: "brightness(0) saturate(100%) invert(15%) sepia(25%) saturate(2500%) hue-rotate(165deg)",
+            }}
+            aria-label="AI model"
+          />
+          Sun&apos;iy Intellekt model:
           <span className={health.ollama_ok ? "text-success" : "text-danger"}>
             {health.ollama_ok ? "ishlayapti" : "JAVOB BERMAYAPTI"}
           </span>
