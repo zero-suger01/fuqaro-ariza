@@ -6,10 +6,11 @@ from datetime import date, datetime, timedelta, timezone
 from difflib import SequenceMatcher
 
 import httpx
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Response, status
 from openpyxl import Workbook
 from openpyxl.styles import Font
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
@@ -91,7 +92,7 @@ from app.services import citizen_info, queues, workflow
 from app.services.deadline import compute_deadline
 from app.services.notifications import notify_citizen, notify_staff
 from app.services.qr import generate_poster_pdf, generate_qr_png
-from app.services.storage import upload_object
+from app.services.storage import delete_object, key_from_url, upload_object
 
 settings = get_settings()
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -883,6 +884,30 @@ def update_category(category_id: uuid.UUID, payload: CategoryPatch, db: Session 
     return category
 
 
+@router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_admin)])
+def delete_category(category_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Kategoriyani o'chirish (mijoz so'ragan "x" tugmasi). Murojaatlarda
+    ishlatilgan bo'lsa (`category_id`/`ai_category_id`) o'chirilMAYDI —
+    tarixiy yozuvni buzib qo'ymaslik uchun `is_active=false` qilish
+    tavsiya etiladi (PATCH orqali), shu holatda aniq xato qaytariladi."""
+    category = db.get(Category, category_id)
+    if category is None:
+        raise AppError(404, "not_found", "Kategoriya topilmadi")
+    in_use = db.execute(
+        select(Complaint.id)
+        .where(or_(Complaint.category_id == category_id, Complaint.ai_category_id == category_id))
+        .limit(1)
+    ).scalar_one_or_none()
+    if in_use is not None:
+        raise AppError(
+            400,
+            "in_use",
+            "Bu kategoriya murojaatlarda ishlatilgan — o'chirib bo'lmaydi. Uni nofaol qiling.",
+        )
+    db.delete(category)
+    db.commit()
+
+
 @router.get("/stats/dashboard", response_model=DashboardStats, dependencies=[Depends(get_current_admin)])
 def dashboard_stats(db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
@@ -1398,6 +1423,31 @@ def update_user(user_id: uuid.UUID, payload: UserPatch, db: Session = Depends(ge
     return user
 
 
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: uuid.UUID, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    """Xodimni o'chirish (mijoz so'ragan "O'chirish" tugmasi). O'zini
+    o'chirishga yo'l qo'yilmaydi. Xodim biror joyda faoliyat ko'rsatgan
+    bo'lsa (javob yozgan, murojaat biriktirilgan, audit yozuvi bor va h.k.
+    — ko'plab jadvallar `users.id`ga FK) o'chirilMAYDI, tarixni buzib
+    qo'ymaslik uchun — shu holatda aniq xato qaytariladi, admin "Faolsizlantirish"dan foydalanishi kerak."""
+    if user_id == admin.id:
+        raise AppError(400, "self_delete", "O'zingizni o'chira olmaysiz")
+    user = db.get(User, user_id)
+    if user is None:
+        raise AppError(404, "not_found", "Xodim topilmadi")
+    try:
+        db.delete(user)
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise AppError(
+            400,
+            "in_use",
+            "Bu xodim tizimda faoliyat ko'rsatgan — o'chirib bo'lmaydi. Uni nofaol qiling.",
+        ) from None
+    db.commit()
+
+
 @router.get("/audit-logs", response_model=Page[AuditLogOut], dependencies=[Depends(get_current_admin)])
 def list_audit_logs(
     user_id: uuid.UUID | None = None,
@@ -1456,6 +1506,10 @@ def _qr_to_out(qr: QrCode) -> QrCodeOut:
         neighborhood_id=qr.neighborhood_id,
         neighborhood_name=qr.neighborhood.name if qr.neighborhood_id else None,
         note=qr.note,
+        district=qr.district,
+        mfy=qr.mfy,
+        street=qr.street,
+        contact_name=qr.contact_name,
         scans=qr.scans,
         created_at=qr.created_at,
         png_url=png_url,
@@ -1481,20 +1535,48 @@ def create_qr_code(payload: QrCodeIn, db: Session = Depends(get_db)):
     else:
         raise AppError(500, "server_error", "QR kod generatsiya qilib bo'lmadi, qayta urining")
 
-    qr = QrCode(code=code, neighborhood_id=payload.neighborhood_id, note=payload.note)
+    qr = QrCode(
+        code=code,
+        neighborhood_id=payload.neighborhood_id,
+        note=payload.note,
+        district=payload.district,
+        mfy=payload.mfy,
+        street=payload.street,
+        contact_name=payload.contact_name,
+    )
     db.add(qr)
     db.flush()
 
     neighborhood_name = qr.neighborhood.name if qr.neighborhood_id else None
     landing_url = f"{settings.public_base_url}/go?m={code}"
     png_bytes = generate_qr_png(landing_url)
-    pdf_bytes = generate_poster_pdf(landing_url, neighborhood_name)
+    pdf_bytes = generate_poster_pdf(
+        landing_url,
+        neighborhood_name,
+        district=qr.district,
+        mfy=qr.mfy,
+        street=qr.street,
+    )
     upload_object(png_bytes, "image/png", f"qr-posters/{code}.png")
     upload_object(pdf_bytes, "application/pdf", f"qr-posters/{code}.pdf")
 
     db.commit()
     db.refresh(qr)
     return _qr_to_out(qr)
+
+
+@router.delete("/qr-codes/{qr_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_admin)])
+def delete_qr_code(qr_id: uuid.UUID, db: Session = Depends(get_db)):
+    qr = db.get(QrCode, qr_id)
+    if qr is None:
+        raise AppError(404, "not_found", "QR topilmadi")
+    # PNG/PDF ham S3'dan o'chiriladi — aks holda kod bazadan yo'qolgach ham
+    # eski plakat fayllari orfan bo'lib qolib, joy band qilib turaveradi.
+    png_url, pdf_url = _qr_urls(qr.code)
+    delete_object(key_from_url(png_url))
+    delete_object(key_from_url(pdf_url))
+    db.delete(qr)
+    db.commit()
 
 
 @router.get("/stats/ai-trend", response_model=list[AiTrendPoint], dependencies=[Depends(get_current_admin)])

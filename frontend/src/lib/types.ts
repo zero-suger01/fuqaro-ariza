@@ -349,6 +349,10 @@ export interface QrCodeAdmin {
   code: string;
   neighborhood_id: string | null;
   neighborhood_name: string | null;
+  district: string | null;
+  mfy: string | null;
+  street: string | null;
+  contact_name: string | null;
   note: string | null;
   scans: number;
   created_at: string;
@@ -444,6 +448,12 @@ export interface SttJobStatus {
 export interface QrLanding {
   neighborhood_id: string | null;
   neighborhood_name: string | null;
+  // v1.7.2 — QR tuman/MFY/ko'chaga noyob, shuning uchun `/yangi` 2-qadam
+  // manzilini avtomatik to'ldirish uchun (app/routers/public.py).
+  district: string | null;
+  mfy: string | null;
+  street: string | null;
+  address: string | null;
 }
 
 // --- Citizen kabinet (docs/03-kontraktlar.md §4, F3.3) ---

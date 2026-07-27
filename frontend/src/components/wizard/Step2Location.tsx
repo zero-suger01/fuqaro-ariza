@@ -21,6 +21,7 @@ export function Step2Location({
   onNeighborhoodChange,
   address,
   onAddressChange,
+  addressFromQr = false,
   latitude,
   longitude,
   onLocationChange,
@@ -32,6 +33,11 @@ export function Step2Location({
   onNeighborhoodChange: (id: string | null) => void;
   address: string;
   onAddressChange: (value: string) => void;
+  // QR orqali manzil avtomatik to'ldirilgan bo'lsa true — shu holatdagina
+  // (mijoz so'ragan) fuqaroga uni tekshirib ko'rish haqida ogohlantirish
+  // ko'rsatiladi (QR har bir tuman/MFY/ko'chaga noyob bo'lsa ham, GPS
+  // xatosi yoki eskirgan plakat bo'lishi mumkin).
+  addressFromQr?: boolean;
   latitude: number | null;
   longitude: number | null;
   onLocationChange: (lat: number, lng: number) => void;
@@ -167,6 +173,11 @@ export function Step2Location({
             placeholder={t("addressPlaceholder")}
             className="min-h-[56px] w-full rounded-control border-2 border-border-strong bg-bg-surface px-4 text-lg text-text-primary outline-none focus:border-accent"
           />
+          {addressFromQr && (
+            <p className="text-base text-danger">
+              {t("addressFromQrWarning")} <span aria-hidden>*</span>
+            </p>
+          )}
         </div>
       </div>
 

@@ -38,6 +38,11 @@ function WizardContent() {
   const [video, setVideo] = useState<File | null>(null);
   const [audio, setAudio] = useState<Blob | null>(null);
 
+  // QR orqali manzil avtomatik to'ldirilganda true bo'ladi — Step2Location
+  // fuqaroga uni tekshirib ko'rishni so'ragan qizil ogohlantirish shu
+  // holatga qarab ko'rsatiladi (mijoz so'ragan, faqat shu holatda).
+  const [addressFromQr, setAddressFromQr] = useState(false);
+
   const [pendingDraft, setPendingDraft] = useState<WizardDraft | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -81,6 +86,13 @@ function WizardContent() {
       .then((res) => {
         if (res.neighborhood_id) {
           setDraft((prev) => ({ ...prev, neighborhoodId: res.neighborhood_id! }));
+        }
+        // QR har bir tuman/MFY/ko'chaga noyob — manzilni qayta kiritish
+        // shart emas (mijoz so'ragan). Fuqaro qayta qo'lda o'zgartirsa ham
+        // bo'ladi, shuning uchun faqat manzil hali bo'sh bo'lsa to'ldiramiz.
+        if (res.address) {
+          setDraft((prev) => (prev.address ? prev : { ...prev, address: res.address! }));
+          setAddressFromQr(true);
         }
       })
       .catch(() => {
@@ -202,6 +214,7 @@ function WizardContent() {
               onNeighborhoodChange={(neighborhoodId) => updateDraft({ neighborhoodId })}
               address={draft.address}
               onAddressChange={(address) => updateDraft({ address })}
+              addressFromQr={addressFromQr}
               latitude={draft.latitude}
               longitude={draft.longitude}
               onLocationChange={(latitude, longitude) => updateDraft({ latitude, longitude })}

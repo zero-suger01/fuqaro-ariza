@@ -1,7 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Building2, Plus } from "lucide-react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  Briefcase,
+  Building2,
+  Bus,
+  Construction,
+  Droplets,
+  FileText,
+  Flame,
+  GraduationCap,
+  HardHat,
+  HeartHandshake,
+  HeartPulse,
+  Landmark,
+  Leaf,
+  type LucideIcon,
+  Map,
+  Home as HomeIcon,
+  Plus,
+  Receipt,
+  Scale,
+  ShieldAlert,
+  Siren,
+  Trash2,
+  TreePine,
+  Wheat,
+  Wifi,
+  Zap,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +39,45 @@ import type { DepartmentAdmin } from "@/lib/types";
 
 const EMPTY_FORM = { code: "", name_uz: "", phone: "", email: "", is_external: true };
 
-export default function DepartmentsPage() {
+// Tashkilot nomiga mos ikonka (mijoz so'ragan: hammasida bitta ikonka
+// o'rniga farqli, ma'noga mos belgi). `department.code` bo'yicha —
+// backend seed'dagi haqiqiy kodlar (app/models/department.py orqali
+// tekshirilgan). Ro'yxatda yo'q yangi kod uchun `Building2` zaxira bo'lib
+// qoladi (default: umumiy idora belgisi).
+const DEPARTMENT_ICONS: Record<string, LucideIcon> = {
+  bandlik: Briefcase,
+  ekologiya: Leaf,
+  elektr: Zap,
+  favqulodda: Siren,
+  fhdyo: FileText,
+  gaz: Flame,
+  hokimlik: Landmark,
+  huquq: Scale,
+  iib: ShieldAlert,
+  ijtimoiy: HeartHandshake,
+  kadastr: Map,
+  kommunal: HomeIcon,
+  obodonlashtirish: TreePine,
+  qishloq_xojaligi: Wheat,
+  qurilish: HardHat,
+  sanitariya: Trash2,
+  sogliqni_saqlash: HeartPulse,
+  soliq: Receipt,
+  suvsoz: Droplets,
+  talim: GraduationCap,
+  telekom: Wifi,
+  transport: Bus,
+  yolxojaligi: Construction,
+};
+
+function departmentIcon(code: string): LucideIcon {
+  return DEPARTMENT_ICONS[code] ?? Building2;
+}
+
+function DepartmentsView() {
+  const searchParams = useSearchParams();
+  const searchQuery = (searchParams.get("q") ?? "").trim().toLowerCase();
+
   const [departments, setDepartments] = useState<DepartmentAdmin[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -23,6 +89,14 @@ export default function DepartmentsPage() {
   }
 
   useEffect(load, []);
+
+  // Topbar qidiruvi (mijoz so'ragan) — nom/kod bo'yicha mahalliy filtr.
+  const visibleDepartments = useMemo(() => {
+    if (!searchQuery) return departments;
+    return departments.filter((d) =>
+      [d.names.uz, d.code].filter(Boolean).some((f) => f!.toLowerCase().includes(searchQuery))
+    );
+  }, [departments, searchQuery]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -110,13 +184,17 @@ export default function DepartmentsPage() {
 
         {departments.length === 0 ? (
           <div className="py-14 text-center text-text-muted text-sm">Bo&apos;limlar topilmadi</div>
+        ) : visibleDepartments.length === 0 ? (
+          <div className="py-14 text-center text-text-muted text-sm">Qidiruvga mos bo&apos;lim topilmadi</div>
         ) : (
           <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {departments.map((dept) => (
+            {visibleDepartments.map((dept) => {
+              const DeptIcon = departmentIcon(dept.code);
+              return (
               <div key={dept.id} className="flex items-center gap-3 rounded-inner border border-border px-4 py-3">
                 <div className="h-10 w-10 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
-                  <Building2 className="h-5 w-5 text-accent" />
+                  <DeptIcon className="h-5 w-5 text-accent" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-text-primary truncate">{dept.names.uz ?? dept.code}</p>
@@ -145,7 +223,8 @@ export default function DepartmentsPage() {
                   {dept.is_active ? "O'chirish" : "Yoqish"}
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
           <p className="text-xs text-text-muted mt-4">
             Yuklama limiti — bo&apos;lim bir vaqtda qulay olib bora oladigan aktiv ish soni. U hech narsani{" "}
@@ -156,5 +235,14 @@ export default function DepartmentsPage() {
         )}
       </Card>
     </AppShell>
+  );
+}
+
+/** `useSearchParams()` Suspense chegarasini talab qiladi (Next.js 16). */
+export default function DepartmentsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-text-muted">Yuklanmoqda...</div>}>
+      <DepartmentsView />
+    </Suspense>
   );
 }

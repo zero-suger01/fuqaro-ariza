@@ -15,13 +15,13 @@ function GoContent() {
   const searchParams = useSearchParams();
   const code = searchParams.get("m");
 
-  const [neighborhoodName, setNeighborhoodName] = useState<string | null>(null);
+  const [landing, setLanding] = useState<QrLanding | null>(null);
 
   useEffect(() => {
     if (!code) return;
     apiGet<QrLanding>(`/api/public/qr/${encodeURIComponent(code)}`)
       .then((res) => {
-        setNeighborhoodName(res.neighborhood_name);
+        setLanding(res);
       })
       .catch(() => {
         // Noto'g'ri/eskirgan QR kod bo'lsa sahifa baribir ishlayveradi —
@@ -38,9 +38,14 @@ function GoContent() {
     <GuestShell>
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-[22px] font-bold text-text-primary">{t("orgName")}</h1>
-        {neighborhoodName && (
+        {landing?.neighborhood_name && (
           <p className="text-lg text-text-secondary">
-            &ldquo;{neighborhoodName}&rdquo; {t("neighborhoodSuffix")}
+            &ldquo;{landing.neighborhood_name}&rdquo; {t("neighborhoodSuffix")}
+          </p>
+        )}
+        {(landing?.district || landing?.mfy || landing?.street) && (
+          <p className="text-base text-text-secondary">
+            {[landing.district, landing.mfy, landing.street].filter(Boolean).join(" — ")}
           </p>
         )}
       </div>

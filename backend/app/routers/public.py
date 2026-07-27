@@ -262,9 +262,15 @@ def qr_landing(code: str, db: Session = Depends(get_db)):
     # yubormaydiganlarni yo'qotardi.
     qr.scans += 1
     db.commit()
+    address_parts = [qr.street, qr.mfy, qr.district]
+    address = ", ".join(p for p in address_parts if p) or None
     return QrLandingOut(
         neighborhood_id=qr.neighborhood_id,
         neighborhood_name=qr.neighborhood.name if qr.neighborhood_id else None,
+        district=qr.district,
+        mfy=qr.mfy,
+        street=qr.street,
+        address=address,
     )
 
 

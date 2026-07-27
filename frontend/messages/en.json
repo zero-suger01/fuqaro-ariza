@@ -59,7 +59,8 @@
       "addressLabel": "Street, house",
       "addressPlaceholder": "For example: Mustaqillik street, house 12",
       "locating": "Detecting your location...",
-      "locationDenied": "Couldn't detect your location — set the pin on the map manually"
+      "locationDenied": "Couldn't detect your location — set the pin on the map manually",
+      "addressFromQrWarning": "Please check that the address has been entered correctly."
     },
     "step3": {
       "title": "About you",

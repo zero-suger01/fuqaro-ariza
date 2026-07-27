@@ -92,6 +92,13 @@ class NeighborhoodOut(BaseModel):
 class QrLandingOut(BaseModel):
     neighborhood_id: uuid.UUID | None
     neighborhood_name: str | None
+    # v1.7.2 — QR manzilga bog'liq (tuman/MFY/ko'cha noyob), shuning uchun
+    # fuqaro `/yangi`ga shu orqali kirsa 2-qadam manzilini avtomatik
+    # to'ldiramiz (mijoz so'ragan) — qayta kiritish shart emas.
+    district: str | None
+    mfy: str | None
+    street: str | None
+    address: str | None
 
 
 class SttJobCreatedOut(BaseModel):

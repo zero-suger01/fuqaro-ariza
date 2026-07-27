@@ -507,6 +507,11 @@ class AuditLogOut(BaseModel):
 class QrCodeIn(BaseModel):
     neighborhood_id: uuid.UUID | None = None
     note: str | None = Field(None, max_length=200)
+    # v1.7.2 — QR har bir tuman/MFY/ko'cha uchun noyob (mijoz so'ragan).
+    district: str | None = Field(None, max_length=150)
+    mfy: str | None = Field(None, max_length=150)
+    street: str | None = Field(None, max_length=150)
+    contact_name: str | None = Field(None, max_length=150)
 
 
 class QrCodeOut(BaseModel):
@@ -515,6 +520,10 @@ class QrCodeOut(BaseModel):
     neighborhood_id: uuid.UUID | None
     neighborhood_name: str | None
     note: str | None
+    district: str | None
+    mfy: str | None
+    street: str | None
+    contact_name: str | None
     scans: int
     created_at: datetime
     png_url: str

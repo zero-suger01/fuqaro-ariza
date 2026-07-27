@@ -1,24 +1,56 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/status";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 
-/** Har qanday sahifadan ticket/telefon bo'yicha tezkor qidiruv — Barcha
- * murojaatlar sahifasining `q` filtriga to'g'ridan-to'g'ri o'tadi
- * (docs/10 admin redesign — topbar "bo'sh joy"ni ishlatishi kerak). */
+/** Qidiruv har bir bo'limda o'ziga tegishli narsani qidirishi kerak
+ * (mijoz so'ragan) — masalan QR kodlar sahifasida tuman/MFY/ko'cha/izoh
+ * bo'yicha, Xodimlarda ism/telefon bo'yicha va h.k. Bu sahifalar o'zining
+ * to'liq ro'yxatini allaqachon yuklaydi, shuning uchun qidiruv shu
+ * sahifaning o'zida `?q=` orqali (mahalliy filtr) ishlaydi — faqat
+ * ro'yxati bo'lmagan/`q`ni o'qimaydigan sahifalarda standart holatda
+ * "Barcha murojaatlar"ga (ticket/telefon) o'tadi. */
+const LOCAL_SEARCH_PAGES: Record<string, string> = {
+  "/admin/qr": "QR kod, tuman, MFY, ko'cha bo'yicha qidirish...",
+  "/admin/bolimlar": "Bo'lim nomi yoki kodi bo'yicha qidirish...",
+  "/admin/kategoriyalar": "Kategoriya nomi yoki kodi bo'yicha qidirish...",
+  "/admin/xodimlar": "Ism, telefon yoki email bo'yicha qidirish...",
+};
+
 function QuickSearch() {
   const router = useRouter();
-  const [value, setValue] = useState("");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [value, setValue] = useState(searchParams.get("q") ?? "");
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  const localPlaceholder = LOCAL_SEARCH_PAGES[pathname];
+
+  // Sahifa almashganda qidiruv qutisi shu YANGI sahifaning o'z `q`
+  // qiymatini ko'rsatishi kerak (avvalgi sahifadan qolib ketmasin) — render
+  // paytida moslashtiramiz ("you might not need an effect" andozasi,
+  // frontend/src/app/[locale]/yangi/page.tsx'dagi bilan bir xil naqsh).
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setValue(searchParams.get("q") ?? "");
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!value.trim()) return;
-    router.push(`/admin/murojaatlar?q=${encodeURIComponent(value.trim())}`);
+    const q = value.trim();
+    if (localPlaceholder) {
+      // Shu sahifaning o'zida qoladi — ro'yxat `q` parametridan mahalliy
+      // filtrlaydi (masalan QrCodesPage).
+      router.push(q ? `${pathname}?q=${encodeURIComponent(q)}` : pathname);
+      return;
+    }
+    if (!q) return;
+    router.push(`/admin/murojaatlar?q=${encodeURIComponent(q)}`);
   }
 
   return (
@@ -27,7 +59,7 @@ function QuickSearch() {
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Ticket yoki telefon bo'yicha qidirish..."
+        placeholder={localPlaceholder ?? "Ticket yoki telefon bo'yicha qidirish..."}
         className="w-full rounded-pill border border-border bg-bg-subtle py-2 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent focus:bg-bg-surface"
       />
     </form>

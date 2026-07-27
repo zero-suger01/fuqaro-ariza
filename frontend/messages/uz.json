@@ -59,7 +59,8 @@
       "addressLabel": "Ko'cha, uy",
       "addressPlaceholder": "Masalan: Mustaqillik ko'chasi, 12-uy",
       "locating": "Joylashuvingiz aniqlanmoqda...",
-      "locationDenied": "Joylashuvni aniqlab bo'lmadi — xaritadan qo'lda belgilang"
+      "locationDenied": "Joylashuvni aniqlab bo'lmadi — xaritadan qo'lda belgilang",
+      "addressFromQrWarning": "Iltimos, manzil joylashuvi to'g'ri kiritilganini tekshiring."
     },
     "step3": {
       "title": "Siz haqingizda",

@@ -97,7 +97,7 @@
   --sidebar-text-muted: rgba(255, 255, 255, 0.45);
   --sidebar-hover-bg: rgba(255, 255, 255, 0.07);
   --sidebar-badge-bg: rgba(255, 255, 255, 0.1);
-  --sidebar-active-bg: rgba(217, 168, 60, 0.14);
+  --sidebar-active-bg: rgba(255, 255, 255, 0.16);
   --sidebar-active-text: #ebd9a8; /* 9.9:1 */
   /* `--danger` qobiq ustida atigi 2.0:1 — hisoblagich uchun ochiq variant */
   --sidebar-danger: #ff9ba5;
