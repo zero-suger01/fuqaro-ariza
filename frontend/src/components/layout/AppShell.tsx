@@ -17,7 +17,6 @@ import {
   Clock,
   MessageCircleQuestion,
   ScrollText,
-  Download,
 } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -77,8 +76,16 @@ const ADMIN_NAV: GatedGroup[] = [
   {
     title: "Murojaatlar",
     items: [
+      // «Eksport» elementi olib tashlandi (v1.8): u `?export=1` ga borardi,
+      // lekin bu parametrni sahifa hech qachon o'qimasdi — bosilganda aynan
+      // bir xil ro'yxat qayta ochilib, faqat menyuda aktiv element
+      // o'zgarardi. Menyu elementi manzil bo'lishi kerak (Jakob), bu esa
+      // o'lik boshqaruv edi. Haqiqiy eksport ro'yxat sahifasidagi «Excel
+      // eksport» tugmasi (F4.3) — u joriy filtrlarni hisobga oladi, ya'ni
+      // xodim ko'rib turgan narsasini aynan yuklab oladi. Sahifaning o'z
+      // izohi ham shuni talab qiladi (#22: eksport triage'dan ustun
+      // turmasligi kerak).
       { href: "/admin/murojaatlar", label: "Barcha murojaatlar", icon: ClipboardList },
-      { href: "/admin/murojaatlar?export=1", label: "Eksport", icon: Download, roles: ["admin"] },
     ],
   },
   {

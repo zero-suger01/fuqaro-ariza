@@ -29,12 +29,15 @@ export interface NavGroup {
  * (`/admin/murojaatlar?queue=overdue`), shuning uchun faqat pathname
  * bo'yicha solishtirsa ularning HAMMASI bir vaqtda aktiv ko'rinardi.
  *
- * Ikkita qo'shimcha holat ham shu yerda tuzatiladi: (1) `/admin`
- * (Bosh ekran) — prefiks emas, ANIQ mos kelishi kerak, aks holda u
- * `/admin/*` ostidagi HAR BIR sahifada aktiv ko'rinardi. (2) `Eksport`
- * (`/admin/murojaatlar?export=1`) faqat `queue` ni solishtirganda
- * `Barcha murojaatlar` bilan bir vaqtda aktiv bo'lib qolardi — `export`
- * parametri ham solishtiriladi.
+ * Yana bir holat shu yerda tuzatiladi: `/admin` (Bosh ekran) — prefiks
+ * emas, ANIQ mos kelishi kerak, aks holda u `/admin/*` ostidagi HAR BIR
+ * sahifada aktiv ko'rinardi.
+ *
+ * Avval bu yerda `export` parametri ham solishtirilardi — u faqat
+ * `Eksport` menyu elementi uchun kerak edi, element esa o'lik bo'lgani
+ * uchun olib tashlandi (AppShell izohiga qarang). Endi eski
+ * `?export=1` havolasi bilan kelingan sahifada `Barcha murojaatlar`
+ * to'g'ri aktiv bo'ladi.
  */
 function useIsActive() {
   const pathname = usePathname();
@@ -46,10 +49,7 @@ function useIsActive() {
     if (!pathMatches) return false;
 
     const wanted = new URLSearchParams(query ?? "");
-    return (
-      (wanted.get("queue") ?? null) === searchParams.get("queue") &&
-      (wanted.get("export") ?? null) === searchParams.get("export")
-    );
+    return (wanted.get("queue") ?? null) === searchParams.get("queue");
   };
 }
 

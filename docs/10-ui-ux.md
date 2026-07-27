@@ -240,13 +240,24 @@ Tekis 9 elementli ro'yxat kunlik ish uchun shovqin edi: `QR kodlar` va `Kategori
 
 ```
 Operatsion navbat  Bosh ekran · Navbatim · AI nazorati · SLA xavfi · Muddati o'tgan · Ma'lumot kutilmoqda
-Murojaatlar        Barcha murojaatlar · Eksport
+Murojaatlar        Barcha murojaatlar
 Monitoring         KPI · Xarita
 Sozlamalar         Bo'limlar · Xodimlar · Kategoriyalar
 Vositalar          QR kodlar · Audit log
 ```
 
 Qoidalar: guruh sarlavhasi bosilmaydi (faqat yorliq); rol filtri **element va guruh** darajasida — barcha elementi yashiringan guruh umuman render qilinmaydi (`department_staff` faqat `Navbatim` + `Murojaatlar` ni ko'radi); navbat elementlari yonida jonli hisoblagich (0 bo'lsa hisoblagich ko'rsatilmaydi); mobil (<1024px) — hamburger + drawer (`F1.8`).
+
+> **Eksport menyuda YO'Q va qayta qo'shilmasin (v1.8).** Avval `Murojaatlar`
+> guruhida `Eksport` elementi bor edi va `?export=1` ga borardi — lekin bu
+> parametrni sahifa hech qachon o'qimasdi, ya'ni bosilganda aynan bir xil
+> ro'yxat qayta ochilardi. Menyu elementi manzil bo'lishi kerak (Jakob);
+> bu esa o'lik boshqaruv edi. Eksport ro'yxat sahifasidagi tugma bo'lib
+> qoladi (F4.3) — u **joriy filtrlarni** hisobga oladi, ya'ni xodim ko'rib
+> turgan kesimni aynan yuklab oladi; alohida sahifa buni qaytadan
+> sozlashni talab qilardi. Bu §10.1 dagi umumiy qoidaga ham mos: bosh
+> ekran va menyu — kunlik operatsion ish uchun, hisobot vositalari uchun
+> emas.
 
 ### 10.3 Tafsilot sahifasidagi o'zgarishlar
 
