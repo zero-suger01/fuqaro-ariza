@@ -218,9 +218,19 @@ function DepartmentsView() {
                 <button
                   type="button"
                   onClick={() => toggleActive(dept)}
-                  className="text-xs text-accent hover:underline shrink-0"
+                  className={
+                    dept.is_active
+                      ? "flex items-center gap-1 text-xs text-danger hover:underline shrink-0"
+                      : "text-xs text-accent hover:underline shrink-0"
+                  }
                 >
-                  {dept.is_active ? "O'chirish" : "Yoqish"}
+                  {dept.is_active ? (
+                    <>
+                      <Trash2 className="h-3 w-3" /> O&apos;chirish
+                    </>
+                  ) : (
+                    "Yoqish"
+                  )}
                 </button>
               </div>
               );
