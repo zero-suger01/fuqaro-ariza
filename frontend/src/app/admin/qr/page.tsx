@@ -36,6 +36,7 @@ function SearchableSelect({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- dropdown yopilganda input qiymatini tanlangan qiymatga qaytarish
     if (!open) setQuery(value);
   }, [open, value]);
 

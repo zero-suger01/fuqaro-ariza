@@ -123,7 +123,6 @@ function CategoriesView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newCode, setNewCode] = useState("");
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -138,19 +137,29 @@ function CategoriesView() {
     apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => {});
   }, []);
 
+  function generateCode(name: string): string {
+    const base = name
+      .toLowerCase()
+      .replace(/'/g, "")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .replace(/_+/g, "_");
+    return base || `category_${Date.now()}`;
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!newCode.trim() || !newName.trim()) return;
+    const name = newName.trim();
+    if (!name) return;
     setCreating(true);
     setCreateError(null);
     try {
       const created = await apiPost<CategoryAdmin>("/api/admin/categories", {
-        code: newCode.trim(),
-        names: { uz: newName.trim() },
+        code: generateCode(name),
+        names: { uz: name },
       });
       setCategories((prev) => [...prev, created]);
       setSelectedId(created.id);
-      setNewCode("");
       setNewName("");
       setShowCreateForm(false);
     } catch (err) {
@@ -217,16 +226,7 @@ function CategoriesView() {
           {showCreateForm && (
             <form onSubmit={handleCreate} className="flex flex-col gap-2 mb-4 pb-4 border-b border-border">
               <div>
-                <Label>Kod</Label>
-                <Input
-                  value={newCode}
-                  onChange={(e) => setNewCode(e.target.value)}
-                  placeholder="masalan: bogchalar"
-                  required
-                />
-              </div>
-              <div>
-                <Label>Nomi (uz)</Label>
+                <Label>Yangi katagoriya omni kiriting</Label>
                 <Input value={newName} onChange={(e) => setNewName(e.target.value)} required />
               </div>
               {createError && <p className="text-xs text-danger">{createError}</p>}
