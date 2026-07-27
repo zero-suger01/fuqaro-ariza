@@ -282,6 +282,29 @@ Qoidalar: guruh sarlavhasi bosilmaydi (faqat yorliq); rol filtri **element va gu
 > ekran va menyu — kunlik operatsion ish uchun, hisobot vositalari uchun
 > emas.
 
+> **Navbat ko'rinishi = zich ro'yxat, kanban EMAS (v1.9).** To'rttala
+> navbat elementi ham `/admin/murojaatlar` ning `?queue=...` ko'rinishi —
+> bitta komponent. Ular bir-biridan ajralib turishi uchun **ikki qoida**:
+>
+> 1. **Navbatda kanban ko'rsatilmaydi.** Kanban `status` bo'yicha
+>    guruhlaydi, navbat filtrlari esa backendda terminal statuslarni
+>    butunlay chiqarib tashlaydi (`queues.py::_active()`). Ya'ni
+>    «Yakunlangan» ustuni `unassigned`/`sla_risk`/`overdue` da hech qachon
+>    to'lmaydi — bu tasodif emas, kafolat. O'lchov (dev baza, 2026-07-27):
+>    Biriktirilmagan 20/0/0, Muddat tugayapti 18/0/0, Muddati o'tgan
+>    19/1/0 — ekranning 2/3 qismi doimiy bo'sh quti edi. Navbatda
+>    sarlavha qatorli zich ro'yxat: `Murojaat · Holat · Muhimlik · Mas'ul
+>    · Muddat · Bo'lim` (≥`xl`; undan pastda yorliqli blok). Kanban
+>    «Barcha murojaatlar» da qoladi.
+> 2. **Tartib navbatga bog'liq** — ta'rifi va o'lchovi:
+>    [03](03-kontraktlar.md) Changelog v1.9. Bu ko'rinish emas, xulq-atvor
+>    farqi: usiz to'rttala navbat bir xil «eng yangisi yuqorida» ro'yxati
+>    bo'lib qolardi.
+>
+> Ochiq qolgan: navbatga xos amal (masalan Biriktirilmagan'da qator
+> ustidan «Biriktirish») hali yo'q — hozircha har qator faqat tafsilotga
+> olib boradi.
+
 ### 10.3 Tafsilot sahifasidagi o'zgarishlar
 
 - **«Qabul qilaman»** — Holat kartasidagi asosiy tugma, faqat `assigned` va o'z bo'limi bo'lganda. Sahifani ochishning o'zi endi hech narsani o'zgartirmaydi ([03](03-kontraktlar.md) §2.1).

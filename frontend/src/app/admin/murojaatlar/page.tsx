@@ -238,6 +238,143 @@ function KanbanCardSkeleton() {
   );
 }
 
+/**
+ * Navbat ko'rinishining zich ro'yxati (v1.9).
+ *
+ * Nima uchun navbatda kanban EMAS: kanban ustunlari `status` bo'yicha
+ * guruhlaydi, navbat filtrlari esa backendda `_active()` orqali terminal
+ * statuslarni butunlay chiqarib tashlaydi (`services/queues.py`). Ya'ni
+ * «Yakunlangan» ustuni `unassigned`/`sla_risk`/`overdue` navbatlarida
+ * MATEMATIK jihatdan hech qachon to'lmaydi, `need_info` da esa faqat
+ * «Ijroda» to'ladi. O'lchov (dev baza): Biriktirilmagan 20/0/0,
+ * Muddat tugayapti 18/0/0, Muddati o'tgan 19/1/0 — ekranning 2/3 qismi
+ * doimiy bo'sh quti edi va to'rttala navbat bir xil ko'rinardi.
+ *
+ * Kanban «Barcha murojaatlar» da qoladi — u yerda uchala ustun ham
+ * haqiqatan to'ladi va bosqichlar kesimi ma'noli.
+ *
+ * Bitta grid shabloni — sarlavha va qator uchun AYNAN bir xil, aks holda
+ * ustunlar bir-biriga tegishlashmay qoladi.
+ */
+const LIST_GRID =
+  "xl:grid xl:grid-cols-[minmax(0,1.6fr)_11rem_6rem_minmax(0,1fr)_8.5rem_minmax(0,1.2fr)] xl:items-center xl:gap-4";
+
+function ListHeader() {
+  return (
+    <div
+      className={clsx(
+        "hidden border-b border-border bg-bg-subtle px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-text-muted",
+        LIST_GRID
+      )}
+    >
+      <span>Murojaat</span>
+      <span>Holat</span>
+      <span>Muhimlik</span>
+      <span>Mas&apos;ul</span>
+      <span>Muddat</span>
+      <span>Bo&apos;lim</span>
+    </div>
+  );
+}
+
+/** Kichik ekranda yorliq + qiymat, xl dan boshlab yorliq sarlavha qatoriga
+ * ko'chgani uchun yashiriladi. */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] uppercase tracking-wide text-text-muted xl:hidden">{label}</p>
+      <div className="mt-0.5 xl:mt-0">{children}</div>
+    </div>
+  );
+}
+
+function ComplaintRow({ c }: { c: ComplaintListItem }) {
+  const overdue = isOverdue(c.deadline_at, c.status);
+  return (
+    <Link
+      href={`/admin/murojaatlar/${c.id}`}
+      className={clsx("group flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-bg-subtle", LIST_GRID)}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg-subtle transition-colors group-hover:bg-bg-surface">
+          <FileText className="h-4 w-4 text-text-secondary" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-text-primary">{c.category.name}</p>
+          <p className="font-mono text-xs text-text-muted">{c.ticket_number}</p>
+          {/* Istisno belgisi — ustun emas, chunki kamdan-kam uchraydi
+              (kanban kartasidagi bilan bir xil mantiq). */}
+          {c.ai && c.ai.unassigned_services.length > 0 ? (
+            <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-danger">
+              <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+              <span>{`${c.ai.unassigned_services.length} ta xizmat ajratilmagan`}</span>
+            </span>
+          ) : (
+            c.needs_review && (
+              <span className="mt-1 inline-flex items-center gap-1 text-xs text-warning">
+                <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden /> AI tekshiruv kerak
+              </span>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* `xl:contents` — bu o'ram xl dan boshlab yo'qoladi va ichidagilar
+          qatorning o'z grid ustunlariga aylanadi; kichik ekranda esa
+          yorliqli 2 ustunli blok bo'lib qoladi. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:contents">
+        <Field label="Holat">
+          <Badge label={STATUS_LABELS[c.status]} color={STATUS_COLORS[c.status]} />
+        </Field>
+        <Field label="Muhimlik">
+          <Badge label={PRIORITY_LABELS[c.priority]} color={PRIORITY_COLORS[c.priority]} />
+        </Field>
+        <Field label="Mas'ul">
+          {c.assigned_user_name ? (
+            <p className="truncate text-sm font-medium text-text-primary">{c.assigned_user_name}</p>
+          ) : (
+            <p className="flex items-center gap-1 text-sm font-medium text-text-muted">
+              <UserX className="h-3 w-3 shrink-0" aria-hidden /> yo&apos;q
+            </p>
+          )}
+        </Field>
+        <Field label="Muddat">
+          <p className={clsx("truncate text-sm font-medium", overdue ? "text-danger" : "text-text-primary")}>
+            {c.deadline_at ? formatUzDateTime(c.deadline_at) : "—"}
+          </p>
+        </Field>
+        <Field label="Bo'lim">
+          <p className="truncate text-sm font-medium text-text-primary">{c.department?.name ?? "—"}</p>
+        </Field>
+      </div>
+    </Link>
+  );
+}
+
+function ComplaintRowSkeleton() {
+  return (
+    <div className="flex animate-pulse items-center gap-3 px-5 py-4">
+      <span className="h-9 w-9 shrink-0 rounded-full bg-bg-subtle" />
+      <span className="h-3.5 flex-1 rounded-full bg-bg-subtle" />
+      <span className="hidden h-3.5 w-24 shrink-0 rounded-full bg-bg-subtle xl:block" />
+      <span className="hidden h-3.5 w-20 shrink-0 rounded-full bg-bg-subtle xl:block" />
+    </div>
+  );
+}
+
+function ComplaintList({ items }: { items: ComplaintListItem[] }) {
+  return (
+    <Card padded={false} className="overflow-hidden">
+      <ListHeader />
+      <div className="divide-y divide-border">
+        {items.map((c) => (
+          <ComplaintRow key={c.id} c={c} />
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 function AdminComplaintsView() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
@@ -500,15 +637,25 @@ function AdminComplaintsView() {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {KANBAN_BUCKETS.map((bucket) => (
-            <div key={bucket.key} className="flex flex-col gap-3">
-              <div className="h-4 w-24 rounded-full bg-bg-subtle animate-pulse" />
-              <KanbanCardSkeleton />
-              <KanbanCardSkeleton />
+        queue ? (
+          <Card padded={false} className="overflow-hidden">
+            <div className="divide-y divide-border">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <ComplaintRowSkeleton key={i} />
+              ))}
             </div>
-          ))}
-        </div>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {KANBAN_BUCKETS.map((bucket) => (
+              <div key={bucket.key} className="flex flex-col gap-3">
+                <div className="h-4 w-24 rounded-full bg-bg-subtle animate-pulse" />
+                <KanbanCardSkeleton />
+                <KanbanCardSkeleton />
+              </div>
+            ))}
+          </div>
+        )
       ) : items.length === 0 ? (
         <Card>
           <div className="py-14 flex flex-col items-center gap-2 text-text-muted text-sm">
@@ -517,6 +664,9 @@ function AdminComplaintsView() {
             <span className="text-xs">Filtrlarni o&apos;zgartirib qayta urinib ko&apos;ring</span>
           </div>
         </Card>
+      ) : queue ? (
+        // Navbat = bitta aniq savol, bosqichlar kesimi emas (LIST_GRID izohi).
+        <ComplaintList items={items} />
       ) : (
         // Joriy sahifa (server filtr/pagination'idan kelgan `items`) 3 ta
         // operativ ustunga guruhlanadi — pagination o'sha holicha ishlaydi,

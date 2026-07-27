@@ -382,7 +382,18 @@ def list_complaints(
 
     total = query.count()
     rows = (
-        query.order_by(Complaint.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+        query.order_by(
+            *queues.ordering(
+                overdue=overdue,
+                sla_risk=sla_risk,
+                need_info_over_hours=need_info_over_hours,
+                stuck_ai=stuck_ai,
+                unassigned=unassigned,
+            )
+        )
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
     )
 
     unassigned_by_complaint = _unassigned_services_map(db, rows)
@@ -445,7 +456,9 @@ def export_complaints_xlsx(
         date_from=date_from,
         date_to=date_to,
     )
-    rows = query.order_by(Complaint.created_at.desc()).all()
+    # Eksport ro'yxat bilan bir xil tartibda chiqadi — xodim ekranda
+    # ko'rgan navbatni faylda boshqa tartibda topmasin.
+    rows = query.order_by(*queues.ordering(overdue=overdue)).all()
 
     wb = Workbook()
     ws = wb.active
