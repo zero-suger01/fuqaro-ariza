@@ -4,7 +4,8 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { clsx } from "clsx";
-import { LogOut, Menu, ShieldCheck, X, type LucideIcon } from "lucide-react";
+import Image from "next/image";
+import { LogOut, Menu, X, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 export interface NavItem {
@@ -128,11 +129,15 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const brand = (
-    <div className="flex items-center gap-2 px-3 py-2 mb-4">
-      <div className="h-9 w-9 rounded-full bg-sidebar-active-bg flex items-center justify-center">
-        <ShieldCheck className="h-5 w-5 text-sidebar-active-text" />
-      </div>
-      <span className="text-sidebar-text-hover font-semibold text-lg">Ariza</span>
+    <div className="px-3 py-2 mb-4">
+      <Image
+        src="/logo-header.png"
+        alt="e-Murojaat"
+        width={125}
+        height={36}
+        priority
+        className="h-9 w-auto object-contain"
+      />
     </div>
   );
 
