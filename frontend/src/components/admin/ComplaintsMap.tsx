@@ -8,6 +8,26 @@ import type { HeatmapPoint, MapPoint } from "@/lib/types";
 // Uychi shahri (tuman markazi) — Step2Location.tsx bilan bir xil manba/izoh.
 const UYCHI_CENTER: [number, number] = [41.0294, 71.8483];
 
+/**
+ * `var(--token)` ni haqiqiy hex rangga aylantiradi.
+ *
+ * Yandex Maps `iconColor` ni o'z ichki SVG ikonasiga uzatadi va CSS
+ * custom property'ni HAL QILA OLMAYDI — `STATUS_COLORS` esa `var(--info)`
+ * ko'rinishidagi qiymatlarni qaytaradi, ya'ni xarita nishonlari haqiqiy
+ * rangni hech qachon olmagan (faqat status xaritada yo'q bo'lganda
+ * ishlaydigan hardcode fallback real hex edi). Shu yerda tokenni
+ * hujjatning hisoblangan uslubidan o'qib beramiz — natijada nishonlar
+ * light/dark temaga ham to'g'ri moslashadi.
+ */
+function resolveColor(value: string): string {
+  const token = value.match(/^var\((--[\w-]+)\)$/);
+  if (!token) return value;
+  const resolved = getComputedStyle(document.documentElement)
+    .getPropertyValue(token[1])
+    .trim();
+  return resolved || "#66667e";
+}
+
 export default function ComplaintsMap({
   mode,
   points,
@@ -49,7 +69,10 @@ export default function ComplaintsMap({
             [[p.lat, p.lng], 150 + intensity * 250],
             {},
             {
-              fillColor: "#e04b2955",
+              // Issiqlik xaritasi ataylab iliq rangda (universal metafora),
+              // lekin endi palitraning qizilidan olinadi — avvalgi #e04b29
+              // eski to'q sariq accent oilasidan qolgan yetim rang edi.
+              fillColor: `${resolveColor("var(--danger)")}55`,
               strokeWidth: 0,
               fillOpacity: 0.25 + intensity * 0.35,
             }
@@ -66,7 +89,7 @@ export default function ComplaintsMap({
         groupByCoordinates: false,
       });
       const placemarks = points.map((p) => {
-        const color = STATUS_COLORS[p.status] ?? "#f49a51";
+        const color = resolveColor(STATUS_COLORS[p.status] ?? "var(--text-muted)");
         return new ymaps.Placemark(
           [p.lat, p.lng],
           {

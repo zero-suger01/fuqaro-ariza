@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "e-Murojaat",
+    "issuer": "Uychi District Administration",
     "phoneSupport": "Need help? Call: 71 000 00 00",
     "backToHome": "Home",
     "loading": "Loading...",

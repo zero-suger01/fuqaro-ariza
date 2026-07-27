@@ -13,16 +13,45 @@ export const STATUS_LABELS: Record<ComplaintStatus, string> = {
   archived: "Arxivlandi",
 };
 
+/**
+ * Holat rangi — «to'p kimda?» savoliga javob beradi, chunki xodim
+ * ro'yxatni aynan shu savol bilan ko'zdan kechiradi:
+ *
+ *   kulrang — hali hech kim tegmagan          (new, ai_processed)
+ *   ko'k    — bizda, harakatda                (assigned, accepted, in_progress)
+ *   amber   — TO'SIQ: fuqaro javobini kutamiz (need_info)
+ *   yashil  — yakunlandi                      (resolved, closed)
+ *   qizil   — rad etildi                      (rejected)
+ *
+ * **Hick qonuni:** avval 7 ta alohida ton bor edi. Ro'yxatni ko'zdan
+ * kechirayotgan xodim uchun har bir qo'shimcha rang — o'rganib olish va
+ * har safar eslab qolish kerak bo'lgan yana bitta tanlov. Aniq bosqich
+ * (`assigned` / `accepted` / `in_progress`) yozuvda ham, kanban
+ * ustunida ham allaqachon ko'rinadi — uni yana rang bilan takrorlash
+ * ortiqcha yuk edi. Endi rang faqat harakat talab qiladimi-yo'qmi
+ * degan savolga javob beradi.
+ *
+ * Bu v1.7 dagi ikki real xatoni ham yopadi:
+ * 1. `in_progress` va `need_info` AYNAN bir xil rangda edi (ikkalasi
+ *    `--warning`, ΔE 0.0) — holbuki bular qarama-qarshi ikki holat:
+ *    biri «men ishlayapman», ikkinchisi «men to'xtab qoldim».
+ * 2. `new` (#3d6fb4) va `assigned` (#2b4e8a) atigi 3° ton farqi bilan
+ *    turardi — «biriktirilmagan»ni «biriktirilgan»dan bir qarashda
+ *    ajratib bo'lmasdi.
+ *
+ * Endi har juftlik ΔE ≥ 33.6, har bir rang oq fonda ≥4.5:1. Rang hech
+ * qachon YOLG'IZ signal emas — yonida doim yozuv (docs/10 §8).
+ */
 export const STATUS_COLORS: Record<ComplaintStatus, string> = {
-  new: "var(--info)",
-  ai_processed: "var(--purple)",
-  assigned: "var(--st-yuborildi)",
-  accepted: "var(--st-yuborildi)",
-  in_progress: "var(--warning)",
+  new: "var(--st-new)",
+  ai_processed: "var(--st-new)",
+  assigned: "var(--info)",
+  accepted: "var(--info)",
+  in_progress: "var(--info)",
   need_info: "var(--warning)",
   resolved: "var(--success)",
+  closed: "var(--success)",
   rejected: "var(--danger)",
-  closed: "var(--text-muted)",
   archived: "var(--text-muted)",
 };
 
@@ -64,9 +93,18 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
   critical: "Kritik",
 };
 
+/**
+ * Muhimlik — sof «jiddiylik» shkalasi: faqat rostdan shoshilinch
+ * ikkitasi rangda, qolgani neytral.
+ *
+ * `medium` avval `--info` (rangli) edi, lekin murojaatlarning aksariyati
+ * aynan `medium` — ya'ni ro'yxatning yarmi bejiz rangli nuqta bilan
+ * turardi va u bir kartada `in_progress` bilan bir xil rangga tushardi.
+ * Neytral qilinganda «Yuqori»/«Kritik» rostdan ajralib chiqadi.
+ */
 export const PRIORITY_COLORS: Record<Priority, string> = {
   low: "var(--text-muted)",
-  medium: "var(--info)",
+  medium: "var(--text-secondary)",
   high: "var(--warning)",
   critical: "var(--danger)",
 };

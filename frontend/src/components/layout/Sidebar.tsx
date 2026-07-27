@@ -62,10 +62,13 @@ function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: bool
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
       className={clsx(
-        "group flex items-center gap-2.5 rounded-pill px-3 py-2 text-[13px] font-medium transition-colors duration-150",
+        // Fitts: <md da faqat drawer ko'rinadi, u yerda nishon ≥44px
+        // bo'lishi shart (barmoq); desktopda sichqoncha aniqroq, shuning
+        // uchun zichroq qolaveradi.
+        "group flex items-center gap-2.5 rounded-pill px-3 py-3 md:py-2 text-[13px] font-medium transition-colors duration-150",
         isActive
-          ? "bg-accent/15 text-accent font-semibold"
-          : "text-text-secondary hover:bg-bg-subtle hover:text-text-primary"
+          ? "bg-sidebar-active-bg text-sidebar-active-text font-semibold"
+          : "text-sidebar-text hover:bg-sidebar-hover-bg hover:text-sidebar-text-hover"
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
@@ -74,7 +77,9 @@ function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: bool
         <span
           className={clsx(
             "ml-auto shrink-0 rounded-pill px-1.5 py-0.5 text-[10px] font-mono font-semibold tabular-nums",
-            item.danger ? "bg-danger/20 text-danger" : "bg-bg-subtle text-text-muted"
+            item.danger
+              ? "bg-sidebar-danger-bg text-sidebar-danger"
+              : "bg-sidebar-badge-bg text-sidebar-text-muted"
           )}
         >
           {item.count}
@@ -96,7 +101,7 @@ function NavTreeInner({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?:
       {groups.map((group, i) => (
         <div key={group.title} className={clsx("flex flex-col gap-0.5 py-2.5", i > 0 && "border-t border-border")}>
           {/* Guruh sarlavhasi bosilmaydi — u yorliq, havola emas (docs/10 §10.2). */}
-          <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-muted">
+          <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-text-muted">
             {group.title}
           </p>
           {group.items.map((item) => (
@@ -124,17 +129,17 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
 
   const brand = (
     <div className="flex items-center gap-2 px-3 py-2 mb-4">
-      <div className="h-9 w-9 rounded-full bg-accent/20 flex items-center justify-center">
-        <ShieldCheck className="h-5 w-5 text-accent" />
+      <div className="h-9 w-9 rounded-full bg-sidebar-active-bg flex items-center justify-center">
+        <ShieldCheck className="h-5 w-5 text-sidebar-active-text" />
       </div>
-      <span className="text-text-primary font-semibold text-lg">Ariza</span>
+      <span className="text-sidebar-text-hover font-semibold text-lg">Ariza</span>
     </div>
   );
 
   const logoutButton = (
     <button
       onClick={logout}
-      className="flex items-center gap-2.5 rounded-pill px-3 py-2 text-[13px] font-medium text-text-secondary hover:bg-bg-subtle hover:text-text-primary transition-colors duration-150"
+      className="flex items-center gap-2.5 rounded-pill px-3 py-3 md:py-2 text-[13px] font-medium text-sidebar-text hover:bg-sidebar-hover-bg hover:text-sidebar-text-hover transition-colors duration-150"
     >
       <LogOut className="h-4 w-4" />
       Chiqish
@@ -144,9 +149,10 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
   return (
     <>
       {/* Desktop — doimiy sidebar. "Floating" panel (chekka-chekkasiga
-          yopishmagan, yumaloq burchakli) — Topbar bilan bir xil sirt rangi,
-          ikkalasi ham `bg-app` fonida suzib turadigan bitta vizual tizim. */}
-      <aside className="hidden md:flex md:flex-col w-[248px] shrink-0 bg-bg-surface border border-border text-text-secondary h-[calc(100vh-1.5rem)] sticky top-3 my-3 ml-3 rounded-[28px] px-3 py-4">
+          yopishmagan, yumaloq burchakli), `bg-app` fonida suzib turadi.
+          Fon rangi (#353450) doimiy — light/dark/theme-admin'dan mustaqil
+          brend rangi, shuning uchun alohida --sidebar-* tokenlar orqali. */}
+      <aside className="hidden md:flex md:flex-col w-[248px] shrink-0 bg-sidebar-bg border border-sidebar-border text-sidebar-text h-[calc(100vh-1.5rem)] sticky top-3 my-3 ml-3 rounded-[28px] px-3 py-4">
         {brand}
         <NavTree groups={groups} />
         {logoutButton}
@@ -171,14 +177,14 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
             onClick={() => setDrawerOpen(false)}
             aria-hidden="true"
           />
-          <aside className="relative flex flex-col w-[272px] max-w-[85vw] bg-bg-surface border-r border-border text-text-secondary h-full px-3 py-4">
+          <aside className="relative flex flex-col w-[272px] max-w-[85vw] bg-sidebar-bg border-r border-sidebar-border text-sidebar-text h-full px-3 py-4">
             <div className="flex items-start justify-between">
               {brand}
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 aria-label="Menyuni yopish"
-                className="h-9 w-9 rounded-full text-text-secondary hover:text-text-primary flex items-center justify-center"
+                className="h-9 w-9 rounded-full text-sidebar-text hover:text-sidebar-text-hover flex items-center justify-center"
               >
                 <X className="h-5 w-5" />
               </button>

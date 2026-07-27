@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "e-Murojaat",
+    "issuer": "Uychi tumani hokimligi",
     "phoneSupport": "Qiynalsangiz qo'ng'iroq qiling: 71 000 00 00",
     "backToHome": "Bosh sahifa",
     "loading": "Yuklanmoqda...",

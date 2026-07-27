@@ -23,7 +23,7 @@ export function GuestTimeline({ timeline }: { timeline: TimelineStep[] }) {
                   "flex h-9 w-9 flex-none items-center justify-center rounded-full text-sm font-semibold",
                   step.done
                     ? isCurrent
-                      ? "bg-accent text-white"
+                      ? "bg-accent text-accent-contrast"
                       : "bg-success text-white"
                     : "border-2 border-border-strong bg-bg-surface text-text-muted"
                 )}

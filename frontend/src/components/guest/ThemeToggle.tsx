@@ -32,7 +32,9 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={isDark ? t("lightMode") : t("darkMode")}
-      className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border bg-bg-surface text-text-secondary transition-colors hover:text-text-primary"
+      /* To'q petrol lentada turadi (GuestHeader) — shuning uchun `--sidebar-*`
+         («qobiq ustidagi matn») shkalasida. Fitts: nishon 44px. */
+      className="flex h-11 w-11 flex-none items-center justify-center rounded-full text-sidebar-text transition-colors hover:bg-sidebar-hover-bg hover:text-sidebar-text-hover"
     >
       {isDark ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
     </button>

@@ -1,44 +1,107 @@
 @import "tailwindcss";
 
-:root {
-  /* Surfaces */
-  --bg-app: #edf0f5;
-  --bg-subtle: #f6f8fb;
-  --bg-surface: #ffffff;
-  --border: #e3e9f0;
-  --border-strong: #cbd5e1;
+/* =====================================================================
+   PALITRA — «Ishkor»
 
-  /* Text */
-  --text-primary: #0f2033;
-  --text-secondary: #51637a;
-  --text-muted: #8595ab;
+   Nomi o'zbek me'morchiligidagi ishqor sirlangan koshin rangidan olingan.
+   Manba ataylab loyihaning o'z dunyosidan: hokimlik, gerb, koshin —
+   moviy-yashil sir, to'q petrol zamin va rasmiy muhrning latun yaltirog'i.
+   Bu «to'q ko'k = davlat sayti» yoki indigo/binafsha kabi standart
+   dasturiy yechim EMAS.
+
+   --- Tuzilmaviy cheklov (did emas, muhandislik) ---
+   SLA'ga asoslangan tizimda amber «ogohlantirish», qizil «muddat o'tdi»
+   ma'nosini DOIMIY egallaydi. Demak brend rangi iliq bo'la olmaydi —
+   aks holda brend har doim signal bilan raqobatlashadi (v1.7 gacha aynan
+   shunday edi: accent 27°, warning 39° — atigi 12° farq).
+
+   --- Ikki qonun ---
+   1. «Rang = holat. Tuzilma = brend.»  Brend yorqin accent bilan emas,
+      to'q petrol sirt + tipografika + latun muhr bilan beriladi.
+   2. «Sovuq = normal, iliq = e'tibor.»  Butun interfeys sovuq maydonda;
+      amber va qizil kamdan-kam uchraydi, shuning uchun ko'zga tashlanadi.
+
+   --- Hick qonuni: 7 ta holat rangi -> 4 ta + neytral ---
+   Avval har bir status o'z rangiga ega edi (7 ta ton). Xodim ro'yxatni
+   «bu menga kerakmi?» savoli bilan ko'zdan kechiradi, shuning uchun rang
+   AYNAN shu savolga javob beradi, bosqich nomini esa yozuv aytadi:
+      kulrang — hali hech kim tegmagan
+      ko'k    — bizda, harakatda
+      amber   — TO'SIQ: fuqaro javobini kutamiz
+      yashil  — hal qilindi
+      qizil   — rad etildi
+   Aniq bosqich (`assigned` / `accepted` / `in_progress`) yozuv va kanban
+   ustuni orqali ko'rinadi — uni rang bilan takrorlash ortiqcha tanlov.
+
+   O'lchov: har juftlik ΔE ≥ 33.6, har bir rang oq fonda ≥4.5:1.
+   ===================================================================== */
+
+:root {
+  /* --- Brend: petrol qobiq (to'q sirtlar — sidebar, tugma, muhr) ------ */
+  --shell-deep: #082227;
+  --shell: #0d3138;
+  --shell-raised: #17474f;
+
+  /* Latun — rasmiy muhr notasi. FAQAT to'q sirt ustida ishlatiladi
+     (logotip, aktiv menyu). Oq fonda u amber ogohlantirish bilan
+     chalkashardi, shuning uchun yorug' yuzalarda umuman yo'q. */
+  --brass: #d9a83c;
+  --brass-light: #ebd9a8;
+
+  /* --- Neytral shkala: petrol tomon sal og'gan, sof kulrang emas ------
+     Yagona shkala — fuqaro ham, admin ham shu ranglarda.               */
+  --bg-app: #eef1f1;
+  --bg-subtle: #f5f7f7;
+  --bg-surface: #ffffff;
+  --border: #e0e6e6;
+  --border-strong: #c3cccc;
+
+  --text-primary: #12252a; /* petrol-siyoh — sarlavhalar shu rangda */
+  --text-secondary: #4f5f63;
+  --text-muted: #5f6d72; /* 4.6:1 `--bg-subtle` ustida */
   --text-inverse: #ffffff;
 
-  /* Navy (sidebar) */
-  --navy-900: #0a1e3c;
-  --navy-800: #12294a;
-  --navy-700: #1b3a66;
-  --navy-600: #2b4e8a;
+  /* --- Accent: yagona interaktiv rang (havola, tugma, focus) ---------
+     Majolika moviysi. Hech qachon holat bildirmaydi.                   */
+  --accent: #0b6e7a; /* 6.0:1 */
+  --accent-hover: #095a64;
+  --accent-soft: rgba(11, 110, 122, 0.1);
+  /* `--accent` ikki vazifani bajaradi: yorug' fonda MATN rangi va tugma
+     FONI. Bu ikkisi qarama-qarshi yorug'lik talab qiladi — dark rejimda
+     accent yorqin sirga aylanadi va ustidagi oq matn 2.1:1 ga tushib
+     ketardi. Shuning uchun «accent ustidagi matn» alohida token. */
+  --accent-contrast: #ffffff;
 
-  /* Accent */
-  --accent: #f49a51;
-  --accent-hover: #e2833a;
-  --accent-soft: rgba(244, 154, 81, 0.12);
+  /* Eski `--navy-*` nomlari saqlanadi (avatar doiralari), qobiqqa qaraydi */
+  --navy-900: #082227;
+  --navy-800: #0d3138;
+  --navy-700: #17474f;
+  --navy-600: #22606a;
 
-  /* Semantic */
-  --success: #2e9e6b;
-  --warning: #d9a441;
-  --danger: #c0392b;
-  --info: #3d6fb4;
-  --purple: #8e44ad;
+  /* --- Semantik: sovuq = normal, iliq = e'tibor ---------------------- */
+  --info: #1f5fbf; /* 6.1:1 — «bizda, harakatda» */
+  --success: #15803d; /* 5.0:1 */
+  --warning: #b45309; /* 5.0:1 */
+  --danger: #be2233; /* 6.1:1 */
+  --st-new: #6e6a66; /* 5.4:1 — neytral: hali hech kim tegmagan */
+  --purple: #6e5aa6; /* faqat KPI grafik chizig'i */
 
-  /* Status colors (murojaat holatlari) */
-  --st-yangi: #3d6fb4;
-  --st-korib-chiqilmoqda: #8e44ad;
-  --st-yuborildi: #2b4e8a;
-  --st-jarayonda: #d9a441;
-  --st-hal-qilindi: #2e9e6b;
-  --st-rad-etildi: #c0392b;
+  /* --- Sidebar / to'q qobiq -------------------------------------------
+     Temaga bog'liq emas: bu brend sirti, light/dark'da bir xil.
+     Aktiv element latun tusda — moviy accent to'q petrol ustida
+     yetarlicha ajralmasdi.                                             */
+  --sidebar-bg: #0d3138;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-text: rgba(255, 255, 255, 0.72);
+  --sidebar-text-hover: #ffffff;
+  --sidebar-text-muted: rgba(255, 255, 255, 0.45);
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.07);
+  --sidebar-badge-bg: rgba(255, 255, 255, 0.1);
+  --sidebar-active-bg: rgba(217, 168, 60, 0.14);
+  --sidebar-active-text: #ebd9a8; /* 9.9:1 */
+  /* `--danger` qobiq ustida atigi 2.0:1 — hisoblagich uchun ochiq variant */
+  --sidebar-danger: #ff9ba5;
+  --sidebar-danger-bg: rgba(255, 155, 165, 0.16);
 
   /* Radius */
   --radius-inner: 12px;
@@ -46,10 +109,10 @@
   --radius-card: 20px;
   --radius-pill: 999px;
 
-  /* Shadow */
-  --shadow-sm: 0 1px 2px rgba(10, 30, 60, 0.05);
-  --shadow-card: 0 4px 20px rgba(10, 30, 60, 0.07);
-  --shadow-lift: 0 8px 30px rgba(10, 30, 60, 0.12);
+  /* Shadow — petrol tusli, neytral qora emas */
+  --shadow-sm: 0 1px 2px rgba(8, 34, 39, 0.05);
+  --shadow-card: 0 4px 20px rgba(8, 34, 39, 0.07);
+  --shadow-lift: 0 8px 30px rgba(8, 34, 39, 0.12);
 
   /* Layout */
   --sidebar-w-collapsed: 76px;
@@ -57,35 +120,38 @@
 }
 
 .dark {
-  /* Surfaces */
-  --bg-app: #0b1220;
-  --bg-subtle: #131c2e;
-  --bg-surface: #17223a;
-  --border: #253150;
-  --border-strong: #34426a;
+  --bg-app: #0b1416;
+  --bg-subtle: #121e21;
+  --bg-surface: #16262a;
+  --border: #24393e;
+  --border-strong: #354e54;
 
-  /* Text */
-  --text-primary: #eef2f8;
-  --text-secondary: #b7c2d6;
-  --text-muted: #8090ab;
-  --text-inverse: #0f2033;
+  --text-primary: #e8efef;
+  --text-secondary: #a8babe;
+  --text-muted: #8ba0a4;
+  --text-inverse: #12252a;
 
-  /* Accent — a touch brighter so it still reads clearly on dark surfaces */
-  --accent: #f6a565;
-  --accent-hover: #f49a51;
-  --accent-soft: rgba(244, 154, 81, 0.18);
+  --shell-deep: #0b1416;
+  --shell: #0d3138;
+  --shell-raised: #17474f;
 
-  /* Semantic */
-  --success: #3ab27f;
-  --warning: #e0ad55;
-  --danger: #e05f4e;
-  --info: #5a8bd1;
-  --purple: #a569c9;
+  --navy-900: #0d3138;
+  --navy-800: #17474f;
+  --navy-700: #22606a;
+  --navy-600: #2e7a86;
 
-  /* Shadow */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.45);
-  --shadow-lift: 0 8px 30px rgba(0, 0, 0, 0.5);
+  /* To'q fonda sir yorqinroq bo'ladi — to'q moviy o'qilmaydi */
+  --accent: #4fc3d4;
+  --accent-hover: #6fd6e5;
+  --accent-soft: rgba(79, 195, 212, 0.16);
+  --accent-contrast: #06232a; /* yorqin sir ustida to'q matn — 9.4:1 */
+
+  --info: #6ba5f5;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #fb7185;
+  --st-new: #9aa3a3;
+  --purple: #a78bfa;
 }
 
 @theme inline {
@@ -100,6 +166,12 @@
   --color-text-muted: var(--text-muted);
   --color-text-inverse: var(--text-inverse);
 
+  --color-shell-deep: var(--shell-deep);
+  --color-shell: var(--shell);
+  --color-shell-raised: var(--shell-raised);
+  --color-brass: var(--brass);
+  --color-brass-light: var(--brass-light);
+
   --color-navy-900: var(--navy-900);
   --color-navy-800: var(--navy-800);
   --color-navy-700: var(--navy-700);
@@ -108,12 +180,26 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
 
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-info: var(--info);
   --color-purple: var(--purple);
+  --color-st-new: var(--st-new);
+
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-sidebar-text-hover: var(--sidebar-text-hover);
+  --color-sidebar-text-muted: var(--sidebar-text-muted);
+  --color-sidebar-hover-bg: var(--sidebar-hover-bg);
+  --color-sidebar-badge-bg: var(--sidebar-badge-bg);
+  --color-sidebar-active-bg: var(--sidebar-active-bg);
+  --color-sidebar-active-text: var(--sidebar-active-text);
+  --color-sidebar-danger: var(--sidebar-danger);
+  --color-sidebar-danger-bg: var(--sidebar-danger-bg);
 
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains);
@@ -134,40 +220,16 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Admin/xodim paneli — vaqtincha pilot skin (frontend/src/app/admin/layout.tsx
-   orqali ulanadi). Fuqaro sahifalari (`[locale]/*`) bunga tegmaydi, o'zining
-   Inter shriftida qoladi (accent rangi endi umumiy #f49a51, :root'dan
-   meros) — bu ataylab: font/layout/sidebar rebrand faqat admin/xodim
-   tomonida sinaladi. Semantik ranglar (success/warning/danger/info/st-*)
-   o'zgarmaydi — ular ma'lumot holatini bildiradi, brend emas. */
+/* Admin/xodim paneli — FAQAT zichlik farqi: shrift va radius.
+   Rang override'lari yo'q: avval bu blok neytral shkalani sof kulrangga
+   o'zgartirardi, ya'ni fuqaro va admin ikki xil rang haroratida ishlardi
+   va bitta accent ikkalasida ikki xil ko'rinardi. */
 .theme-admin {
   --font-sans: var(--font-jakarta);
-
-  --bg-app: #f1f1f1;
-  --bg-subtle: #f5f5f5;
-  --bg-surface: #fbfbfb;
-  --border: #e7e7e7;
-  --border-strong: #d4d4d4;
-
-  --text-primary: #0d0d0d;
-  --text-secondary: #6b6b6b;
-  --text-muted: #9c9c9c;
-
-  --navy-900: #0d0d0d;
-  --navy-800: #1a1a1a;
-  --navy-700: #262626;
-  --navy-600: #333333;
-
-  --accent: #f49a51;
-  --accent-hover: #e8863a;
-  --accent-soft: rgba(244, 154, 81, 0.16);
 
   --radius-inner: 16px;
   --radius-control: 14px;
   --radius-card: 24px;
-
-  --shadow-card: 0 4px 24px rgba(13, 13, 13, 0.06);
-  --shadow-lift: 0 10px 34px rgba(13, 13, 13, 0.1);
 
   background: var(--bg-app);
   color: var(--text-primary);
@@ -177,6 +239,30 @@ body {
 
 * {
   border-color: var(--border);
+}
+
+/* Fokus halqasi — Fitts/klaviatura: har bir interaktiv element uchun
+   ko'rinadigan, bir xil va yetarli kontrastli. Avval brauzer standarti
+   qolib ketgan edi va to'q sirtlarda deyarli ko'rinmasdi. */
+:where(a, button, [role="button"], input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+.theme-admin :where(aside) :where(a, button):focus-visible,
+:where(aside) :where(a, button):focus-visible {
+  outline-color: var(--brass-light);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Sidebar nav — scrollable but without a visible scrollbar (the native

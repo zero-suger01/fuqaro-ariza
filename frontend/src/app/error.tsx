@@ -33,7 +33,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <button
           type="button"
           onClick={reset}
-          className="flex min-h-[56px] w-full items-center justify-center rounded-control bg-accent px-6 text-lg font-semibold text-white"
+          className="flex min-h-[56px] w-full items-center justify-center rounded-control bg-accent px-6 text-lg font-semibold text-accent-contrast"
         >
           Qaytadan urinish
         </button>

@@ -21,7 +21,7 @@ export default function NotFound() {
       <div className="flex w-full max-w-[360px] flex-col gap-3">
         <Link
           href="/"
-          className="flex min-h-[56px] w-full items-center justify-center rounded-control bg-accent px-6 text-lg font-semibold text-white"
+          className="flex min-h-[56px] w-full items-center justify-center rounded-control bg-accent px-6 text-lg font-semibold text-accent-contrast"
         >
           Bosh sahifaga o&apos;tish
         </Link>

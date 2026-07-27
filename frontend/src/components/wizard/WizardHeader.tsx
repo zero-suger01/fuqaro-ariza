@@ -39,7 +39,7 @@ export function WizardHeader({
                 <span
                   className={clsx(
                     "flex h-9 w-9 flex-none items-center justify-center rounded-full border-2",
-                    isDone && "border-accent bg-accent text-white",
+                    isDone && "border-accent bg-accent text-accent-contrast",
                     isCurrent && "border-accent bg-accent-soft text-accent",
                     !isDone && !isCurrent && "border-border-strong bg-bg-surface text-text-muted"
                   )}

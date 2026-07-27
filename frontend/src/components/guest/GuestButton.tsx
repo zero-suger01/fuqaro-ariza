@@ -8,7 +8,7 @@ export function guestButtonClasses(variant: Variant, className?: string) {
   return clsx(
     "flex w-full items-center justify-center gap-3 rounded-card px-6 py-4 text-lg font-semibold transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed",
     "min-h-[56px]",
-    variant === "primary" && "bg-accent text-white hover:bg-accent-hover",
+    variant === "primary" && "bg-accent text-accent-contrast hover:bg-accent-hover",
     variant === "secondary" && "bg-bg-surface text-text-primary border-2 border-border-strong hover:bg-bg-subtle",
     className
   );

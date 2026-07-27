@@ -44,14 +44,17 @@ const KANBAN_BUCKETS: {
   {
     key: "new",
     label: "Yangi",
-    dotColor: "var(--info)",
+    // Ustun nuqtasi ichidagi hukmron holat rangiga mos keladi (STATUS_COLORS)
+    // — avval ustun va uning ichidagi kartochka chiplari boshqa-boshqa
+    // rangda edi, guruh bilan element bir-biriga bog'lanmasdi.
+    dotColor: "var(--st-new)",
     emptyHint: "Yangi murojaatlar shu yerda paydo bo'ladi",
     statuses: ["new", "ai_processed", "assigned"],
   },
   {
     key: "progress",
     label: "Ijroda",
-    dotColor: "var(--warning)",
+    dotColor: "var(--info)",
     emptyHint: "Ijrodagi murojaatlar shu yerda ko'rinadi",
     statuses: ["accepted", "in_progress", "need_info"],
   },
@@ -160,7 +163,14 @@ function KanbanCard({ c }: { c: ComplaintListItem }) {
           {c.assigned_user_name ? (
             <p className="mt-0.5 truncate text-sm font-medium text-text-primary">{c.assigned_user_name}</p>
           ) : (
-            <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-warning">
+            /* Muted, `text-warning` emas: egasi yo'qligi 94 ta kartaning
+               normal holati, istisno emas. Amber qilinganda u bir kartada
+               «Yuqori» muhimlik va muddat ogohlantirishi bilan bir xil
+               signal berardi va rostdan shoshilinch narsalar ko'zga
+               tashlanmay qolardi. Yo'qlikni UserX ikonasi va «yo'q» so'zi
+               allaqachon aytib turibdi; navbat sifatida esa u sidebar
+               hisoblagichi va bosh ekran kartasida ko'rinadi. */
+            <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-text-muted">
               <UserX className="h-3 w-3 shrink-0" aria-hidden /> yo&apos;q
             </p>
           )}

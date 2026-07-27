@@ -13,44 +13,82 @@ const LOCALE_LABELS: Record<string, string> = {
   en: "En",
 };
 
+/**
+ * Fuqaro sarlavha lentasi — to'q petrol zamin + latun muhr.
+ *
+ * **Jakob:** davlat xizmatlari butun dunyoda aynan shunday taniladi —
+ * to'q identifikatsiya lentasi, gerb/muhr va idora nomi. Avval bu oddiy
+ * oq chiziq edi va sayt istalgan xususiy ilovaga o'xshardi; 72 yoshli
+ * foydalanuvchi uchun «bu haqiqiy hokimlikmi yoki firibgarlikmi»
+ * savoliga javob bermasdi. Idora nomi ham faqat futerda turardi.
+ *
+ * **Proximity:** ikki guruh aniq ajratilgan — chapda KIM (muhr + nom +
+ * idora), o'ngda VOSITALAR (til, kabinet, tema). Avval til tanlagich,
+ * «Murojaatlarim» va tema tugmasi bir xil oraliq bilan yonma-yon
+ * turardi, ya'ni uchta bog'liq bo'lmagan vazifa bitta guruhdek
+ * ko'rinardi.
+ *
+ * **Fitts:** til havolalari avval ~26px balandlikda edi — barmoq uchun
+ * juda kichik. Endi hammasi ≥44px.
+ *
+ * **Hick:** 4 ta til ko'rinib turishi SHART (docs/10 §9 — kirill
+ * o'quvchi keksa avlod uchun), lekin ular endi vizual jihatdan tinch:
+ * asosiy harakat bilan raqobatlashmaydi.
+ *
+ * Matn ranglari `--sidebar-*` shkalasidan — u aslida «to'q qobiq ustidagi
+ * matn» shkalasi va sidebar bilan bu lenta bir xil `--shell` sirtida
+ * turadi, shuning uchun ikkinchi nusxa token yaratilmadi.
+ */
 export function GuestHeader() {
   const t = useTranslations("common");
   const locale = useLocale();
   const pathname = usePathname();
 
   return (
-    <header className="w-full border-b border-border bg-bg-surface">
-      <div className="mx-auto flex max-w-[640px] flex-wrap items-center justify-between gap-3 px-4 py-4">
-        <Link href="/" className="flex items-center gap-2 text-text-primary">
-          <Landmark className="h-7 w-7 text-accent" aria-hidden />
-          <span className="text-lg font-semibold">{t("appName")}</span>
+    <header className="w-full bg-shell">
+      <div className="mx-auto flex max-w-[640px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+        {/* KIM — identifikatsiya */}
+        <Link
+          href="/"
+          className="flex items-center gap-2.5 rounded-control py-1 text-sidebar-text-hover"
+        >
+          <Landmark className="h-7 w-7 shrink-0 text-brass" aria-hidden />
+          <span className="leading-tight">
+            <span className="block text-lg font-semibold">{t("appName")}</span>
+            <span className="block text-[11px] text-sidebar-text-muted">{t("issuer")}</span>
+          </span>
         </Link>
-        <div className="flex items-center gap-2 sm:gap-4">
-          <nav className="flex items-center gap-1 text-base font-medium" aria-label="Til tanlash">
-            {routing.locales.map((loc, i) => (
-              <span key={loc} className="flex items-center">
-                {i > 0 && <span className="mx-1 text-text-muted">·</span>}
-                <Link
-                  href={pathname}
-                  locale={loc}
-                  className={
-                    loc === locale
-                      ? "rounded-control px-2 py-1 text-text-primary underline underline-offset-4"
-                      : "rounded-control px-2 py-1 text-text-secondary hover:text-text-primary"
-                  }
-                  aria-current={loc === locale ? "true" : undefined}
-                >
-                  {LOCALE_LABELS[loc]}
-                </Link>
-              </span>
+
+        {/* VOSITALAR — alohida guruh */}
+        <div className="flex items-center gap-1.5">
+          <nav className="flex items-center" aria-label="Til tanlash">
+            {routing.locales.map((loc) => (
+              <Link
+                key={loc}
+                href={pathname}
+                locale={loc}
+                aria-current={loc === locale ? "true" : undefined}
+                className={
+                  loc === locale
+                    ? "flex min-h-11 min-w-11 items-center justify-center rounded-control px-2 text-sm font-semibold text-brass-light"
+                    : "flex min-h-11 min-w-11 items-center justify-center rounded-control px-2 text-sm font-medium text-sidebar-text hover:bg-sidebar-hover-bg hover:text-sidebar-text-hover"
+                }
+              >
+                {LOCALE_LABELS[loc]}
+              </Link>
             ))}
           </nav>
+
+          <span className="h-5 w-px bg-sidebar-border" aria-hidden />
+
           <Link
             href="/kabinet"
             aria-label={t("myComplaints")}
-            className="flex items-center gap-1.5 rounded-pill bg-accent-soft px-2.5 py-1.5 text-sm font-semibold text-accent hover:bg-accent-soft/70 sm:px-3"
+            /* `min-w-11` ham kerak: `sm` dan pastda yozuv yashiriladi va
+               faqat 16px ikon qolib, nishon 40px ga tushib ketardi. */
+            className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-pill px-3 text-sm font-semibold text-sidebar-text hover:bg-sidebar-hover-bg hover:text-sidebar-text-hover"
           >
-            <FileText className="h-4 w-4" aria-hidden />
+            <FileText className="h-4 w-4 shrink-0" aria-hidden />
             {/* "Mening murojaatlarim" translates to very different lengths
              * per locale (e.g. Cyrillic "Менинг мурожаатларим" is much
              * longer than "En" locale's "My complaints") — on narrow
@@ -60,6 +98,7 @@ export function GuestHeader() {
              * the wrap behavior identical across all 4 locales. */}
             <span className="hidden sm:inline">{t("myComplaints")}</span>
           </Link>
+
           <ThemeToggle />
         </div>
       </div>

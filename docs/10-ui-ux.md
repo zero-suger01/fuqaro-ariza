@@ -6,7 +6,7 @@ Bosh foydalanuvchi obrazi: **Malohat opa, 72 yosh, qishloqda yashaydi, oddiy And
 
 | | Fuqaro sahifalari (`/`, `/yangi`, `/holat`, `/go`) | Admin (`/admin/*`) |
 |---|---|---|
-| Layout | Sidebar YO'Q. Bitta ustun, markazda, max-width 640px | Mavjud navy sidebar + jadval uslubi qoladi |
+| Layout | Sidebar YO'Q. Bitta ustun, markazda, max-width 640px | To'q petrol sidebar (`#0d3138`, §7.1) + jadval uslubi qoladi |
 | Auditoriya | 70+ qishloq fuqarosi, telefon | O'rgatilgan xodim, kompyuter |
 | Zichlik | Juda past, katta elementlar | Yuqori (jadvallar, filtrlar) |
 | Til | 4 til, juda sodda so'zlar | Boshlanishiga uz |
@@ -32,7 +32,7 @@ Tepada: gerb/logo + til tanlagich ("O'z · Ўз · Ру · En" — matn, bayroq 
 Hurmatli fuqaro!
 Muammoingizni bizga ayting — hal qilamiz.
 
-[  📝  MUROJAAT YUBORISH  ]        ← accent (oltin), ulkan
+[  📝  MUROJAAT YUBORISH  ]        ← accent (majolika moviysi, §7.1), ulkan
 [  🔍  HOLATINI TEKSHIRISH ]       ← ikkilamchi, oq
 
 Qanday ishlaydi?
@@ -114,9 +114,74 @@ Murojaatni qayerdan yuborasiz?
 
 Plakat (admin generatsiya qiladi, A4 PDF): tepada gerb + "Muammoingiz bormi? Telefoningizda xabar bering!", markazda ulkan QR, ostida 3 qadam rasm bilan, pastda ishonch telefoni. Matn uz(lotin)+uz(kirill) aralash — qishloqda kirill o'quvchilar ko'p.
 
+## 7.1 Rang tizimi (v1.8 — kanonik)
+
+> Bu bo'lim v1.8 da qo'shildi. Avval palitra hech qayerda yozilmagan edi:
+> §3 «accent (oltin)» derdi, §8 `#c9a227` ni ko'rsatardi, kodda esa
+> `#f49a51` turardi — uchtasi uch xil. Endi manba shu jadval,
+> `frontend/src/app/globals.css` unga amal qiladi.
+
+Palitra nomi — **«Ishkor»**, o'zbek me'morchiligidagi ishqor sirlangan koshin
+rangidan. Manba ataylab loyihaning o'z dunyosidan olingan: koshin sirining
+moviy-yashili, to'q petrol zamin va rasmiy muhrning latun yaltirog'i.
+
+**Tuzilmaviy cheklov (did emas, muhandislik):** SLA'ga asoslangan tizimda amber
+«ogohlantirish», qizil «muddat o'tdi» ma'nosini doimiy egallaydi — demak brend
+rangi **iliq bo'la olmaydi**. Aks holda brend har doim signal bilan
+raqobatlashadi (v1.7 gacha aynan shunday edi: accent 27°, warning 39°).
+
+**Ikki qonun:**
+1. **Rang = holat. Tuzilma = brend.** Brend to'q petrol sirt + tipografika +
+   latun muhr bilan beriladi, yorqin accent bilan emas.
+2. **Sovuq = normal, iliq = e'tibor.** Amber/qizil kamdan-kam uchraydi.
+
+| Rol | Token | Light | Dark |
+|---|---|---|---|
+| Brend qobig'i (sidebar, fuqaro lentasi) | `--shell` | `#0d3138` | (o'zgarmaydi) |
+| Muhr / aktiv menyu — **faqat to'q sirtda** | `--brass` | `#d9a83c` | (o'zgarmaydi) |
+| Interaktiv (havola, tugma, focus) | `--accent` | `#0b6e7a` | `#4fc3d4` |
+| **Accent ustidagi matn** (tugma yozuvi) | `--accent-contrast` | `#ffffff` | `#06232a` |
+| Sarlavha va asosiy matn | `--text-primary` | `#12252a` | `#e8efef` |
+| Hali hech kim tegmagan (`new`, `ai_processed`) | `--st-new` | `#6e6a66` | `#9aa3a3` |
+| Bizda, harakatda (`assigned`, `accepted`, `in_progress`) | `--info` | `#1f5fbf` | `#6ba5f5` |
+| To'siq — fuqaro javobi kutilmoqda (`need_info`) | `--warning` | `#b45309` | `#fbbf24` |
+| Yakunlandi (`resolved`, `closed`) | `--success` | `#15803d` | `#4ade80` |
+| Rad etildi (`rejected`) | `--danger` | `#be2233` | `#fb7185` |
+
+Qoidalar:
+
+1. **Latun faqat to'q sirtda.** Yorug' yuzada u amber ogohlantirish bilan
+   chalkashardi, shuning uchun oq fonda umuman ishlatilmaydi.
+2. **`--accent` hech qachon holat bildirmaydi** — u faqat interaktivlik.
+3. **Iliq rang faqat ikkita:** amber va qizil. Yangi iliq rang = qoida buzilishi.
+4. **Neytral shkala bitta** — fuqaro va admin bir xil ranglarda. `.theme-admin`
+   faqat shrift va radius (zichlik) ni o'zgartiradi, rangni EMAS.
+5. **Hick:** holat ranglari 7 tadan **4 ta + neytral** ga qisqartirildi. Rang
+   «harakat kerakmi?» degan savolga javob beradi; aniq bosqichni yozuv va
+   kanban ustuni aytadi. Avval `in_progress` va `need_info` **ΔE 0.0** (aynan
+   bir xil), `new` va `assigned` esa 3° farq bilan turardi.
+6. Har juftlik orasidagi perseptual masofa **ΔE ≥ 33.6**, har bir rang oq
+   fonda **≥4.5:1**.
+7. Rang hech qachon yolg'iz signal emas — yonida doim ikon yoki yozuv (§8).
+8. **Tugma yozug'i har doim `--accent-contrast`, `text-white` EMAS.** `--accent`
+   ikki vazifani bajaradi (matn rangi + tugma foni), dark rejimda u yorqin
+   sirga aylanadi va oq yozuv 2.1:1 ga tushib ketardi.
+
+### 7.2 Etkazish qonunlari (v1.8)
+
+| Qonun | Qayerda qo'llanildi |
+|---|---|
+| **Hick** | Holat ranglari 7 → 4+neytral (§7.1 №5). Muhimlikda faqat «Yuqori»/«Kritik» rangli — murojaatlarning aksariyati `medium` va ular endi neytral. |
+| **Fitts** | Barcha nishonlar ≥44×44px: sidebar menyusi mobil drawerda `py-3`, til tanlagich, tema tugmasi, «Murojaatlarim» (`sm` dan pastda yozuv yashirinib 40px ga tushib qolardi). |
+| **Jakob** | Fuqaro sahifasida to'q identifikatsiya lentasi + muhr + idora nomi — davlat xizmatlari butun dunyoda shunday taniladi. Avval oddiy oq chiziq edi. |
+| **Tesler** | 10 ta status backendda `status_simple` orqali 5 taga siqiladi; AI kategoriyani o'zi aniqlaydi — murakkablikni tizim yutadi, fuqaro emas. |
+| **Proximity** | Sarlavha lentasida ikki aniq guruh: chapda KIM (muhr+nom+idora), o'ngda VOSITALAR (til / kabinet / tema), orasida ajratgich. Avval uchta bog'liq bo'lmagan vazifa bir xil oraliqda yonma-yon turardi. |
+
 ## 8. Accessibility checklist (F5.1 da tekshiriladi)
 
-- [ ] Kontrast ≥ 4.5:1 (accent oltin #c9a227 oq fonda matn uchun YETARLI EMAS — matnga faqat to'q ranglar; oltin faqat fon/tugma fonida to'q matn bilan)
+- [x] Kontrast ≥ 4.5:1 — §7.1 dagi HAR BIR rang matn sifatida oq fonda
+      5.0–7.4:1 oralig'ida (v1.8). Avval `--accent` 2.2:1, `--warning` 2.2:1,
+      `--success` 3.4:1 edi, ya'ni uchtasi AA dan o'tmasdi.
 - [ ] Hamma interaktiv element klaviaturadan yetadi, focus ko'rinadi
 - [ ] `lang` atributi locale bo'yicha; rasmlar alt bilan
 - [ ] 200% zoom'da layout buzilmaydi; 320px enda gorizontal skroll yo'q
