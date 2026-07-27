@@ -501,6 +501,12 @@ def export_complaints_xlsx(
     priority: str | None = None,
     overdue: bool = False,
     needs_review: bool = False,
+    unassigned: bool = False,
+    sla_risk: bool = False,
+    need_info_over_hours: int | None = Query(None, ge=0),
+    mine: bool = False,
+    stuck_ai: bool = False,
+    stage: str | None = None,
     q: str | None = Query(None),
     date_from: date | None = None,
     date_to: date | None = None,
@@ -509,7 +515,21 @@ def export_complaints_xlsx(
 ):
     """B5.5 — xuddi shu filtrlar (list_complaints bilan bir xil), lekin
     pagination'siz: filtrlangan hammasi bitta faylga. B6: eksport ham
-    "workflowni nazorat qilish" toifasiga kiradi, faqat admin."""
+    "workflowni nazorat qilish" toifasiga kiradi, faqat admin.
+
+    Navbat bayroqlari (`unassigned`, `sla_risk`, `need_info_over_hours`,
+    `mine`, `stuck_ai`) va bosqich (`stage`) shu yerda ham E'LON
+    QILINISHI shart: FastAPI e'lon qilinmagan query parametrni indamay
+    tashlab yuboradi, shuning uchun ular yetishmaganida ekranda
+    «Biriktirilmagan — 98 ta» turgan holda fayl BARCHA murojaat bilan
+    (dev bazada 119 ta) chiqardi — admin buni sezmasdan noto'g'ri
+    to'plamni hisobotga qo'yardi.
+
+    DIQQAT: `list_complaints` ga yangi filtr qo'shilsa, bu imzoga ham
+    qo'shilishi kerak. Aynan shu drift ikki marta sodir bo'ldi (v1.4
+    navbat bayroqlari va v1.9 `stage`) — `test_export_respects_*`
+    testlari shuni qo'riqlaydi.
+    """
     query = _build_complaints_query(
         db,
         staff,
@@ -524,10 +544,25 @@ def export_complaints_xlsx(
         q=q,
         date_from=date_from,
         date_to=date_to,
+        unassigned=unassigned,
+        sla_risk=sla_risk,
+        need_info_over_hours=need_info_over_hours,
+        mine=mine,
+        stuck_ai=stuck_ai,
+        stage=stage,
     )
     # Eksport ro'yxat bilan bir xil tartibda chiqadi — xodim ekranda
-    # ko'rgan navbatni faylda boshqa tartibda topmasin.
-    rows = query.order_by(*queues.ordering(overdue=overdue)).all()
+    # ko'rgan navbatni faylda boshqa tartibda topmasin ([03] v1.9).
+    rows = query.order_by(
+        *queues.ordering(
+            overdue=overdue,
+            sla_risk=sla_risk,
+            need_info_over_hours=need_info_over_hours,
+            stuck_ai=stuck_ai,
+            unassigned=unassigned,
+            mine=mine,
+        )
+    ).all()
 
     wb = Workbook()
     ws = wb.active
