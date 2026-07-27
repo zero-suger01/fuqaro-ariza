@@ -79,23 +79,40 @@ async def _mark_llm_error(ctx) -> None:
         pass
 
 
+# Bitta murojaatga AI ochadigan topshiriqlarning maksimumi. Asosiy bo'lim
+# bilan birga 4 ta idora — bundan ortig'i amalda boshqarib bo'lmaydi (SLA,
+# nazorat, kim yakunlaydi degan savol) va odatda LLM adashganini bildiradi.
+#
+# Chegaradan oshgan xizmatlar TASHLANMAYDI: ular `subtasks_truncated`
+# eventiga yoziladi va adminga ko'rsatiladi — u qo'lda ajratadi.
+MAX_AI_SUBTASKS = 3
+
+
 def _create_ai_subtasks(
     db,
     complaint: Complaint,
     secondary_codes: list[str],
     primary_category: Category | None,
-) -> int:
+) -> tuple[int, list[str]]:
     """LLM topgan qo'shimcha muammolar uchun idoralararo topshiriq
-    yaratadi (docs/07 §1.1). Yaratilganlar sonini qaytaradi.
+    yaratadi (docs/07 §1.1).
+
+    Qaytaradi: `(yaratilganlar_soni, chegaradan_oshib_qolgan_kodlar)`.
+    Ikkinchisi — fuqaro YOZGAN, lekin avtomatik ajratilMAGAN xizmatlar.
+    Ular jimgina yo'qolmasligi uchun chaqiruvchi ularni eventga yozadi.
 
     **LLM'ga ishonilmaydi.** U ro'yxatda yo'q kod, asosiy kategoriyaning
     o'zi yoki bo'limga bog'lanmagan kategoriya qaytarishi mumkin —
     hammasi shu yerda tozalanadi. Eng muhim filtr: **asosiy bo'lim
     bilan bir xil bo'limga tushadigan** kod tashlanadi, aks holda bitta
     jamoa o'z ishi uchun o'ziga topshiriq olardi.
+
+    Bu filtrlar bilan CHEGARA farqi muhim: filtrlangan kod — LLM xatosi
+    yoki allaqachon qamrab olingan ish, chegaradan oshgani esa — haqiqiy,
+    hali hech kimga berilmagan muammo. Faqat ikkinchisi qaytariladi.
     """
     if not secondary_codes:
-        return 0
+        return 0, []
 
     primary_department_id = complaint.assigned_department_id or (
         primary_category.department_id if primary_category else None
@@ -103,6 +120,7 @@ def _create_ai_subtasks(
     primary_code = primary_category.code if primary_category else None
 
     created = 0
+    overflow: list[str] = []
     used_departments: set[uuid.UUID] = set()
     for code in secondary_codes:
         if code == primary_code:
@@ -113,6 +131,14 @@ def _create_ai_subtasks(
         if secondary is None or secondary.department_id is None:
             continue
         if secondary.department_id == primary_department_id or secondary.department_id in used_departments:
+            continue
+
+        # Shu yergacha yetgan kod — HAQIQIY, hali hech kimga berilmagan
+        # muammo. Chegara to'lgan bo'lsa uni tashlab yubormaymiz, ro'yxatga
+        # olamiz: adminga «buni qo'lda ajrating» deb ko'rsatiladi.
+        if created >= MAX_AI_SUBTASKS:
+            overflow.append(secondary.name("uz"))
+            used_departments.add(secondary.department_id)
             continue
 
         used_departments.add(secondary.department_id)
@@ -157,7 +183,14 @@ def _create_ai_subtasks(
         logger.info(
             "%s: AI %s ta qo'shimcha bo'limga topshiriq yaratdi", complaint.ticket_number, created
         )
-    return created
+    if overflow:
+        logger.warning(
+            "%s: chegaradan oshgan %s ta xizmat avtomatik ajratilmadi: %s",
+            complaint.ticket_number,
+            len(overflow),
+            ", ".join(overflow),
+        )
+    return created, overflow
 
 
 async def analyze_complaint(ctx, complaint_id: str, attempt: int = 0) -> None:
@@ -290,8 +323,33 @@ async def analyze_complaint(ctx, complaint_id: str, attempt: int = 0) -> None:
 
         # v1.5: ko'p bo'limli murojaat — ikkinchi muammo ham bo'limiga
         # tushadi ([07] §1.1).
-        if _create_ai_subtasks(db, complaint, result.secondary_category_codes, category):
+        subtasks_created, subtasks_overflow = _create_ai_subtasks(
+            db, complaint, result.secondary_category_codes, category
+        )
+        if subtasks_created:
             complaint.needs_review = True
+
+        # v1.8: chegaradan oshgan xizmatlar jimgina yo'qolmaydi.
+        #
+        # Avval fuqaro 5 ta muammo yozsa 4 tasi yo'naltirilib, 5-si hech
+        # qanday izsiz tushib qolardi — admin buni faqat matnni to'liq
+        # o'qib, sanab chiqib bilishi mumkin edi. Endi eventda aniq
+        # yozilib qoladi va murojaat AI nazoratiga tushadi: qolganini
+        # xodim qo'lda sub-task qilib ajratadi.
+        if subtasks_overflow:
+            complaint.needs_review = True
+            db.add(
+                ComplaintEvent(
+                    complaint_id=complaint.id,
+                    event_type="subtasks_truncated",
+                    actor_type="ai",
+                    payload={
+                        "created": subtasks_created,
+                        "limit": MAX_AI_SUBTASKS,
+                        "not_assigned": subtasks_overflow,
+                    },
+                )
+            )
 
         db.commit()
     finally:

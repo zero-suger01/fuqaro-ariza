@@ -86,7 +86,7 @@ function CategoryForm({
         </div>
 
         <div>
-          <Label>Javob muddati (SLA, soat)</Label>
+          <Label>Javob muddati (soat)</Label>
           <Input type="number" min={1} value={sla} onChange={(e) => setSla(e.target.value)} />
           <p className="text-xs text-text-muted mt-1">
             Muhimlik yuqori bo&apos;lsa muddat avtomatik qisqaradi (critical — 2 soat).
@@ -195,7 +195,8 @@ function CategoriesView() {
           <p className="text-sm text-text-secondary">
             Sun&apos;iy intellekt har bir murojaat uchun shu ro&apos;yxatdan bitta kategoriyani tanlaydi va uni
             kategoriyaning bo&apos;limiga avtomatik yo&apos;naltiradi. Ya&apos;ni <strong>bo&apos;lim</strong> — murojaat
-            kimga tushishini, <strong>SLA</strong> — javob muddatini belgilaydi. Nofaol kategoriyani AI tanlay olmaydi.
+            kimga tushishini, <strong>javob muddati</strong> — qancha vaqt ichida hal qilinishi kerakligini
+            belgilaydi. Nofaol kategoriyani AI tanlay olmaydi.
           </p>
         </div>
       </Card>

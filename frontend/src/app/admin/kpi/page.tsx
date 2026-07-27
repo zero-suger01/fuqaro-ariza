@@ -106,7 +106,7 @@ function kpiColumns(groupLabel: string): Column<KpiRow>[] {
       numeric: true,
       render: (row) => formatHours(row.avg_resolution_hours),
     },
-    { key: "sla", header: "SLA %", numeric: true, render: (row) => formatPercent(row.sla_percent) },
+    { key: "sla", header: "Muddatida %", numeric: true, render: (row) => formatPercent(row.sla_percent) },
   ];
 }
 

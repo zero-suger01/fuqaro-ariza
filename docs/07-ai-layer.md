@@ -47,7 +47,7 @@ Shuning uchun LLM javobiga **`secondary_category_codes`** qo'shildi ([03](03-kon
 ```
 category_code            → asosiy muammo, murojaat shu bo'limga yo'naltiriladi
 secondary_category_codes → matnda BOSHQA bo'limga tegishli ALOHIDA muammo
-                           ham bo'lsa (max 3). Yo'q bo'lsa — bo'sh ro'yxat.
+                           ham bo'lsa — HAMMASI. Yo'q bo'lsa — bo'sh ro'yxat.
 ```
 
 Worker har `secondary_category_codes` elementi uchun **avtomatik sub-task** yaratadi (bo'lim = kategoriyaning `department_id` si), `subtask_created` eventi `actor_type="ai"` bilan yoziladi va bo'lim xodimlariga bildirishnoma ketadi.
@@ -55,6 +55,30 @@ Worker har `secondary_category_codes` elementi uchun **avtomatik sub-task** yara
 Filtrlar (worker'da, LLM'ga ishonilmaydi): noma'lum kod tashlanadi; asosiy kategoriyaning o'zi tashlanadi; **asosiy bo'lim bilan bir xil bo'limga tushadigan** kod tashlanadi (bir jamoaga ikki marta topshiriq bermaymiz); bo'limga bog'lanmagan kategoriya tashlanadi.
 
 Sub-task yaratilganda `needs_review=true` qo'yiladi — bo'linish to'g'ri bo'lganini odam bir marta tasdiqlashi kerak. Bu **bloklamaydi**: asosiy bo'lim ishni darhol boshlaydi.
+
+#### 3 tadan ortiq bo'lim bo'lsa (v1.8)
+
+Avtomatik ochiladigan sub-tasklar soni **`MAX_AI_SUBTASKS` = 3** (asosiy bo'lim bilan birga 4 idora). Bundan ortig'ini boshqarib bo'lmaydi — SLA, nazorat va «kim yakunlaydi» degan savol chalkashadi.
+
+**Chegaradan oshgani TASHLANMAYDI.** Avval prompt LLM'ning o'ziga «ko'pi bilan 3 ta» derdi, ya'ni 5 ta xizmatga tegishli murojaatda 5-si javobga umuman kirmasdi va hech qayerda iz qolmasdi — bu aynan shu bo'lim tuzatgan nosozlikning o'zi edi («ikkinchisi jimgina yo'qolardi»), faqat 2-muammodan 5-muammoga ko'chgan.
+
+Endi: LLM hammasini sanaydi → worker 3 tasiga topshiriq ochadi → qolgani **`subtasks_truncated`** eventiga yoziladi (`payload: created, limit, not_assigned[]`) va `needs_review=true` qo'yiladi. Admin buni **uch joyda** ko'radi (faqat timeline'da bo'lsa, murojaatni ochib pastga qarab kelmaguncha bilmasdi):
+
+| Qayerda | Nima ko'rinadi |
+|---|---|
+| Murojaatlar kartasi | «N ta xizmat ajratilmagan» (danger; umumiy «AI tekshiruv kerak» o'rniga — aniqroq va shoshilinchroq) |
+| AI nazorati ro'yxati | «Bu xizmatlarga topshiriq ochilmagan — qo'lda ajrating» + xizmat nomlari |
+| Tafsilot sahifasi | «Idoralararo topshiriqlar» kartasi ichida, **qo'shimcha bo'lim berish formasining ustida** — ogohlantirish va uni tuzatadigan joy bir yerda |
+
+Ro'yxat javobida bu `ai.unassigned_services[]` maydoni (sahifadagi barcha murojaat uchun BITTA `IN` so'rovi bilan yig'iladi — qator boshiga so'rov qilinsa N+1 bo'lardi).
+
+O'lchangan misol (5 xizmat: svet, suv, musor, yo'l chuquri, svetofor):
+
+```
+asosiy      -> Elektroset
+sub-task    -> Suvta'minot, «Toza hudud», Yo'llar qo'mitasi
+not_assigned-> ["Svetofor, yo'l belgilari va razmetka"]   <- avval izsiz yo'qolardi
+```
 
 > **Nega bu «inson kutilmaydi» qoidasini buzmaydi:** murojaat baribir darhol yo'naltiriladi va ijroga ketadi. Sub-task ham darhol tegishli bo'limga tushadi. `needs_review` faqat nazorat belgisi — admin hech narsa qilmasa ham ikkala bo'lim ishlayveradi. Yagona qattiq qoida: **ochiq sub-task bilan murojaat `resolved` ga o'ta olmaydi** ([03](03-kontraktlar.md) §5) — aks holda fuqaroga «hal qilindi» deb aytilar, suv esa hamon yo'q bo'lardi.
 

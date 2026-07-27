@@ -221,6 +221,14 @@ class AiListBrief(BaseModel):
     # Tasdiqlash navbati buni ko'rsatmasa admin murojaatni ochmasdan turib
     # bo'linish bo'lganini bilmaydi, sub-taskni bekor ham qila olmaydi.
     open_subtasks: list[OpenSubtaskBrief] = []
+    # v1.8 — AI topgan, lekin chegara (`MAX_AI_SUBTASKS`) tufayli avtomatik
+    # ajratilMAGAN xizmatlar nomi (`subtasks_truncated` eventidan).
+    #
+    # Ro'yxatga aynan shuning uchun chiqariladi: bu ma'lumot faqat
+    # timeline'da tursa, admin murojaatni ochib pastga qarab kelmaguncha
+    # fuqaroning bir muammosi hech kimga berilmaganini bilmaydi — ya'ni
+    # signal bor-u, ko'rinmaydi.
+    unassigned_services: list[str] = []
 
 
 class ComplaintListItem(BaseModel):

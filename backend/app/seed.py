@@ -19,58 +19,100 @@ from app.models.department import Department
 from app.models.setting import Setting
 from app.models.user import User
 
+# v1.8 — hokimlik bergan «davlat tashkilotlari matritsasi» bo'yicha to'liq
+# qayta qurildi (docs/14-tashkilotlar-matritsasi.md). 7 guruh, 23 tashkilot.
+# Kategoriyalar bular bilan 1:1 — LLM kategoriya tanlashi = mas'ul
+# tashkilotni tanlashi, oradagi noaniqlik yo'q.
+#
+# code, uz, oz, ru, en, is_external
 DEPARTMENTS = [
-    ("sanitariya", "Sanitariya tozalash xizmati", "Санитария тозалаш хизмати", "Служба санитарной очистки", "Sanitation service", True),
-    ("yolxojaligi", "Yo'l xo'jaligi boshqarmasi", "Йўл хўжалиги бошқармаси", "Управление дорожного хозяйства", "Road maintenance department", True),
-    ("transport", "Yo'lovchi transporti boshqarmasi", "Йўловчи транспорти бошқармаси", "Управление пассажирского транспорта", "Public transport department", True),
-    ("elektr", "Elektr tarmoqlari korxonasi", "Электр тармоқлари корхонаси", "Предприятие электрических сетей", "Electric grid company", True),
-    ("gaz", "Hududgaz ta'minoti xizmati", "Ҳудудгаз таъминоти хизмати", "Служба газоснабжения", "Gas supply service", True),
-    ("suvsoz", "Suvsoz (suv ta'minoti) korxonasi", "Сувсоз (сув таъминоти) корхонаси", "Предприятие водоснабжения", "Water supply company", True),
-    ("kommunal", "Kommunal xo'jalik boshqarmasi", "Коммунал хўжалик бошқармаси", "Управление коммунального хозяйства", "Utilities department", True),
+    # --- 1. Kommunal xizmatlar va uy-joy ---
+    ("elektr", "Hududiy elektr tarmoqlari (Elektroset)", "Ҳудудий электр тармоқлари (Электросет)", "Региональные электрические сети", "Regional electric grid", True),
+    ("gaz", "Hududgazta'minot", "Ҳудудгазтаъминот", "Худудгазтаъминот", "Regional gas supply", True),
+    ("suvsoz", "Suvta'minot (Suvsoz) korxonasi", "Сувтаъминот (Сувсоз) корхонаси", "Предприятие водоснабжения", "Water supply company", True),
     ("obodonlashtirish", "Obodonlashtirish boshqarmasi", "Ободонлаштириш бошқармаси", "Управление благоустройства", "Landscaping department", True),
-    ("ekologiya", "Ekologiya va atrof-muhitni muhofaza qilish qo'mitasi", "Экология ва атроф-муҳитни муҳофаза қилиш қўмитаси", "Комитет по экологии и охране окружающей среды", "Ecology and environment committee", True),
-    ("qurilish", "Davlat arxitektura-qurilish nazorati inspeksiyasi", "Давлат архитектура-қурилиш назорати инспекцияси", "Инспекция государственного архитектурно-строительного надзора", "State construction supervision inspectorate", True),
-    ("kadastr", "Kadastr xizmati", "Кадастр хизмати", "Кадастровая служба", "Cadastre service", True),
+    ("sanitariya", "«Toza hudud» sanitar tozalash korxonasi", "«Тоза ҳудуд» санитар тозалаш корхонаси", "Предприятие санитарной очистки «Toza hudud»", "Sanitation company", True),
+    ("uyjoy", "Uy-joy inspeksiyasi (BHK nazorati)", "Уй-жой инспекцияси (БҲК назорати)", "Жилищная инспекция (надзор за УК)", "Housing inspectorate", True),
+    # --- 2. Yo'l, transport va infratuzilma ---
+    ("yolxojaligi", "Avtomobil yo'llari qo'mitasi (Yo'l foydalanish korxonasi)", "Автомобиль йўллари қўмитаси", "Комитет автомобильных дорог", "Road committee", True),
+    ("yhxx", "Yo'l harakati xavfsizligi xizmati (YHXX)", "Йўл ҳаракати хавфсизлиги хизмати (ЙҲХХ)", "Служба безопасности дорожного движения", "Road traffic safety service", True),
+    ("transport", "Transport boshqarmasi (yo'lovchi tashish)", "Транспорт бошқармаси", "Управление транспорта", "Transport department", True),
+    # --- 3. Ekologiya, yer va qurilish ---
+    ("ekologiya", "Ekologiya va atrof-muhitni muhofaza qilish inspeksiyasi", "Экология ва атроф-муҳитни муҳофаза қилиш инспекцияси", "Инспекция экологии и охраны окружающей среды", "Ecology inspectorate", True),
+    ("kadastr", "Kadastr agentligi bo'limi", "Кадастр агентлиги бўлими", "Отдел агентства кадастра", "Cadastre agency", True),
+    ("qurilish", "Qurilish inspeksiyasi (arxitektura-qurilish nazorati)", "Қурилиш инспекцияси", "Строительная инспекция", "Construction inspectorate", True),
+    # --- 4. Ijtimoiy soha, sog'liq va ta'lim ---
+    ("sogliqni_saqlash", "Tuman tibbiyot birlashmasi (TTB, sanepid bilan)", "Туман тиббиёт бирлашмаси (ТТБ)", "Районное медицинское объединение", "District medical association", True),
+    ("talim", "Maktabgacha va maktab ta'limi bo'limi", "Мактабгача ва мактаб таълими бўлими", "Отдел дошкольного и школьного образования", "Education department", True),
+    ("ijtimoiy", "«Inson» ijtimoiy xizmatlar markazi", "«Инсон» ижтимоий хизматлар маркази", "Центр социальных услуг «Инсон»", "Social services center", True),
+    # --- 5. Jamoat tartibi, huquq va xavfsizlik ---
+    ("iib", "Ichki ishlar bo'limi (IIB, mahalla profilaktika inspektori)", "Ички ишлар бўлими (ИИБ)", "Отдел внутренних дел", "Internal affairs department", True),
+    ("favqulodda", "Favqulodda vaziyatlar bo'limi (yong'in xavfsizligi)", "Фавқулодда вазиятлар бўлими", "Отдел по чрезвычайным ситуациям", "Emergency situations department", True),
+    ("mib", "Majburiy ijro byurosi (MIB)", "Мажбурий ижро бюроси (МИБ)", "Бюро принудительного исполнения", "Enforcement bureau", True),
+    ("fhdyo", "Adliya vazirligi (FHDYO bo'limi va DXM)", "Адлия вазирлиги (ФҲДЁ бўлими ва ДХМ)", "Министерство юстиции (отдел ЗАГС и ЦГУ)", "Ministry of Justice (civil registry & state services)", True),
+    # --- 6. Iqtisodiyot, soliq va mehnat ---
     ("soliq", "Davlat soliq inspeksiyasi", "Давлат солиқ инспекцияси", "Государственная налоговая инспекция", "State tax inspectorate", True),
-    ("ijtimoiy", "Ijtimoiy himoya bo'limi", "Ижтимоий ҳимоя бўлими", "Отдел социальной защиты", "Social protection department", False),
-    ("hokimlik", "Tuman hokimligi murojaatlar bo'limi", "Туман ҳокимлиги мурожаатлар бўлими", "Отдел обращений граждан хокимията района", "District administration complaints office", False),
-    # v1.6 (M12) — 22-category taxonomy additions (docs/03-kontraktlar.md category table).
-    ("iib", "Ichki ishlar bo'limi", "Ички ишлар бўлими", "Отдел внутренних дел", "Internal affairs department", True),
-    ("favqulodda", "Favqulodda vaziyatlar boshqarmasi", "Фавқулодда вазиятлар бошқармаси", "Управление по чрезвычайным ситуациям", "Emergency situations department", True),
-    ("sogliqni_saqlash", "Sog'liqni saqlash boshqarmasi", "Соғлиқни сақлаш бошқармаси", "Управление здравоохранения", "Healthcare department", True),
-    ("talim", "Xalq ta'limi boshqarmasi", "Халқ таълими бошқармаси", "Управление народного образования", "Public education department", True),
-    ("bandlik", "Bandlikka ko'maklashish markazi", "Бандликка кўмаклашиш маркази", "Центр содействия занятости", "Employment assistance center", True),
-    ("fhdyo", "Fuqarolik holati dalolatnomalarini yozish bo'limi", "Фуқаролик ҳолати далолатномаларини ёзиш бўлими", "Отдел ЗАГС", "Civil registry office", True),
-    ("qishloq_xojaligi", "Qishloq xo'jaligi bo'limi", "Қишлоқ хўжалиги бўлими", "Отдел сельского хозяйства", "Agriculture department", False),
-    ("telekom", "Aloqa va axborotlashtirish bo'limi", "Алоқа ва ахборотлаштириш бўлими", "Отдел связи и информатизации", "Communications & IT department", True),
-    ("huquq", "Yuridik bo'lim", "Юридик бўлим", "Юридический отдел", "Legal department", False),
+    ("bandlik", "Bandlik va mehnat inspeksiyasi", "Бандлик ва меҳнат инспекцияси", "Инспекция по труду и занятости", "Labor and employment inspectorate", True),
+    ("raqobat", "Raqobat va iste'molchilar huquqlarini himoya qilish bo'limi", "Рақобат ва истеъмолчилар ҳуқуқларини ҳимоя қилиш бўлими", "Отдел по защите конкуренции и прав потребителей", "Competition & consumer protection", True),
+    # --- 7. Mahalliy hokimiyat va mahalla ---
+    ("hokimlik", "Tuman hokimligi", "Туман ҳокимлиги", "Хокимият района", "District administration", False),
+    ("mfy", "Mahalla fuqarolar yig'ini (MFY)", "Маҳалла фуқаролар йиғини (МФЙ)", "Сход граждан махалли", "Mahalla citizens' assembly", False),
 ]
 
-# code, uz, oz, ru, en, icon, sla_hours, department_code — v1.6 (M12): full
-# 22-category taxonomy (docs/03-kontraktlar.md category table).
+# Matritsada yo'q — nofaol qilinadi (mavjud murojaatlar tarixi buzilmasin
+# uchun o'chirilmaydi, faqat `is_active=False`).
+RETIRED_DEPARTMENTS = ["kommunal", "qishloq_xojaligi", "telekom", "huquq"]
+
+# code, uz, oz, ru, en, icon, sla_hours, department_code
+#
+# v1.8 — kategoriya = tashkilot (1:1). Avval mavzuli kategoriyalar bor edi
+# va bittasi bir nechta tashkilotni qamrardi: masalan «Yo'l va transport»
+# ichida yo'l ta'miri, svetofor va avtobus grafigi — uchta turli mas'ul.
+# LLM to'g'ri mavzuni tanlagan bilan murojaat noto'g'ri idoraga tushardi.
 CATEGORIES = [
-    ("chiqindi_obodon", "Chiqindi va obodonlashtirish", "Чиқинди ва ободонлаштириш", "Отходы и благоустройство", "Waste & landscaping", "trash-2", 48, "sanitariya"),
-    ("yol_transport", "Yo'l va transport", "Йўл ва транспорт", "Дороги и транспорт", "Roads & transport", "route", 72, "yolxojaligi"),
-    ("elektr", "Elektr energiyasi", "Электр энергияси", "Электроэнергия", "Electricity", "zap", 24, "elektr"),
+    # --- 1. Kommunal xizmatlar va uy-joy ---
+    ("elektr", "Elektr ta'minoti", "Электр таъминоти", "Электроснабжение", "Electricity supply", "zap", 24, "elektr"),
     ("gaz", "Gaz ta'minoti", "Газ таъминоти", "Газоснабжение", "Gas supply", "flame", 12, "gaz"),
     ("suv_kanalizatsiya", "Suv va kanalizatsiya", "Сув ва канализация", "Вода и канализация", "Water & sewage", "droplet", 24, "suvsoz"),
-    ("uy_kommunal", "Uy-joy va kommunal xizmatlar", "Уй-жой ва коммунал хизматлар", "Жильё и коммунальные услуги", "Housing & utilities", "home", 72, "kommunal"),
+    ("obodonlashtirish", "Obodonlashtirish va ko'cha yoritilishi", "Ободонлаштириш ва кўча ёритилиши", "Благоустройство и уличное освещение", "Landscaping & street lighting", "trees", 72, "obodonlashtirish"),
+    ("chiqindi", "Chiqindi olib ketish", "Чиқинди олиб кетиш", "Вывоз мусора", "Waste collection", "trash-2", 48, "sanitariya"),
+    ("uy_joy", "Ko'p qavatli uy va BHK", "Кўп қаватли уй ва БҲК", "Многоквартирный дом и УК", "Apartment buildings & management", "building-2", 72, "uyjoy"),
+    # --- 2. Yo'l, transport va infratuzilma ---
+    ("yol", "Yo'l qoplamasi va ko'priklar", "Йўл қопламаси ва кўприклар", "Дорожное покрытие и мосты", "Roads & bridges", "route", 72, "yolxojaligi"),
+    ("yol_harakati", "Svetofor, yo'l belgilari va razmetka", "Светофор, йўл белгилари ва разметка", "Светофоры, знаки и разметка", "Traffic signals & signs", "traffic-cone", 24, "yhxx"),
+    ("jamoat_transporti", "Jamoat transporti", "Жамоат транспорти", "Общественный транспорт", "Public transport", "bus", 72, "transport"),
+    # --- 3. Ekologiya, yer va qurilish ---
     ("ekologiya", "Ekologiya", "Экология", "Экология", "Ecology", "leaf", 120, "ekologiya"),
-    ("qurilish_arxitektura", "Qurilish va arxitektura", "Қурилиш ва архитектура", "Строительство и архитектура", "Construction & architecture", "hard-hat", 168, "qurilish"),
     ("yer_kadastr", "Yer va kadastr", "Ер ва кадастр", "Земля и кадастр", "Land & cadastre", "map", 168, "kadastr"),
-    ("soliq_moliya", "Soliq va moliya", "Солиқ ва молия", "Налоги и финансы", "Tax & finance", "receipt", 168, "soliq"),
-    ("ijtimoiy_yordam", "Ijtimoiy yordam", "Ижтимоий ёрдам", "Социальная помощь", "Social assistance", "heart-handshake", 72, "ijtimoiy"),
-    ("jamoat_xavfsizlik", "Jamoat tartibi va xavfsizlik", "Жамоат тартиби ва хавфсизлик", "Общественный порядок и безопасность", "Public order & safety", "shield-alert", 48, "iib"),
-    ("yongin_xavfsizligi", "Yong'in xavfsizligi", "Ёнғин хавфсизлиги", "Пожарная безопасность", "Fire safety", "flame-kindling", 12, "favqulodda"),
-    ("sogliqni_saqlash", "Sog'liqni saqlash", "Соғлиқни сақлаш", "Здравоохранение", "Healthcare", "heart-pulse", 72, "sogliqni_saqlash"),
-    ("talim", "Ta'lim", "Таълим", "Образование", "Education", "graduation-cap", 120, "talim"),
-    ("bandlik_mehnat", "Bandlik va mehnat", "Бандлик ва меҳнат", "Занятость и труд", "Employment & labor", "briefcase", 168, "bandlik"),
-    ("fhdyo_hujjatlar", "FHDYO va hujjatlar", "ФҲДЁ ва ҳужжатлар", "ЗАГС и документы", "Civil registry & documents", "file-text", 120, "fhdyo"),
-    ("qishloq_xojaligi", "Qishloq xo'jaligi", "Қишлоқ хўжалиги", "Сельское хозяйство", "Agriculture", "wheat", 168, "qishloq_xojaligi"),
-    ("telekommunikatsiya", "Telekommunikatsiya", "Телекоммуникация", "Телекоммуникации", "Telecommunications", "phone", 72, "telekom"),
-    ("huquqiy_masalalar", "Huquqiy masalalar", "Ҳуқуқий масалалар", "Правовые вопросы", "Legal matters", "scale", 168, "huquq"),
-    ("taklif_tashabbus", "Taklif va tashabbuslar", "Таклиф ва ташаббуслар", "Предложения и инициативы", "Proposals & initiatives", "megaphone", 168, "hokimlik"),
-    ("boshqa", "Boshqa", "Бошқа", "Другое", "Other", "help-circle", 72, "hokimlik"),
+    ("qurilish", "Qurilish nazorati", "Қурилиш назорати", "Строительный надзор", "Construction supervision", "hard-hat", 168, "qurilish"),
+    # --- 4. Ijtimoiy soha, sog'liq va ta'lim ---
+    ("sogliqni_saqlash", "Sog'liqni saqlash", "Соғлиқни сақлаш", "Здравоохранение", "Healthcare", "heart-pulse", 48, "sogliqni_saqlash"),
+    ("talim", "Ta'lim", "Таълим", "Образование", "Education", "graduation-cap", 72, "talim"),
+    ("ijtimoiy_yordam", "Ijtimoiy yordam va nafaqa", "Ижтимоий ёрдам ва нафақа", "Социальная помощь и пособия", "Social assistance", "heart-handshake", 72, "ijtimoiy"),
+    # --- 5. Jamoat tartibi, huquq va xavfsizlik ---
+    ("jamoat_xavfsizlik", "Jamoat tartibi va xavfsizlik", "Жамоат тартиби ва хавфсизлик", "Общественный порядок и безопасность", "Public order & safety", "shield-alert", 24, "iib"),
+    ("favqulodda", "Yong'in va favqulodda vaziyat", "Ёнғин ва фавқулодда вазият", "Пожары и ЧС", "Fire & emergencies", "flame-kindling", 12, "favqulodda"),
+    ("ijro", "Sud qarori ijrosi va qarzdorlik", "Суд қарори ижроси ва қарздорлик", "Исполнение судебных решений", "Court enforcement & debts", "gavel", 120, "mib"),
+    ("fhdyo_hujjatlar", "FHDYO guvohnomalari va davlat xizmatlari", "ФҲДЁ гувоҳномалари ва давлат хизматлари", "Свидетельства ЗАГС и госуслуги", "Civil registry & state services", "file-text", 120, "fhdyo"),
+    # --- 6. Iqtisodiyot, soliq va mehnat ---
+    ("soliq", "Soliq va tadbirkorlik", "Солиқ ва тадбиркорлик", "Налоги и предпринимательство", "Tax & business", "receipt", 168, "soliq"),
+    ("mehnat", "Mehnat va ish haqi", "Меҳнат ва иш ҳақи", "Труд и заработная плата", "Labor & wages", "briefcase", 168, "bandlik"),
+    ("isteomolchi", "Iste'molchi huquqlari va narxlar", "Истеъмолчи ҳуқуқлари ва нархлар", "Права потребителей и цены", "Consumer rights & prices", "shopping-cart", 120, "raqobat"),
+    # --- 7. Mahalliy hokimiyat va mahalla ---
+    ("hokimlik", "Hokimlik va kompleks masalalar", "Ҳокимлик ва комплекс масалалар", "Хокимият и комплексные вопросы", "Administration & complex issues", "landmark", 168, "hokimlik"),
+    ("mahalla", "Mahalla masalalari", "Маҳалла масалалари", "Вопросы махалли", "Mahalla matters", "users", 120, "mfy"),
+]
+
+# Matritsada yo'q — nofaol qilinadi. Mavjud murojaatlar bu kategoriyalarga
+# FK bilan bog'langan (117 ta), shuning uchun O'CHIRILMAYDI: tarix
+# saqlanadi va admin panelda to'g'ri ko'rinadi, lekin `is_active=False`
+# bo'lgani uchun LLM promptiga tushmaydi va yangi murojaat ularga
+# yo'naltirilmaydi.
+RETIRED_CATEGORIES = [
+    "chiqindi_obodon", "yol_transport", "uy_kommunal", "qurilish_arxitektura",
+    "soliq_moliya", "yongin_xavfsizligi", "bandlik_mehnat",
+    "qishloq_xojaligi", "telekommunikatsiya", "huquqiy_masalalar",
+    "taklif_tashabbus", "boshqa",
 ]
 
 # DIQQAT: `settings` jadvali hozir FAQAT shu yerda yoziladi va kod uni
@@ -91,59 +133,148 @@ CATEGORIES = [
 #
 # Yozish uslubi: «NIMA kiradi; NIMA kirmaydi -> qaysi kodga».
 CATEGORY_DESCRIPTIONS = {
-    "yol_transport": (
-        "Ko'cha va yo'l qoplamasi, chuqurlar, piyodalar yo'lagi, svetofor va yo'l "
-        "belgilari, jamoat transporti. Ko'cha chiroqlari (yoritish) bu yerga "
-        "KIRMAYDI -> elektr."
-    ),
+    # --- 1. Kommunal xizmatlar va uy-joy ---
     "elektr": (
-        "Elektr bilan bog'liq HAMMA narsa: uy va binolarga ta'minot (svet "
-        "o'chishi, kuchlanish, hisoblagich, uzilgan sim, transformator) VA "
-        "KO'CHA YORITISHI — ko'cha chiroqlari, ustunlardagi lampalar, "
-        "yonmayotgan yoritgichlar. Chiroq/yoritish so'zi uchrasa shu kod."
-    ),
-    "suv_kanalizatsiya": (
-        "Ichimlik suvi ta'minoti, suv bosimi, quvur yorilishi, kanalizatsiya "
-        "tiqilishi va oqishi. Hovli/ko'chadagi to'planib qolgan yomg'ir suvi "
-        "ham shu yerda."
-    ),
-    "chiqindi_obodon": (
-        "Maishiy chiqindi olib ketilmasligi, konteyner yetishmasligi, ko'chani "
-        "tozalash, ko'kalamzorlashtirish, skameyka va bolalar maydonchasi. "
-        "Sanoat chiqindisi yoki tabiatga zarar -> ekologiya."
-    ),
-    "ekologiya": (
-        "Atrof-muhitga zarar: havo va suvni ifloslantirish, sanoat chiqindisi, "
-        "daraxtlarni ruxsatsiz kesish, yer osti suvlari. Oddiy maishiy chiqindi "
-        "emas -> chiqindi_obodon."
-    ),
-    "uy_kommunal": (
-        "Ko'p qavatli uy va umumiy mulk: tom oqishi, podyezd, lift, isitish "
-        "tizimi, uy boshqaruv tashkiloti ishi. Muammo faqat suv/gaz/elektr "
-        "TA'MINOTIDA bo'lsa -> mos ta'minot kategoriyasi."
+        "Elektr ta'minoti: svet o'chishi, kuchlanish pasayishi, transformator "
+        "nosozligi/portlashi, yuqori kuchlanishli sim uzilishi, hisoblagich va "
+        "billing. MAHALLA ICHIDAGI ko'chalar va uylardagi yoritish ham SHU "
+        "YERGA kiradi — «ko'chamizda / mahallamizda / uyimizda svet yo'q» "
+        "deyilsa shu kod. Faqat mashina yuradigan katta ko'cha va yo'l "
+        "bo'ylaridagi yoritish -> obodonlashtirish."
     ),
     "gaz": (
-        "Tabiiy gaz ta'minoti: gaz yo'qligi, bosim pasayishi, hisoblagich, "
-        "gaz hidi va sizishi (bu hayot uchun xavf — priority critical)."
+        "Tabiiy gaz ta'minoti: gaz o'chishi, bosim pasayishi, quvurdan sizish "
+        "(gaz hidi — hayot uchun xavf, priority critical), ballon yetkazib "
+        "berish grafigi, hisoblagich va billing."
     ),
-    "jamoat_xavfsizlik": (
-        "Jamoat tartibi buzilishi: bezorilik, shovqin, ruxsatsiz savdo, "
-        "jinoyat. Muammo texnik nosozlik bo'lib, xavf u sabab yuzaga kelgan "
-        "bo'lsa (masalan chiroq yo'qligi tufayli qorong'ilik) — asosiy "
-        "kategoriya o'sha nosozlik bo'ladi, bu emas."
+    "suv_kanalizatsiya": (
+        "Ichimlik suvi o'chishi yoki bosim pasayishi, ko'chada suv quvuri "
+        "yorilishi, kanalizatsiya tiqilishi va oqishi, lyuk ochiq qolishi, suv "
+        "sifati (loyqa yoki hidli kelishi)."
     ),
-    "qurilish_arxitektura": (
-        "Ruxsatsiz qurilish, loyihaga zid bino, qurilish maydonidagi tartibsizlik, "
-        "buzib berish masalalari. Yer chegarasi yoki hujjat -> yer_kadastr."
+    "obodonlashtirish": (
+        "MASHINA YURADIGAN KATTA KO'CHA va yo'l bo'ylaridagi yoritish "
+        "(ustunlar, tungi yoritish), markaziy ko'chalarni supurish va tozalash, "
+        "ariq va kollektorlarni tozalash, ko'cha-park daraxtlarini butash, "
+        "skameyka va maydonchalar. Mahalla ichidagi ko'cha yoki uy yoritishi "
+        "bu yerga KIRMAYDI -> elektr."
+    ),
+    "chiqindi": (
+        "Maishiy chiqindi (musor) olib ketish grafigi buzilishi, konteyner "
+        "yo'qligi yoki to'lib ketishi, chiqindi xizmati uchun nohaq qarzdorlik "
+        "yozilishi. Noqonuniy chiqindixona yoki sanoat chiqindisi -> ekologiya."
+    ),
+    "uy_joy": (
+        "Ko'p qavatli uy (dom): tom oqishi, podval suvga to'lishi, lift "
+        "nosozligi va xavfsizligi, boshqaruv kompaniyasi (BHK/Shirkat) "
+        "noqonuniy harakati, noqonuniy qayta rejalashtirish. Muammo faqat "
+        "suv/gaz/elektr TA'MINOTIDA bo'lsa -> mos ta'minot kodi."
+    ),
+    # --- 2. Yo'l, transport va infratuzilma ---
+    "yol": (
+        "Yo'l QOPLAMASI: ko'chadagi chuqur (yama), asfalt buzilishi, yo'l "
+        "ta'miri, trotuar qurish, ko'prik texnik holati. Svetofor va yo'l "
+        "belgisi bu yerga KIRMAYDI -> yol_harakati."
+    ),
+    "yol_harakati": (
+        "Yo'l harakati JIHOZLARI: svetofor nosozligi yoki o'chib qolishi, yo'l "
+        "belgisi (znak) yo'qligi yoki ko'rinmasligi, razmetka (yo'l chizig'i) "
+        "o'chib ketgani, yo'l kamerasi va radar nosozligi."
+    ),
+    "jamoat_transporti": (
+        "Avtobus va marshrutka intervali va grafigi buzilishi, bekat holati va "
+        "noqonuniy egallanishi, yo'l haqi oshirib olinishi, kirakashlik."
+    ),
+    # --- 3. Ekologiya, yer va qurilish ---
+    "ekologiya": (
+        "Daraxtlarni noqonuniy kesish (moratoriy buzilishi), korxona havoga "
+        "tutun yoki zaharli gaz chiqarishi, noqonuniy chiqindixona hosil "
+        "bo'lishi, daryo va ariqqa oqova/zaharli modda oqizilishi. Oddiy "
+        "maishiy chiqindi -> chiqindi."
     ),
     "yer_kadastr": (
-        "Yer uchastkasi chegarasi, kadastr hujjatlari, yerni ajratish va "
-        "ro'yxatga olish nizolari."
+        "Yer uchastkasi chegarasi nizolari, ko'chmas mulkni ro'yxatga olish va "
+        "texnik pasport berishdagi uzilishlar, yerni noqonuniy egallab olish "
+        "(yo'lga yoki umumiy yerga kirib olish)."
     ),
-    "boshqa": (
-        "FAQAT yuqoridagi kategoriyalarning HECH BIRIGA to'g'ri kelmasa. "
-        "Ikkilanayotgan bo'lsang, eng yaqin aniq kategoriyani tanla — bu "
-        "kodni oxirgi chora sifatida ishlat."
+    "qurilish": (
+        "Noqonuniy qurilish (ruxsatnomasiz uy yoki obyekt), qurilish "
+        "maydonida xavfsizlik va sanitariya qoidalari buzilishi, qo'shni "
+        "xonadonga zarar yetkazib qurilish."
+    ),
+    # --- 4. Ijtimoiy soha, sog'liq va ta'lim ---
+    "sogliqni_saqlash": (
+        "Poliklinika va shifoxonada tibbiy xizmat sifati, shifokor qo'polligi, "
+        "bepul/imtiyozli dori berilmasligi, tez yordam (103) kechikishi. "
+        "Sanepid: oziq-ovqat zaharlanishi va obyektlar sanitariyasi."
+    ),
+    "talim": (
+        "Maktab va bog'chadagi noqonuniy pul yig'imlari (fond), ta'lim sifati, "
+        "o'qituvchi va tarbiyachi xatti-harakati, maktab-bog'cha isitish "
+        "tizimi va moddiy-texnik ahvoli."
+    ),
+    "ijtimoiy_yordam": (
+        "Ijtimoiy daftarlar (Ayollar, Yoshlar, Temir daftar) bo'yicha yordam, "
+        "bolalar nafaqasi va moddiy yordam tayinlanishi yoki to'lanishi, "
+        "nogironlikni belgilash (TMEK) va reabilitatsiya vositalari."
+    ),
+    # --- 5. Jamoat tartibi, huquq va xavfsizlik ---
+    "jamoat_xavfsizlik": (
+        "Jamoat tartibi buzilishi, tunda shovqin, mushtlashuv, o'g'rilik, "
+        "shaxsiy xavfsizlikka tahdid; mahalla profilaktika inspektori "
+        "harakatsizligi. HUJJATLARDAN faqat pasport, ID-karta, propiska va "
+        "migratsiya shu yerda. Tug'ilish/nikoh/o'lim guvohnomasi va ism "
+        "o'zgartirish bu yerga KIRMAYDI -> fhdyo_hujjatlar. Agar muammo "
+        "TEXNIK nosozlik bo'lib, xavf o'sha nosozlikdan kelib chiqsa "
+        "(masalan yoritish yo'qligi tufayli qorong'ilik) — asosiy kod o'sha "
+        "nosozlik bo'ladi, bu esa ikkilamchi."
+    ),
+    "fhdyo_hujjatlar": (
+        "FHDYO (ZAGS) va Adliya: tug'ilish, nikoh, nikohdan ajralish va o'lim "
+        "holatlarini davlat ro'yxatidan o'tkazish; guvohnoma va uning takroriy "
+        "dublikatini berish; otalikni belgilash, farzandlikka olish; ism, "
+        "familiya yoki otasining ismini o'zgartirish; Davlat xizmatlari "
+        "markazi (DXM) va e-xizmatlar bo'yicha e'tirozlar. Pasport, ID-karta "
+        "va propiska bu yerga KIRMAYDI -> jamoat_xavfsizlik."
+    ),
+    "favqulodda": (
+        "Yong'in xavfi va sodir bo'lgan yong'inlar, tabiiy va texnogen xavflar "
+        "(sel, ko'chki, daraxt yoki ustun ag'darilishi), bino va inshootning "
+        "yong'in xavfsizligi qoidalariga mos kelmasligi."
+    ),
+    "ijro": (
+        "Sud qarori ijrosi: aliment va qarzdorlik undirish, kommunal qarz "
+        "bo'yicha asossiz taqiq (zapret) qo'yilishi, ijro byurosi "
+        "inspektorlarining noqonuniy harakatlari."
+    ),
+    # --- 6. Iqtisodiyot, soliq va mehnat ---
+    "soliq": (
+        "Xarid cheki (QR-chek) berilmasligi, noqonuniy tadbirkorlik, mol-mulk "
+        "va yer solig'i bo'yicha noto'g'ri hisob-kitob, E-ijara (ijara "
+        "shartnomasini ro'yxatdan o'tkazish)."
+    ),
+    "mehnat": (
+        "Ish haqini o'z vaqtida bermaslik, noqonuniy ishdan bo'shatish, mehnat "
+        "shartnomasisiz ishlatish (norasmiy bandlik), ish o'rnida xavfsizlik "
+        "texnikasi buzilishi."
+    ),
+    "isteomolchi": (
+        "Sifatsiz mahsulot sotilishi va qaytarib olinmasligi, narxni sun'iy "
+        "oshirish, tarozidan urish va aldash, yolg'on yoki chalg'ituvchi "
+        "reklama."
+    ),
+    # --- 7. Mahalliy hokimiyat va mahalla ---
+    "hokimlik": (
+        "Yuqoridagi HECH QAYSI tashkilotga aniq tushmaydigan kompleks "
+        "muammolar; tuman infratuzilmasini rivojlantirish va investitsiya "
+        "masalalari; sektor rahbarlari (1-4 sektor) faoliyatiga shikoyat. "
+        "Ikkilanayotgan bo'lsang avval aniq tashkilotni izla — bu kod oxirgi "
+        "chora."
+    ),
+    "mahalla": (
+        "Mahallalararo kichik nizolar va oilaviy kelishmovchiliklar; hokim "
+        "yordamchisi (imtiyozli kredit, kasbga o'qitish), yoshlar yetakchisi "
+        "va xotin-qizlar faoli faoliyatiga oid masalalar."
     ),
 }
 
@@ -232,8 +363,26 @@ def run(demo: bool = False) -> None:
                 )
                 db.add(department)
                 db.flush()
+            # Nom va faollik mavjud yozuvga ham qayta yoziladi: matritsa
+            # rasmiy tashkilot nomlarini beradi (masalan «Yo'l xo'jaligi
+            # boshqarmasi» -> «Avtomobil yo'llari qo'mitasi»), va katalog
+            # manbasi shu fayl — kategoriyalarda ham xuddi shunday (docs/14).
+            department.names = {"uz": name_uz, "oz": name_oz, "ru": name_ru, "en": name_en}
+            department.is_external = is_external
+            department.is_active = True
             departments_by_code[code] = department
-        print(f"Departments ready: {len(departments_by_code)}")
+
+        # Matritsadan chiqqanlar nofaol qilinadi, O'CHIRILMAYDI: ularga
+        # bog'langan murojaatlar, xodimlar va tarix saqlanishi kerak.
+        retired_depts = (
+            db.query(Department).filter(Department.code.in_(RETIRED_DEPARTMENTS)).all()
+        )
+        for department in retired_depts:
+            department.is_active = False
+        print(
+            f"Departments ready: {len(departments_by_code)} "
+            f"({len(retired_depts)} ta nofaol qilindi)"
+        )
 
         categories_by_code: dict[str, Category] = {}
         for order, (code, name_uz, name_oz, name_ru, name_en, icon, sla_hours, dept_code) in enumerate(CATEGORIES):
@@ -249,17 +398,39 @@ def run(demo: bool = False) -> None:
                 )
                 db.add(category)
                 db.flush()
-            # Tavsif MAVJUD kategoriyalarga ham har safar yoziladi: u prompt
-            # sozlash materiali va uni yaxshilash = seed'ni qayta yurgizish.
-            # Boshqa maydonlar (nom, SLA, bo'lim) admin UI'dan tahrirlanishi
-            # mumkin, shuning uchun ular faqat yaratishda qo'yiladi.
+            # Katalog maydonlari MAVJUD kategoriyalarga ham qayta yoziladi.
+            #
+            # Avval faqat yaratishda qo'yilardi va v1.8 qayta qurishida shu
+            # bilinib qoldi: `elektr` kodi eskidan bor edi, shuning uchun
+            # nomi «Elektr energiyasi» bo'lib qolgan, matritsa esa «Elektr
+            # ta'minoti» deydi — kod yangi taksonomiyada, ko'rinish eskisida.
+            #
+            # Ya'ni bu jadval seed'ga tegishli KATALOG: kod, nom, ikon, SLA,
+            # bo'lim va izoh manbasi shu fayl. Admin UI'dagi tahrir keyingi
+            # `python -m app.seed` da qayta yoziladi — operatsion tuzatish
+            # uchun emas, katalogni o'zgartirish uchun shu yer tahrirlanadi
+            # (docs/14).
+            category.names = {"uz": name_uz, "oz": name_oz, "ru": name_ru, "en": name_en}
+            category.icon = icon
+            category.sla_hours = sla_hours
+            category.sort_order = order
             category.descriptions = (
                 {"uz": CATEGORY_DESCRIPTIONS[code]} if code in CATEGORY_DESCRIPTIONS else None
             )
+            # Mavjud kategoriya bo'lim biriktiruvi ham yangilanadi: v1.8 da
+            # bir nechta kategoriya boshqa tashkilotga o'tdi (masalan
+            # `chiqindi` endi «Toza hudud» ga, `obodonlashtirish` alohida).
+            category.department_id = departments_by_code[dept_code].id
+            category.is_active = True
             categories_by_code[code] = category
+
+        retired_cats = db.query(Category).filter(Category.code.in_(RETIRED_CATEGORIES)).all()
+        for category in retired_cats:
+            category.is_active = False
         print(
             f"Categories ready: {len(categories_by_code)} "
-            f"({len(CATEGORY_DESCRIPTIONS)} tasida LLM uchun chegara izohi)"
+            f"({len(CATEGORY_DESCRIPTIONS)} tasida LLM izohi, "
+            f"{len(retired_cats)} ta nofaol qilindi)"
         )
 
         _seed_admin(db)

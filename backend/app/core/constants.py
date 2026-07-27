@@ -104,15 +104,25 @@ REVIEW_REASONS = ["ok", "wrong_category", "wrong_department", "wrong_priority", 
 
 SUBTASK_STATUSES = ["open", "done", "cancelled"]
 
+# v1.8 — hokimlik matritsasi bo'yicha (docs/14). Kategoriya = mas'ul
+# tashkilot (1:1), shuning uchun ro'yxat `seed.py: CATEGORIES` bilan bir xil
+# tartibda yuriladi. Nofaol qilingan eski kodlar `seed.py:
+# RETIRED_CATEGORIES` da — ular bazada qoladi (mavjud murojaatlar FK'si),
+# lekin bu ro'yxatda yo'q.
 CATEGORY_CODES = [
-    "yol_transport", "suv_kanalizatsiya", "elektr", "gaz", "chiqindi_obodon",
-    "uy_kommunal", "ekologiya", "jamoat_xavfsizlik", "yongin_xavfsizligi",
-    "sogliqni_saqlash", "talim", "ijtimoiy_yordam", "bandlik_mehnat",
-    "yer_kadastr", "qurilish_arxitektura", "soliq_moliya", "fhdyo_hujjatlar",
-    "qishloq_xojaligi", "telekommunikatsiya", "huquqiy_masalalar",
-    "taklif_tashabbus", "boshqa",
+    "elektr", "gaz", "suv_kanalizatsiya", "obodonlashtirish", "chiqindi", "uy_joy",
+    "yol", "yol_harakati", "jamoat_transporti",
+    "ekologiya", "yer_kadastr", "qurilish",
+    "sogliqni_saqlash", "talim", "ijtimoiy_yordam",
+    "jamoat_xavfsizlik", "favqulodda", "ijro", "fhdyo_hujjatlar",
+    "soliq", "mehnat", "isteomolchi",
+    "hokimlik", "mahalla",
 ]
-DEFAULT_CATEGORY_CODE = "boshqa"
+# Matritsa §7: «Yuqoridagi hech qaysi tashkilotga aniq tushmaydigan kompleks
+# muammolar» -> Tuman hokimligi. Avval bu `boshqa` edi; u nomi bo'yicha
+# «bilmadim» degan qutiga o'xshardi va hech kimga biriktirilmagandek
+# tuyulardi, aslida esa mas'ul aniq — hokimlik.
+DEFAULT_CATEGORY_CODE = "hokimlik"
 
 # 2.4 fayl limitlari
 FILE_LIMITS = {
@@ -134,5 +144,8 @@ EVENT_TYPES = [
     # v1.4 ([03] §8)
     "info_provided", "claimed", "reopened", "feedback_received",
     "subtask_created", "subtask_closed",
+    # v1.8 — AI topgan, lekin chegara (MAX_AI_SUBTASKS) tufayli avtomatik
+    # ajratilMAGAN xizmatlar. Payload: created, limit, not_assigned[].
+    "subtasks_truncated",
 ]
 ACTOR_TYPES = ["citizen", "staff", "system", "ai"]

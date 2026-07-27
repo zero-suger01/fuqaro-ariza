@@ -133,7 +133,7 @@ export const EVENT_LABELS: Record<string, string> = {
   sms_sent: "SMS yuborildi",
   telegram_sent: "Telegram xabar yuborildi",
   escalated: "Eskalatsiya qilindi",
-  sla_warning: "SLA ogohlantirishi",
+  sla_warning: "Muddat haqida ogohlantirish",
   reviewed: "AI nazoratdan o'tdi",
   // v1.4 (docs/03 §8)
   info_provided: "Fuqaro ma'lumot yubordi",
@@ -142,6 +142,8 @@ export const EVENT_LABELS: Record<string, string> = {
   feedback_received: "Fuqaro baho berdi",
   subtask_created: "Idoralararo topshiriq berildi",
   subtask_closed: "Idoralararo topshiriq yopildi",
+  // v1.8 — fuqaro yozgan, lekin avtomatik ajratilmagan xizmatlar bor.
+  subtasks_truncated: "Ba'zi muammolar qo'lda ajratilishi kerak",
 };
 
 export const ACTOR_LABELS: Record<string, string> = {

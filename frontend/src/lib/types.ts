@@ -106,6 +106,10 @@ export interface AiListBrief {
   // v1.5 ko'p bo'limli murojaat ([07] §1.1) — AI yaratgan ochiq sub-tasklar
   // (bo'sh = sub-task yo'q).
   open_subtasks: OpenSubtaskBrief[];
+  /** v1.8 — AI topgan, lekin chegara (`MAX_AI_SUBTASKS`=3) tufayli
+   *  avtomatik ajratilMAGAN xizmatlar. Bo'sh emas = fuqaroning bir
+   *  muammosi hali HECH KIMGA berilmagan, xodim qo'lda ajratishi kerak. */
+  unassigned_services: string[];
 }
 
 export interface ComplaintListItem {

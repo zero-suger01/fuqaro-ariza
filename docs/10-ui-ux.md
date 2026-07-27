@@ -224,13 +224,13 @@ Yuqorida **5 ta action-card**, har biri bosilganda aynan o'sha ro'yxatni ochadi 
 |---|---|---|
 | Biriktirilmagan | bo'limi yoki egasi yo'q, terminal emas | `?queue=unassigned` |
 | AI istisnolari | `needs_review=true` + `stuck_ai` | `/admin/tasdiqlash` |
-| SLA xavfi | muddatning ≥75% o'tgan, hali overdue emas | `?queue=sla_risk` |
+| Muddat tugayapti | muddatning ≥75% o'tgan, hali overdue emas | `?queue=sla_risk` |
 | Muddati o'tgan | `deadline_at < now`, terminal emas | `?queue=overdue` |
 | Ma'lumot kutilmoqda | `need_info` da 24 soatdan ko'p | `?queue=need_info` |
 
 Qoidalar: nol bo'lgan karta **muted** (bosiq) holatda — bo'sh navbat diqqatni tortmasin; noldan katta `overdue` va `stuck_ai` doim `danger` rangida; rang bilan birga ikon/yozuv ham bo'ladi (§8 — faqat rangga tayanilmaydi).
 
-Ostida **bo'lim jadvali**: `Bo'lim | Yangi | Ijroda | SLA xavfi | Overdue | Egasiz | Yuklama`. «Yuklama» — aktiv ish soni va `wip_limit` (oshgani belgilanadi, bloklanmaydi). Bu — rahbarning «qaysi bo'lim qoqilib qoldi» ekrani.
+Ostida **bo'lim jadvali**: `Bo'lim | Yangi | Ijroda | Muddat tugayapti | Muddati o'tgan | Egasiz | Yuklama`. «Yuklama» — aktiv ish soni va `wip_limit` (oshgani belgilanadi, bloklanmaydi). Bu — rahbarning «qaysi bo'lim qoqilib qoldi» ekrani.
 
 `AiHealthStrip` tepada qoladi — `pending_analysis` va `llm_errors_1h` operatsion uzilish signali, statistika emas.
 
@@ -239,7 +239,7 @@ Ostida **bo'lim jadvali**: `Bo'lim | Yangi | Ijroda | SLA xavfi | Overdue | Egas
 Tekis 9 elementli ro'yxat kunlik ish uchun shovqin edi: `QR kodlar` va `Kategoriyalar` `Murojaatlar` bilan bir qatorda turardi. Guruhlar:
 
 ```
-Operatsion navbat  Bosh ekran · Navbatim · Biriktirilmagan · AI nazorati · SLA xavfi ·
+Operatsion navbat  Bosh ekran · Navbatim · Biriktirilmagan · AI nazorati · Muddat tugayapti ·
                    Muddati o'tgan · Ma'lumot kutilmoqda · Barcha murojaatlar
 Monitoring         KPI · Xarita
 Sozlamalar         Bo'limlar · Xodimlar · Kategoriyalar
@@ -247,6 +247,21 @@ Vositalar          QR kodlar · Audit log
 ```
 
 Qoidalar: guruh sarlavhasi bosilmaydi (faqat yorliq); rol filtri **element va guruh** darajasida — barcha elementi yashiringan guruh umuman render qilinmaydi (`department_staff` faqat `Navbatim` + `Murojaatlar` ni ko'radi); navbat elementlari yonida jonli hisoblagich (0 bo'lsa hisoblagich ko'rsatilmaydi); mobil (<1024px) — hamburger + drawer (`F1.8`).
+
+> **«SLA» so'zi interfeysda ishlatilmaydi (v1.8).** Xodim uchun u tushunarsiz
+> qisqartma edi. Ko'rinadigan matnlarda o'zbekcha atama:
+>
+> | Ilgari | Endi |
+> |---|---|
+> | SLA xavfi | **Muddat tugayapti** |
+> | SLA % (KPI) | **Muddatida %** |
+> | SLA ogohlantirishi (event) | **Muddat haqida ogohlantirish** |
+> | Javob muddati (SLA, soat) | **Javob muddati (soat)** |
+>
+> «Muddat tugayapti» ataylab yonidagi «Muddati o'tgan» bilan bir o'zakda —
+> ikkisi ketma-ket bosqichdek o'qiladi. Kod ichidagi nomlar (`sla_risk`,
+> `sla_hours`, `sla_warning`) O'ZGARMAYDI: ular kontrakt/API atamalari
+> ([03](03-kontraktlar.md) §5) va ularni o'zgartirish sxemani buzardi.
 
 > **`Murojaatlar` guruhi yo'q (v1.8).** «Barcha murojaatlar» `Operatsion
 > navbat` guruhining oxiriga ko'chdi. Sabab: o'lik «Eksport» elementi

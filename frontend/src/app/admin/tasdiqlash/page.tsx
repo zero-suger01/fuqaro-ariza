@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Pencil, Sparkles, Split, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, Pencil, Sparkles, Split, X } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -205,6 +205,33 @@ export default function TasdiqlashPage() {
                             </button>
                           </span>
                         ))}
+                      </div>
+                    )}
+
+                    {/* v1.8 — AI topgan, lekin chegara tufayli avtomatik
+                        ajratilMAGAN xizmatlar ([07] §1.1). Bu yuqoridagi
+                        sub-task chiplaridan KUCHLIROQ signal: u yerda ish
+                        allaqachon bo'limga tushgan va admin faqat
+                        tasdiqlaydi, bu yerda esa fuqaroning muammosi hali
+                        HECH KIMDA yo'q. Shuning uchun danger rangida va
+                        harakatni aytadigan matn bilan (rang yolg'iz signal
+                        emas — ikon va yozuv ham bor, docs/10 §8). */}
+                    {c.ai && c.ai.unassigned_services.length > 0 && (
+                      <div className="flex flex-col gap-1.5 rounded-inner border border-danger/30 bg-danger/5 px-3 py-2">
+                        <p className="flex items-center gap-1.5 text-xs font-semibold text-danger">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                          Bu xizmatlarga topshiriq ochilmagan — qo&apos;lda ajrating
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {c.ai.unassigned_services.map((name) => (
+                            <span
+                              key={name}
+                              className="inline-flex shrink-0 items-center rounded-pill bg-danger/10 px-2.5 py-1 text-xs font-medium text-danger"
+                            >
+                              {name}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

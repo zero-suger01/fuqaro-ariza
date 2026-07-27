@@ -7,6 +7,7 @@ import { Search } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/status";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 /** Qidiruv har bir bo'limda o'ziga tegishli narsani qidirishi kerak
  * (mijoz so'ragan) — masalan QR kodlar sahifasida tuman/MFY/ko'cha/izoh
@@ -76,6 +77,7 @@ export function Topbar({ title }: { title: string }) {
       <div className="flex-1 flex justify-center">
         <QuickSearch />
       </div>
+      <ThemeToggle />
       <NotificationBell />
       <Link href="/admin/profil" className="flex items-center gap-2.5 rounded-pill -mx-1.5 px-1.5 py-1 hover:bg-bg-subtle transition-colors">
         <div className="h-8 w-8 rounded-full bg-navy-900 text-white flex items-center justify-center text-xs font-semibold overflow-hidden shrink-0">

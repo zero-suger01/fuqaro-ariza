@@ -133,7 +133,7 @@ const DEPARTMENT_COLUMNS: Column<DepartmentQueueRow>[] = [
   { key: "in_progress", header: "Ijroda", numeric: true, render: (row) => row.in_progress },
   {
     key: "sla_risk",
-    header: "SLA xavfi",
+    header: "Muddat tugayapti",
     numeric: true,
     render: (row) => <span className={row.sla_risk > 0 ? "text-warning font-medium" : undefined}>{row.sla_risk}</span>,
   },
@@ -208,7 +208,7 @@ export default function AdminDashboardPage() {
             icon={SquareCheckBig}
           />
           <QueueCard
-            label="SLA xavfi"
+            label="Muddat tugayapti"
             hint="Muddatning 75% i o'tgan"
             value={queues?.sla_risk}
             href="/admin/murojaatlar?queue=sla_risk"
