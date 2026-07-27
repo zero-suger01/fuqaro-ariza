@@ -3,7 +3,6 @@ const DRAFT_KEY = "e-murojaat-wizard-draft";
 export interface WizardDraft {
   step: 1 | 2 | 3;
   description: string;
-  categoryCode: string | null;
   neighborhoodId: string | null;
   address: string;
   latitude: number | null;
@@ -16,7 +15,6 @@ export interface WizardDraft {
 export const EMPTY_DRAFT: WizardDraft = {
   step: 1,
   description: "",
-  categoryCode: null,
   neighborhoodId: null,
   address: "",
   latitude: null,

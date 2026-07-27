@@ -16,7 +16,7 @@ import { apiGet, apiPostForm } from "@/lib/api";
 import { toE164 } from "@/lib/phone";
 import { useAiRouting } from "@/lib/useAiRouting";
 import { EMPTY_DRAFT, clearDraft, loadDraft, saveDraft, type WizardDraft } from "@/lib/wizardDraft";
-import type { ComplaintSubmitResponse, PublicCategory, PublicNeighborhood, QrLanding } from "@/lib/types";
+import type { ComplaintSubmitResponse, PublicNeighborhood, QrLanding } from "@/lib/types";
 import { ApiError } from "@/lib/api";
 
 const STEP_ICONS = [FileEdit, MapPin, User];
@@ -31,7 +31,6 @@ function WizardContent() {
   const searchParams = useSearchParams();
   const qrCode = searchParams.get("qr");
 
-  const [categories, setCategories] = useState<PublicCategory[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<PublicNeighborhood[]>([]);
 
   const [draft, setDraft] = useState<WizardDraft>(EMPTY_DRAFT);
@@ -45,14 +44,14 @@ function WizardContent() {
   const [result, setResult] = useState<ComplaintSubmitResponse | null>(null);
   const aiRouting = useAiRouting(result?.ticket_number ?? null);
 
+  // `/api/public/categories` endi chaqirilmaydi: toifa ro'yxati faqat
+  // 1-qadamdagi «Muammo turi» select'i uchun kerak edi, u esa olib
+  // tashlandi (Step1Problem izohiga qarang) — tasnifni AI o'zi qiladi.
   useEffect(() => {
-    apiGet<PublicCategory[]>(`/api/public/categories?lang=${locale}`)
-      .then(setCategories)
-      .catch(() => setCategories([]));
     apiGet<PublicNeighborhood[]>("/api/public/neighborhoods")
       .then(setNeighborhoods)
       .catch(() => setNeighborhoods([]));
-  }, [locale]);
+  }, []);
 
   useEffect(() => {
     // QR plakat orqali kelingan bo'lsa (docs/06-frontend-tasklar.md F3.1)
@@ -100,7 +99,6 @@ function WizardContent() {
       formData.append("language", locale);
       formData.append("source", qrCode ? "qr" : "web");
       if (qrCode) formData.append("qr_code", qrCode);
-      if (draft.categoryCode) formData.append("category_code", draft.categoryCode);
       if (draft.address) formData.append("address", draft.address);
       if (draft.neighborhoodId) formData.append("neighborhood_id", draft.neighborhoodId);
       if (draft.latitude != null) formData.append("latitude", String(draft.latitude));
@@ -170,9 +168,6 @@ function WizardContent() {
               onImagesChange={setImages}
               video={video}
               onVideoChange={setVideo}
-              categoryCode={draft.categoryCode}
-              onCategoryChange={(categoryCode) => updateDraft({ categoryCode })}
-              categories={categories}
               onNext={() => updateDraft({ step: 2 })}
             />
           )}

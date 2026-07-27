@@ -52,7 +52,22 @@ Tepa: orqaga strelka + progress (● ● ○) + "2/3-qadam".
 - Ostida 2 katta tugma yonma-yon: `🎤 Ovoz bilan aytish` va `📷 Rasm qo'shish`.
 - Ovoz rejimi: bosilganda katta qizil doira (yozilmoqda animatsiya + sekundlar), "To'xtatish" → "Matnga aylantirilmoqda..." → matn textarea'ga tushadi + "Matnni tekshirib oling" eslatmasi.
 - Rasm: kvadrat previewlar, ❌ bilan o'chirish, max 5.
-- "Qo'shimcha" (accordion, standart yopiq): muammo turi (select, "AI o'zi aniqlaydi" izohi bilan), video.
+- Video — rasm bilan bir joyda (`MediaPicker`).
+- **Muammo turi tanlash YO'Q** (v1.8 da olib tashlandi). Avval bu yerda 22
+  ta toifadan iborat select turardi. Sabablari: (1) **Tesler** — 22 ta
+  byurokratik toifa aynan AI bartaraf qilishi kerak bo'lgan yuk, Malohat
+  opa uchun toifa tanlash muammoni aytishdan qiyinroq edi; (2) tanlov
+  amalda hech narsaga ta'sir qilmasdi — `app/worker.py` `category_id` ni
+  baribir AI natijasi bilan qayta yozadi, ya'ni bu maydon faqat
+  boshqaruv illyuziyasi edi. `category_code` kontraktda ixtiyoriy
+  ([03](03-kontraktlar.md) §3.1), shuning uchun endi umuman yuborilmaydi.
+  Noto'g'ri tasnifni tuzatish yo'li — admin tomonidagi **AI nazorati**
+  sahifasi (§10.1), fuqaro emas.
+- Shu bilan birga ovozni **oldindan** STT'ga yuborish ham olib tashlandi:
+  u faqat shu select'ni oldindan tanlab qo'yish uchun ovoz faylini
+  yuklab, 20 soniyagacha so'rov qilib turardi (transkript hech qachon
+  ko'rsatilmasdi). Sekin qishloq internetida bu bekorga ketgan yuklama
+  edi — haqiqiy STT baribir yuborilgandan keyin serverda ishlaydi.
 - Davom shartı: matn ≥ 10 belgi YOKI audio bor.
 
 **2-qadam — "Qayerda?"**
