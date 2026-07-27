@@ -4,26 +4,15 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { clsx } from "clsx";
-import {
-  FilterX,
-  ClipboardList,
-  AlertTriangle,
-  ChevronDown,
-  Download,
-  FileText,
-  Search,
-  SlidersHorizontal,
-  UserX,
-  X,
-} from "lucide-react";
+import { FilterX, ClipboardList, ChevronDown, Download, Search, SlidersHorizontal, X } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
+import { ComplaintList, ComplaintRowSkeleton } from "@/components/admin/ComplaintList";
+import { SegmentedTabs } from "@/components/admin/SegmentedTabs";
 import { apiGet, apiGetBlob } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatUzDateTime } from "@/lib/formatDate";
 import type {
   CategoryAdmin,
   ComplaintListItem,
@@ -33,7 +22,7 @@ import type {
   Priority,
   StageCounts,
 } from "@/lib/types";
-import { PRIORITY_COLORS, PRIORITY_LABELS, STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
+import { PRIORITY_LABELS, STATUS_LABELS } from "@/lib/status";
 
 /**
  * Bosqich tablari (v1.9) — 10 ta xom `status` xodim uchun uchta bosqichga
@@ -114,239 +103,6 @@ const QUEUES: Record<string, { label: string; hint: string; params: Record<strin
   },
   mine: { label: "Mening ishlarim", hint: "Menga biriktirilgan murojaatlar", params: { mine: "true" } },
 };
-
-function isOverdue(deadline: string | null, status: ComplaintStatus): boolean {
-  if (!deadline) return false;
-  if (["resolved", "closed", "rejected", "archived"].includes(status)) return false;
-  return new Date(deadline).getTime() < Date.now();
-}
-
-/**
- * Zich ro'yxat (v1.9) — sahifadagi YAGONA ko'rinish (kanban olib tashlandi).
- *
- * Kanban `status` bo'yicha 3 ustunga guruhlardi, lekin faqat JORIY
- * SAHIFANI (20 ta yozuv) — shuning uchun raqamlari yolg'on edi va ustunlar
- * amalda doim bo'sh turardi:
- *   - navbatlarda backend terminal statuslarni umuman chiqarib tashlaydi
- *     (`queues.py::_active()`), ya'ni «Yakunlangan» ustuni MATEMATIK
- *     jihatdan to'lmasdi — o'lchov: 20/0/0, 18/0/0, 19/1/0;
- *   - «Barcha murojaatlar» da ham 20/0/0 chiqardi, chunki sahifa eng
- *     yangilaridan boshlanadi va ular hammasi `new` holatida (bazadagi
- *     haqiqiy taqsimot: 96/2/21).
- * Endi bosqich — server filtri (tab), ro'yxat esa hamma joyda bir xil.
- *
- * Bitta grid shabloni — sarlavha va qator uchun AYNAN bir xil, aks holda
- * ustunlar bir-biriga tegishlashmay qoladi.
- */
-const LIST_GRID =
-  "xl:grid xl:grid-cols-[minmax(0,1.6fr)_11rem_6rem_minmax(0,1fr)_8.5rem_minmax(0,1.2fr)] xl:items-center xl:gap-4";
-
-function ListHeader() {
-  return (
-    <div
-      className={clsx(
-        "hidden border-b border-border bg-bg-subtle px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-text-muted",
-        LIST_GRID
-      )}
-    >
-      <span>Murojaat</span>
-      <span>Holat</span>
-      <span>Muhimlik</span>
-      <span>Mas&apos;ul</span>
-      <span>Muddat</span>
-      <span>Bo&apos;lim</span>
-    </div>
-  );
-}
-
-/** Kichik ekranda yorliq + qiymat, xl dan boshlab yorliq sarlavha qatoriga
- * ko'chgani uchun yashiriladi. */
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[11px] uppercase tracking-wide text-text-muted xl:hidden">{label}</p>
-      <div className="mt-0.5 xl:mt-0">{children}</div>
-    </div>
-  );
-}
-
-function ComplaintRow({ c }: { c: ComplaintListItem }) {
-  const overdue = isOverdue(c.deadline_at, c.status);
-  return (
-    <Link
-      href={`/admin/murojaatlar/${c.id}`}
-      className={clsx("group flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-bg-subtle", LIST_GRID)}
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg-subtle transition-colors group-hover:bg-bg-surface">
-          <FileText className="h-4 w-4 text-text-secondary" aria-hidden />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-text-primary">{c.category.name}</p>
-          <p className="font-mono text-xs text-text-muted">{c.ticket_number}</p>
-          {/* Istisno belgisi — ustun emas, chunki kamdan-kam uchraydi
-              (kanban kartasidagi bilan bir xil mantiq). */}
-          {c.ai && c.ai.unassigned_services.length > 0 ? (
-            <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-danger">
-              <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
-              <span>{`${c.ai.unassigned_services.length} ta xizmat ajratilmagan`}</span>
-            </span>
-          ) : (
-            c.needs_review && (
-              <span className="mt-1 inline-flex items-center gap-1 text-xs text-warning">
-                <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden /> AI tekshiruv kerak
-              </span>
-            )
-          )}
-        </div>
-      </div>
-
-      {/* `xl:contents` — bu o'ram xl dan boshlab yo'qoladi va ichidagilar
-          qatorning o'z grid ustunlariga aylanadi; kichik ekranda esa
-          yorliqli 2 ustunli blok bo'lib qoladi. */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:contents">
-        <Field label="Holat">
-          <Badge label={STATUS_LABELS[c.status]} color={STATUS_COLORS[c.status]} />
-        </Field>
-        <Field label="Muhimlik">
-          <Badge label={PRIORITY_LABELS[c.priority]} color={PRIORITY_COLORS[c.priority]} />
-        </Field>
-        <Field label="Mas'ul">
-          {c.assigned_user_name ? (
-            <p className="truncate text-sm font-medium text-text-primary">{c.assigned_user_name}</p>
-          ) : (
-            <p className="flex items-center gap-1 text-sm font-medium text-text-muted">
-              <UserX className="h-3 w-3 shrink-0" aria-hidden /> yo&apos;q
-            </p>
-          )}
-        </Field>
-        <Field label="Muddat">
-          <p className={clsx("truncate text-sm font-medium", overdue ? "text-danger" : "text-text-primary")}>
-            {c.deadline_at ? formatUzDateTime(c.deadline_at) : "—"}
-          </p>
-        </Field>
-        <Field label="Bo'lim">
-          <p className="truncate text-sm font-medium text-text-primary">{c.department?.name ?? "—"}</p>
-        </Field>
-      </div>
-    </Link>
-  );
-}
-
-function ComplaintRowSkeleton() {
-  return (
-    <div className="flex animate-pulse items-center gap-3 px-5 py-4">
-      <span className="h-9 w-9 shrink-0 rounded-full bg-bg-subtle" />
-      <span className="h-3.5 flex-1 rounded-full bg-bg-subtle" />
-      <span className="hidden h-3.5 w-24 shrink-0 rounded-full bg-bg-subtle xl:block" />
-      <span className="hidden h-3.5 w-20 shrink-0 rounded-full bg-bg-subtle xl:block" />
-    </div>
-  );
-}
-
-function ComplaintList({ items }: { items: ComplaintListItem[] }) {
-  return (
-    <Card padded={false} className="overflow-hidden">
-      <ListHeader />
-      <div className="divide-y divide-border">
-        {items.map((c) => (
-          <ComplaintRow key={c.id} c={c} />
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-/**
- * Bosqich tablari.
- *
- * Suriladigan ko'rsatkich SOF CSS bilan: `sm` dan boshlab tablar teng
- * kenglikda (`grid-cols-4`), shuning uchun indikatorni o'z kengligiga
- * `translateX(i * 100%)` qilib surish yetarli — DOM o'lchash, ref va
- * effekt kerak emas (o'lcha-keyin-setState naqshi `useEffect` ichida
- * setState talab qilardi, bu esa taqiqlangan).
- *
- * 375px da esa 4 ta teng ustunga «Yakunlangan» sig'maydi (o'lchandi —
- * qirqilardi), shuning uchun mobil ko'rinish gorizontal siljiydigan
- * qatorga o'tadi: yorliqlar to'liq o'qiladi, faol tab esa indikator
- * o'rniga o'z foni bilan ajralib turadi.
- */
-function StageTabs({
-  value,
-  counts,
-  onChange,
-}: {
-  value: string;
-  counts: StageCounts | null;
-  onChange: (stage: string) => void;
-}) {
-  const index = Math.max(
-    0,
-    STAGE_TABS.findIndex((t) => t.key === value)
-  );
-  const totalAll = counts ? counts.new + counts.progress + counts.done : null;
-
-  return (
-    <div
-      role="tablist"
-      aria-label="Bosqich"
-      className="no-scrollbar relative flex gap-1 overflow-x-auto rounded-pill bg-bg-subtle p-1 sm:grid sm:grid-cols-4 sm:gap-0 sm:overflow-visible"
-    >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-1 left-1 hidden rounded-pill bg-bg-surface shadow-card transition-transform duration-300 ease-out motion-reduce:transition-none sm:block"
-        style={{ width: "calc((100% - 0.5rem) / 4)", transform: `translateX(${index * 100}%)` }}
-      />
-      {STAGE_TABS.map((tab) => {
-        const active = tab.key === value;
-        const count = counts
-          ? tab.key === ""
-            ? totalAll
-            : counts[tab.key as keyof StageCounts]
-          : null;
-        return (
-          <button
-            key={tab.key || "all"}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(tab.key)}
-            className={clsx(
-              "relative z-10 flex shrink-0 items-center justify-center gap-1.5 rounded-pill px-3 py-2 text-[13px] transition-colors sm:min-w-0 sm:shrink sm:gap-2",
-              active
-                ? // Mobilda indikator yo'q (siljiydigan qator) — faol tab
-                  // o'z foni bilan ajraladi; sm dan boshlab foni indikatorga
-                  // o'tadi, aks holda ikkitasi ustma-ust tushardi.
-                  "bg-bg-surface font-semibold text-text-primary shadow-card sm:bg-transparent sm:shadow-none"
-                : "font-medium text-text-muted hover:text-text-secondary"
-            )}
-          >
-            {tab.dotColor && (
-              <span
-                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: tab.dotColor }}
-                aria-hidden
-              />
-            )}
-            <span className="sm:truncate">{tab.label}</span>
-            {/* Kichik ekranda son yashiriladi — u yerda joy siljish bilan
-                yechilgan, son esa qatorni keraksiz uzaytirardi. */}
-            {count !== null && (
-              <span
-                className={clsx(
-                  "hidden shrink-0 rounded-pill px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums sm:inline",
-                  active ? "bg-bg-subtle text-text-secondary" : "text-text-muted"
-                )}
-              >
-                {count}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 /**
  * Ixcham filtr paneli (v1.9).
@@ -727,7 +483,19 @@ function AdminComplaintsView() {
             tabi doim 0 bo'lardi (LIST_GRID izohi). */}
         {!queue && (
           <div className="border-b border-border px-4 py-3">
-            <StageTabs value={stage} counts={stageCounts} onChange={setStage} />
+            <SegmentedTabs
+              ariaLabel="Bosqich"
+              value={stage}
+              onChange={setStage}
+              tabs={STAGE_TABS.map((tab) => ({
+                ...tab,
+                count: stageCounts
+                  ? tab.key === ""
+                    ? stageCounts.new + stageCounts.progress + stageCounts.done
+                    : stageCounts[tab.key as keyof StageCounts]
+                  : null,
+              }))}
+            />
           </div>
         )}
         <div className="px-4 py-3">

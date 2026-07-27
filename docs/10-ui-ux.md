@@ -331,6 +331,32 @@ Qoidalar: guruh sarlavhasi bosilmaydi (faqat yorliq); rol filtri **element va gu
 >    o'lchash yo'q); 375px da 4 ta teng ustunga «Yakunlangan» sig'magani
 >    uchun mobil ko'rinish gorizontal siljiydigan qatorga o'tadi.
 
+> **Navbatim va AI nazorati ham shu uslubda (v1.9).** Umumiy komponentlar:
+> `components/admin/ComplaintList.tsx` (zich qator) va
+> `components/admin/SegmentedTabs.tsx` (tab).
+>
+> - **Navbatim** — uch ustunli kanban o'rniga 4 ta tab: *Bo'lim navbati ·
+>   Qabul qilganlarim · Ijrodagi ishlarim · Ma'lumot kutilmoqda*. Har tab
+>   alohida server so'rovi, son esa serverning `total` i. Avval sahifa
+>   BITTA `page_size=100` so'rovi bilan (status filtrisiz!) olib, faol
+>   ishni ham, guruhlashni ham, saralashni ham mijozda qilardi — bo'limda
+>   100 tadan ko'p murojaat bo'lsa faol ishning bir qismi ro'yxatga
+>   umuman tushmasdi va buni hech narsa bildirmasdi. Kesib qolingani endi
+>   ochiq yoziladi («Ko'rsatildi: N / M»).
+> - **Ustunlar sozlanadi** (`ComplaintColumn[]`). Navbatimda `Bo'lim` doim
+>   xodimning o'z bo'limi, `Mas'ul` esa doim o'zi yoki «yo'q» — har
+>   qatorda bir xil qiymat, nol axborot; shuning uchun ko'rsatilmaydi.
+>   Status tabning o'zi bilan belgilangan tablarda `Holat` ham olib
+>   tashlanadi.
+> - **Muddat navbatlarda nisbiy** («3 soat qoldi», «2 kun kechikdi») —
+>   absolute sana shoshilinchlikni ko'rsatmaydi, xodim boshida ayirma
+>   hisoblardi. «Mening ishlarim» server tomonida ham muddat bo'yicha
+>   tartiblanadi (`queues.ordering(mine=True)`).
+> - **AI nazorati** — tab QO'YILMAYDI va zich jadvalga aylantirilmaydi:
+>   bu ko'rish emas, AMAL sahifasi (har qatorda «To'g'ri»/«To'g'irlash»
+>   va ochiladigan tahrir formasi). Faqat idish umumiylashtirildi —
+>   alohida kartalar o'rniga bitta bo'lingan ro'yxat + jami son.
+
 ### 10.3 Tafsilot sahifasidagi o'zgarishlar
 
 - **«Qabul qilaman»** — Holat kartasidagi asosiy tugma, faqat `assigned` va o'z bo'limi bo'lganda. Sahifani ochishning o'zi endi hech narsani o'zgartirmaydi ([03](03-kontraktlar.md) §2.1).

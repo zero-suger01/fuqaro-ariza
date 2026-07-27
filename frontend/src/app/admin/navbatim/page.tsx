@@ -1,217 +1,194 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Inbox, Clock3, MessageCircleQuestion, Sparkles } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import { ComplaintList, ComplaintRowSkeleton, type ComplaintColumn } from "@/components/admin/ComplaintList";
+import { SegmentedTabs } from "@/components/admin/SegmentedTabs";
 import { apiGet } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useNow } from "@/lib/useNow";
-import { formatUzDateTime, formatUzDayLong } from "@/lib/formatDate";
+import { formatUzDayLong } from "@/lib/formatDate";
 import type { ComplaintListItem, Page } from "@/lib/types";
-import { PRIORITY_COLORS, PRIORITY_LABELS } from "@/lib/status";
 
-/** R2/Q3 — «Navbatim»: xodim login qilganda jadval emas, ISH NAVBATI kutib
- * oladi. Uch guruh, deadline bo'yicha saralangan, har qatorda AI xulosasi.
- * Texnik: mavjud /api/admin/complaints (bo'lim filtri backend'da avtomatik) —
- * bitta so'rov, guruhlash clientda. */
-
-const ACTIVE_STATUSES = ["assigned", "accepted", "in_progress", "need_info"] as const;
-
-function deadlineInfo(deadlineAt: string | null, now: number): { label: string; overdue: boolean; soon: boolean } {
-  if (!deadlineAt) return { label: "Muddat belgilanmagan", overdue: false, soon: false };
-  const deadline = new Date(deadlineAt);
-  const diffMs = deadline.getTime() - now;
-  const hours = Math.round(Math.abs(diffMs) / 3_600_000);
-  if (diffMs < 0) return { label: `Muddat o'tdi: ${hours} soat`, overdue: true, soon: false };
-  if (diffMs < 24 * 3_600_000) return { label: `Muddatgacha ${hours} soat`, overdue: false, soon: true };
-  return { label: `Muddat: ${formatUzDateTime(deadlineAt)}`, overdue: false, soon: false };
-}
-
-function QueueItem({ c, now }: { c: ComplaintListItem; now: number }) {
-  const due = deadlineInfo(c.deadline_at, now);
-  return (
-    <Link
-      href={`/admin/murojaatlar/${c.id}`}
-      className="block rounded-inner border border-border bg-bg-surface px-4 py-3 hover:border-accent transition"
-    >
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-xs font-mono text-text-muted">{c.ticket_number}</span>
-        <Badge label={PRIORITY_LABELS[c.priority]} color={PRIORITY_COLORS[c.priority]} />
-      </div>
-      <p className="text-sm font-medium text-text-primary truncate">{c.category.name}</p>
-      {c.ai?.summary && (
-        <p className="text-xs text-text-secondary mt-1 line-clamp-2 flex items-start gap-1">
-          <Sparkles className="h-3 w-3 text-accent mt-0.5 shrink-0" />
-          <span>{c.ai.summary}</span>
-        </p>
-      )}
-      <p className={`text-xs mt-1.5 ${due.overdue ? "text-danger font-semibold" : due.soon ? "text-warning font-medium" : "text-text-muted"}`}>
-        {due.label}
-      </p>
-    </Link>
-  );
-}
-
-function QueueColumn({
-  title,
-  icon: Icon,
-  items,
-  countColor,
-  empty,
-  now,
-}: {
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  items: ComplaintListItem[];
-  countColor: "gold" | "red" | "grey";
+/**
+ * R2/Q3 — «Navbatim»: xodim login qilganda jadval emas, ISH NAVBATI kutib
+ * oladi.
+ *
+ * v1.9 — uch ustunli kanban o'rniga tab + zich ro'yxat (docs/10 §10.2).
+ * Muhimi ko'rinish emas, ma'lumot: avval sahifa BITTA so'rov bilan 100 ta
+ * yozuv olib, guruhlashni ham, saralashni ham mijozda qilardi. Ikki
+ * oqibati bor edi:
+ *   1. So'rov `page_size=100` ni STATUS FILTRISIZ olardi va faqat keyin
+ *      mijozda faol statuslarni ajratardi — bo'limda 100 tadan ko'p
+ *      murojaat bo'lsa (yopilganlari bilan birga), faol ishning bir qismi
+ *      ro'yxatga umuman tushmasdi va buni hech narsa bildirmasdi.
+ *   2. Guruh sonlari o'sha kelgan bo'lakdan hisoblanardi, ya'ni ular
+ *      haqiqiy son emas edi — «Barcha murojaatlar»dagi «20/0/0» bilan bir
+ *      xil kasallik.
+ * Endi har tab — alohida server so'rovi, son esa serverning `total` i.
+ */
+const TABS: {
+  key: string;
+  label: string;
+  dotColor: string | null;
+  params: Record<string, string>;
   empty: string;
-  now: number;
-}) {
-  const colors = {
-    gold: "bg-accent-soft text-accent",
-    red: "bg-danger/10 text-danger",
-    grey: "bg-bg-subtle text-text-muted",
-  } as const;
-  return (
-    <Card className="flex-1 min-w-0">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4 text-accent" />
-          <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wide">{title}</h2>
-        </div>
-        <span className={`text-xs font-mono font-bold rounded-pill px-2 py-0.5 ${colors[countColor]}`}>
-          {items.length}
-        </span>
-      </div>
-      <div className="flex flex-col gap-2">
-        {items.length === 0 ? (
-          <p className="text-sm text-text-muted py-6 text-center">{empty}</p>
-        ) : (
-          items.map((c) => <QueueItem key={c.id} c={c} now={now} />)
-        )}
-      </div>
-    </Card>
-  );
+  /** Tab statusni o'zi belgilaydigan bo'lsa, `Holat` ustuni har qatorda
+   *  bir xil qiymat ko'rsatardi — nol axborot, shuning uchun olib
+   *  tashlanadi. */
+  columns: ComplaintColumn[];
+}[] = [
+  {
+    key: "bolim",
+    label: "Bo'lim navbati",
+    dotColor: "var(--accent)",
+    params: { unassigned: "true" },
+    empty: "Egasiz ish yo'q — hammasi taqsimlangan",
+    columns: ["status", "priority", "deadline"],
+  },
+  {
+    key: "qabul",
+    label: "Qabul qilganlarim",
+    dotColor: "var(--st-new)",
+    params: { mine: "true", status: "accepted" },
+    empty: "Qabul qilingan, hali boshlanmagan ish yo'q",
+    columns: ["priority", "deadline"],
+  },
+  {
+    key: "ijro",
+    label: "Ijrodagi ishlarim",
+    dotColor: "var(--info)",
+    params: { mine: "true", status: "in_progress" },
+    empty: "Ijroda ish yo'q",
+    columns: ["priority", "deadline"],
+  },
+  {
+    key: "kutilmoqda",
+    label: "Ma'lumot kutilmoqda",
+    dotColor: "var(--warning)",
+    params: { mine: "true", status: "need_info" },
+    empty: "Kutilayotgan javob yo'q",
+    columns: ["priority", "deadline"],
+  },
+];
+
+const PAGE_SIZE = 50;
+
+function paramsFor(key: string, pageSize: number): string {
+  const tab = TABS.find((t) => t.key === key) ?? TABS[0];
+  const p = new URLSearchParams(tab.params);
+  p.set("page", "1");
+  p.set("page_size", String(pageSize));
+  return p.toString();
 }
 
 export default function NavbatimPage() {
   const { user } = useAuth();
-  const [items, setItems] = useState<ComplaintListItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const now = useNow();
 
-  useEffect(() => {
-    // Bitta so'rov: barcha faol statuslar (bo'lim cheklovi backendda), keyin
-    // clientda guruhlash — 100 tagacha faol ish bitta bo'lim uchun yetarli.
-    apiGet<Page<ComplaintListItem>>("/api/admin/complaints?page=1&page_size=100")
-      .then((res) => setItems(res.items.filter((c) => (ACTIVE_STATUSES as readonly string[]).includes(c.status))))
-      .finally(() => setLoading(false));
+  const [active, setActive] = useState(TABS[0].key);
+  const [result, setResult] = useState<Page<ComplaintListItem> | null>(null);
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Sonlar — har tab uchun serverning `total` i (`page_size=1`, ya'ni
+  // yozuvlar tashilmaydi). Mijozda hisoblansa yolg'on chiqardi.
+  const loadCounts = useCallback(() => {
+    Promise.all(
+      TABS.map((t) =>
+        apiGet<Page<ComplaintListItem>>(`/api/admin/complaints?${paramsFor(t.key, 1)}`)
+          .then((r) => [t.key, r.total] as const)
+          .catch(() => [t.key, 0] as const)
+      )
+    ).then((pairs) => setCounts(Object.fromEntries(pairs)));
   }, []);
 
-  const byDeadline = (a: ComplaintListItem, b: ComplaintListItem) => {
-    if (!a.deadline_at) return 1;
-    if (!b.deadline_at) return -1;
-    return new Date(a.deadline_at).getTime() - new Date(b.deadline_at).getTime();
-  };
+  useEffect(() => {
+    loadCounts();
+  }, [loadCounts]);
 
-  // v1.4: navbat ikkiga bo'linadi. Avval bo'limdagi BARCHA ish
-  // «Ijrodagi ishlarim» deb ko'rsatilardi — bir bo'limda bitta odam
-  // bo'lganda sezilmasdi, lekin zaxira xodim yoki smena qo'shilganda
-  // mas'uliyat butunlay noaniq bo'lib qolardi (docs/03 §5 egalik).
-  const mine = useMemo(() => items.filter((c) => c.assigned_user_id === user?.id), [items, user?.id]);
-  const departmentPool = useMemo(() => items.filter((c) => c.assigned_user_id == null), [items]);
-  const othersCount = items.length - mine.length - departmentPool.length;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading flag for the fetch below
+    setLoading(true);
+    apiGet<Page<ComplaintListItem>>(`/api/admin/complaints?${paramsFor(active, PAGE_SIZE)}`)
+      .then(setResult)
+      .catch(() => setResult(null))
+      .finally(() => setLoading(false));
+  }, [active]);
 
-  const myFresh = useMemo(() => mine.filter((c) => c.status === "accepted").sort(byDeadline), [mine]);
-  const myInWork = useMemo(() => mine.filter((c) => c.status === "in_progress").sort(byDeadline), [mine]);
-  const myWaiting = useMemo(() => mine.filter((c) => c.status === "need_info").sort(byDeadline), [mine]);
-  const unowned = useMemo(() => departmentPool.slice().sort(byDeadline), [departmentPool]);
-
-  const isOverdue = (c: ComplaintListItem) => !!c.deadline_at && new Date(c.deadline_at).getTime() < now;
-  const overdueCount = now === 0 ? 0 : items.filter(isOverdue).length;
-
-  const today = now === 0 ? "" : formatUzDayLong(now);
+  const tab = TABS.find((t) => t.key === active) ?? TABS[0];
+  const items = result?.items ?? [];
+  const total = result?.total ?? 0;
+  const mineTotal = counts ? counts.qabul + counts.ijro + counts.kutilmoqda : null;
 
   return (
     <AppShell title="Navbatim" requireRoles={["department_staff"]}>
       <div className="flex items-baseline justify-between flex-wrap gap-2">
         <p className="text-sm text-text-secondary">
-          {today}
+          {now === 0 ? "" : formatUzDayLong(now)}
           {user?.department_name ? ` · ${user.department_name}` : ""}
         </p>
-        <p className="text-sm text-text-muted">
-          Menda {mine.length} ish · bo&apos;lim navbatida {unowned.length}
-          {overdueCount > 0 && <span className="text-danger font-semibold"> · {overdueCount} ta muddati o&apos;tgan</span>}
-        </p>
+        {counts && (
+          <p className="text-sm text-text-muted">
+            Menda {mineTotal} ish · bo&apos;lim navbatida {counts.bolim}
+          </p>
+        )}
       </div>
 
-      {loading ? (
-        <div className="py-10 text-center text-text-muted text-sm">Yuklanmoqda...</div>
-      ) : (
-        <>
-          <Card className={unowned.length > 0 ? "border border-accent/40" : undefined}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Inbox className="h-4 w-4 text-accent" />
-                <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wide">
-                  Bo&apos;lim navbati — egasi yo&apos;q
-                </h2>
-              </div>
-              <span className="text-xs font-mono font-bold rounded-pill px-2 py-0.5 bg-accent-soft text-accent">
-                {unowned.length}
-              </span>
-            </div>
-            <p className="text-sm text-text-muted mb-3">
-              Murojaatni ochib «Qabul qilaman» bosganingizda u sizga biriktiriladi.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-              {unowned.length === 0 ? (
-                <p className="text-sm text-text-muted py-4">Egasiz ish yo&apos;q — hammasi taqsimlangan</p>
-              ) : (
-                unowned.map((c) => <QueueItem key={c.id} c={c} now={now} />)
-              )}
-            </div>
-          </Card>
+      <Card padded={false}>
+        <div className="px-4 py-3">
+          <SegmentedTabs
+            ariaLabel="Navbat"
+            value={active}
+            onChange={setActive}
+            tabs={TABS.map((t) => ({
+              key: t.key,
+              label: t.label,
+              dotColor: t.dotColor,
+              count: counts ? counts[t.key] : null,
+            }))}
+          />
+        </div>
+      </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-            <QueueColumn
-              title="Qabul qilganlarim"
-              icon={Inbox}
-              items={myFresh}
-              countColor="gold"
-              empty="Qabul qilingan, hali boshlanmagan ish yo'q"
-              now={now}
-            />
-            <QueueColumn
-              title="Ijrodagi ishlarim"
-              icon={Clock3}
-              items={myInWork}
-              countColor={myInWork.some(isOverdue) ? "red" : "grey"}
-              empty="Ijroda ish yo'q"
-              now={now}
-            />
-            <QueueColumn
-              title="Ma'lumot kutilmoqda"
-              icon={MessageCircleQuestion}
-              items={myWaiting}
-              countColor="grey"
-              empty="Kutilayotgan javob yo'q"
-              now={now}
-            />
+      {loading ? (
+        <Card padded={false} className="overflow-hidden">
+          <div className="divide-y divide-border">
+            {[0, 1, 2, 3].map((i) => (
+              <ComplaintRowSkeleton key={i} />
+            ))}
           </div>
-        </>
+        </Card>
+      ) : items.length === 0 ? (
+        <Card>
+          <div className="py-14 flex flex-col items-center gap-2 text-text-muted text-sm">
+            <ClipboardList className="h-6 w-6" aria-hidden />
+            {tab.empty}
+          </div>
+        </Card>
+      ) : (
+        // `now` berilgani uchun muddat nisbiy ko'rinadi («3 soat qoldi») —
+        // navbatda absolute sana shoshilinchlikni ko'rsatmaydi.
+        <ComplaintList items={items} columns={tab.columns} showAiSummary now={now} />
+      )}
+
+      {/* Kesib qolinganini YASHIRMAYMIZ — avval sahifa jimgina 100 ta bilan
+          cheklanardi va xodim buni bilmasdi. */}
+      {total > items.length && (
+        <p className="text-xs text-text-muted">
+          Ko&apos;rsatildi: {items.length} / {total} ta.{" "}
+          <Link href="/admin/murojaatlar" className="text-accent hover:underline">
+            To&apos;liq ro&apos;yxat va filtrlar
+          </Link>
+        </p>
       )}
 
       <p className="text-xs text-text-muted">
         Murojaatni ochish holatni o&apos;zgartirmaydi — ishni olish uchun «Qabul qilaman» tugmasini bosasiz.
-        {othersCount > 0 && ` Bo'limdagi boshqa xodimlarda ${othersCount} ta ish bor.`} To&apos;liq ro&apos;yxat va
-        filtrlar:{" "}
-        <Link href="/admin/murojaatlar" className="text-accent hover:underline">
-          Murojaatlar
-        </Link>
+        {tab.key === "bolim" && " Bu ro'yxatdagi ish hali hech kimga biriktirilmagan."}
       </p>
     </AppShell>
   );

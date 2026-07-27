@@ -399,6 +399,7 @@ def list_complaints(
                 need_info_over_hours=need_info_over_hours,
                 stuck_ai=stuck_ai,
                 unassigned=unassigned,
+                mine=mine,
             )
         )
         .offset((page - 1) * page_size)

@@ -94,6 +94,7 @@ def ordering(
     need_info_over_hours: int | None = None,
     stuck_ai: bool = False,
     unassigned: bool = False,
+    mine: bool = False,
 ) -> list[UnaryExpression]:
     """Navbatga mos tartib — «keyingi qaysi ishni olish kerak».
 
@@ -111,7 +112,7 @@ def ordering(
     Bir nechta bayroq birga kelishi mumkin (filtr paneli navbat ustiga
     qo'shimcha belgi qo'yadi), shuning uchun tartib aniq: eng shoshilinch
     signal yutadi — muddat o'tgan > muddat tugayapti > fuqaro javobi
-    kutilmoqda > AI qotib qolgan > biriktirilmagan.
+    kutilmoqda > AI qotib qolgan > biriktirilmagan > mening ishlarim.
 
     Oxirgi `id` — barqaror uzilish nuqtasi: teng qiymatlarda Postgres
     tartibni kafolatlamaydi, u holda pagination'da bir qator ikki sahifada
@@ -131,6 +132,11 @@ def ordering(
     if unassigned:
         # Dispetcher uchun FIFO: eng uzoq egasiz turgani birinchi.
         return [Complaint.created_at.asc(), Complaint.id.asc()]
-    # Navbatsiz ro'yxat («Barcha murojaatlar», qidiruv, `mine`) — jurnal
-    # o'qishi: eng yangisi yuqorida.
+    if mine:
+        # «Navbatim» — xodimning ish navbati, jurnal emas: eng yaqin muddat
+        # birinchi. Muddatsizlar oxirida qoladi (Postgres'da ASC standart
+        # bo'yicha NULL'ni oxiriga qo'yadi).
+        return [Complaint.deadline_at.asc(), Complaint.id.asc()]
+    # Navbatsiz ro'yxat («Barcha murojaatlar», qidiruv) — jurnal o'qishi:
+    # eng yangisi yuqorida.
     return [Complaint.created_at.desc(), Complaint.id.desc()]

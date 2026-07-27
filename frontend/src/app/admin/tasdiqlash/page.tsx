@@ -52,10 +52,16 @@ export default function TasdiqlashPage() {
   const [busySubtask, setBusySubtask] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Serverdagi umumiy son — ro'yxat 50 tada kesiladi va buni yashirmaslik
+  // kerak (avval xodim nechtasi qolganini umuman bilmasdi).
+  const [total, setTotal] = useState(0);
 
   function load() {
     apiGet<Page<ComplaintListItem>>("/api/admin/complaints?needs_review=1&page=1&page_size=50")
-      .then((res) => setItems(res.items))
+      .then((res) => {
+        setItems(res.items);
+        setTotal(res.total);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -125,8 +131,30 @@ export default function TasdiqlashPage() {
         almashtiradi.
       </p>
 
+      {!loading && items.length > 0 && (
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-text-primary">
+            Tekshirish kerak
+            <span className="text-sm font-normal text-text-muted">· {total} ta</span>
+          </h2>
+          {total > items.length && (
+            <p className="text-xs text-text-muted">Ko&apos;rsatildi: {items.length} / {total}</p>
+          )}
+        </div>
+      )}
+
       {loading ? (
-        <div className="py-10 text-center text-text-muted text-sm">Yuklanmoqda...</div>
+        <Card padded={false} className="overflow-hidden">
+          <div className="divide-y divide-border">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex animate-pulse items-center gap-3 px-5 py-5">
+                <span className="h-3.5 w-24 shrink-0 rounded-full bg-bg-subtle" />
+                <span className="h-3.5 flex-1 rounded-full bg-bg-subtle" />
+                <span className="hidden h-8 w-40 shrink-0 rounded-pill bg-bg-subtle xl:block" />
+              </div>
+            ))}
+          </div>
+        </Card>
       ) : items.length === 0 ? (
         <Card>
           <p className="py-8 text-center text-text-muted text-sm">
@@ -134,13 +162,14 @@ export default function TasdiqlashPage() {
           </p>
         </Card>
       ) : (
-        <div className="flex flex-col gap-3">
+        <Card padded={false} className="overflow-hidden">
+          <div className="divide-y divide-border">
           {items.map((c) => {
             const suggestion = c.ai?.suggested_category;
             const isEditing = editing === c.id;
             return (
-              <Card key={c.id}>
-                <div className="flex flex-col md:flex-row md:items-start gap-4">
+              <div key={c.id} className="px-5 py-4">
+                <div className="flex flex-col xl:flex-row xl:items-start gap-4">
                   <div className="flex-1 min-w-0 flex flex-col gap-2.5">
                     <div className="flex items-center gap-2">
                       <Link
@@ -312,10 +341,11 @@ export default function TasdiqlashPage() {
                     </div>
                   )}
                 </div>
-              </Card>
+              </div>
             );
           })}
-        </div>
+          </div>
+        </Card>
       )}
     </AppShell>
   );
