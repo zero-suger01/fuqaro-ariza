@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { loadYandexMaps, type YMaps } from "@/lib/yandexMaps";
 import { STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
 import type { HeatmapPoint, MapPoint } from "@/lib/types";
@@ -40,11 +40,15 @@ export default function ComplaintsMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<YMaps | null>(null);
   const layerRef = useRef<YMaps | null>(null);
+  const [selected, setSelected] = useState<MapPoint | null>(null);
 
   const renderLayer = useCallback(
     async (ymaps: YMaps) => {
       const map = mapRef.current;
       if (!map) return;
+
+      // Qatlam almashsa (rejim/filtr) tanlangan nishon endi mavjud bo'lmasligi mumkin.
+      setSelected(null);
 
       if (layerRef.current) {
         if (typeof layerRef.current.destroy === "function") {
@@ -90,14 +94,18 @@ export default function ComplaintsMap({
       });
       const placemarks = points.map((p) => {
         const color = resolveColor(STATUS_COLORS[p.status] ?? "var(--text-muted)");
-        return new ymaps.Placemark(
+        // Yandex balloon'i ATAYLAB ishlatilmaydi (`openBalloonOnClick: false`):
+        // clusterni bosib zoomlangandan keyin nishonni bosish balloon layout'ini
+        // cheksiz siklga solib, butun sahifani muzlatib qo'yadi ("Page Unresponsive").
+        // Clusterer balloon'i ham, `map.balloon` ham bir xil qotadi — shuning uchun
+        // murojaat ma'lumoti React kartochkasida ko'rsatiladi.
+        const placemark = new ymaps.Placemark(
           [p.lat, p.lng],
-          {
-            balloonContentHeader: p.ticket_number,
-            balloonContentBody: `${STATUS_LABELS[p.status]}<br/>${p.category_name}`,
-          },
-          { preset: "islands#circleIcon", iconColor: color }
+          {},
+          { preset: "islands#circleIcon", iconColor: color, openBalloonOnClick: false }
         );
+        placemark.events.add("click", () => setSelected(p));
+        return placemark;
       });
       clusterer.add(placemarks);
       map.geoObjects.add(clusterer);
@@ -136,10 +144,35 @@ export default function ComplaintsMap({
   }, [renderLayer]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{ height: "560px", width: "100%" }}
-      className="yandex-map-container overflow-hidden rounded-inner"
-    />
+    <div className="relative">
+      <div
+        ref={containerRef}
+        style={{ height: "560px", width: "100%" }}
+        className="yandex-map-container overflow-hidden rounded-inner"
+      />
+      {selected && (
+        <div className="absolute right-3 top-3 z-[3000] w-64 max-w-[calc(100%-1.5rem)] rounded-inner border border-border bg-bg-surface p-3 shadow-lg">
+          <div className="flex items-start justify-between gap-2">
+            <span className="font-semibold text-text-primary">{selected.ticket_number}</span>
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              aria-label="Yopish"
+              className="-mr-1 -mt-1 rounded-control px-2 py-0.5 text-text-muted transition hover:bg-bg-subtle hover:text-text-primary"
+            >
+              ×
+            </button>
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-sm">
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: STATUS_COLORS[selected.status] ?? "var(--text-muted)" }}
+            />
+            <span className="text-text-primary">{STATUS_LABELS[selected.status]}</span>
+          </div>
+          <p className="mt-1 text-sm text-text-muted">{selected.category_name}</p>
+        </div>
+      )}
+    </div>
   );
 }
