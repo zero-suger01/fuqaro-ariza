@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { clsx } from "clsx";
 import Image from "next/image";
-import { LogOut, Menu, X, type LucideIcon } from "lucide-react";
+import { LogOut, X, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
@@ -123,11 +123,19 @@ function NavTree(props: { groups: NavGroup[]; onNavigate?: () => void }) {
   );
 }
 
-export function Sidebar({ groups }: { groups: NavGroup[] }) {
+export function Sidebar({
+  groups,
+  drawerOpen,
+  onDrawerOpenChange,
+}: {
+  groups: NavGroup[];
+  /** Drawer holati Topbar bilan bo'lishiladi — hamburger tugma endi shu
+   * yerda emas, Topbar'ning o'zida render qilinadi (aks holda `fixed`
+   * tugma sticky Topbar sarlavhasini bosib turardi, mobilda). */
+  drawerOpen: boolean;
+  onDrawerOpenChange: (open: boolean) => void;
+}) {
   const { logout } = useAuth();
-  // Drawer havola bosilganda `onNavigate` orqali yopiladi — pathname'ga
-  // effekt qo'yish shart emas (va React uni kaskadli render deb ogohlantiradi).
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   const brand = (
@@ -166,23 +174,14 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
         {logoutButton}
       </aside>
 
-      {/* Mobil (F1.8) — hamburger + drawer. Avval mobil admin menyusi
-          umuman yo'q edi: sidebar `hidden md:flex` bo'lgani uchun telefonda
-          navigatsiya butunlay yo'qolardi. */}
-      <button
-        type="button"
-        onClick={() => setDrawerOpen(true)}
-        aria-label="Menyuni ochish"
-        className="md:hidden fixed left-4 top-4 z-40 h-11 w-11 rounded-full bg-bg-surface border border-border text-text-primary flex items-center justify-center shadow-lift"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
-
+      {/* Mobil (F1.8) — drawer. Avval mobil admin menyusi umuman yo'q edi:
+          sidebar `hidden md:flex` bo'lgani uchun telefonda navigatsiya
+          butunlay yo'qolardi. Ochish tugmasi Topbar'da (hamburger). */}
       {drawerOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => setDrawerOpen(false)}
+            onClick={() => onDrawerOpenChange(false)}
             aria-hidden="true"
           />
           <aside className="relative flex flex-col w-[272px] max-w-[85vw] bg-sidebar-bg border-r border-sidebar-border text-sidebar-text h-full px-3 py-4">
@@ -190,14 +189,14 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
               {brand}
               <button
                 type="button"
-                onClick={() => setDrawerOpen(false)}
+                onClick={() => onDrawerOpenChange(false)}
                 aria-label="Menyuni yopish"
                 className="h-9 w-9 rounded-full text-sidebar-text hover:text-sidebar-text-hover flex items-center justify-center"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <NavTree groups={groups} onNavigate={() => setDrawerOpen(false)} />
+            <NavTree groups={groups} onNavigate={() => onDrawerOpenChange(false)} />
             {logoutButton}
           </aside>
         </div>

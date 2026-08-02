@@ -139,6 +139,7 @@ export function AppShell({
   const { user, loading } = useAuth();
   const router = useRouter();
   const [queues, setQueues] = useState<QueueStats | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -172,9 +173,9 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar groups={groups} />
+      <Sidebar groups={groups} drawerOpen={drawerOpen} onDrawerOpenChange={setDrawerOpen} />
       <div className="flex-1 flex flex-col gap-6 pt-3 px-4 pb-4 md:px-6 md:pb-6 min-w-0">
-        <Topbar title={title} />
+        <Topbar title={title} onOpenMenu={() => setDrawerOpen(true)} />
         <main className="flex-1 flex flex-col gap-6 min-w-0">
           {forbidden ? (
             <div className="flex flex-1 items-center justify-center text-text-muted text-sm py-20">

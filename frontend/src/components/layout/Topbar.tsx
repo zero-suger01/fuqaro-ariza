@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -65,11 +65,22 @@ function QuickSearch() {
   );
 }
 
-export function Topbar({ title }: { title: string }) {
+export function Topbar({ title, onOpenMenu }: { title: string; onOpenMenu: () => void }) {
   return (
-    <header className="sticky top-3 z-20 flex h-16 shrink-0 items-center gap-4 rounded-2xl border border-border bg-bg-surface px-4 shadow-card">
-      <h1 className="shrink-0 text-base font-semibold text-text-primary">{title}</h1>
-      <div className="flex-1 flex justify-center">
+    <header className="sticky top-3 z-20 flex h-16 shrink-0 items-center gap-3 rounded-2xl border border-border bg-bg-surface px-4 shadow-card">
+      {/* Mobil hamburger — drawer holati AppShell'da, Sidebar bilan
+          bo'lishiladi. Avval bu tugma Sidebar ichida `fixed` edi va shu
+          Topbar sarlavhasini bosib turardi (z-index to'qnashuvi). */}
+      <button
+        type="button"
+        onClick={onOpenMenu}
+        aria-label="Menyuni ochish"
+        className="md:hidden -ml-1 h-9 w-9 shrink-0 rounded-full flex items-center justify-center text-text-secondary hover:bg-bg-subtle transition"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+      <h1 className="min-w-0 truncate text-base font-semibold text-text-primary">{title}</h1>
+      <div className="flex-1 flex justify-center min-w-0">
         <QuickSearch />
       </div>
       <ThemeToggle />
