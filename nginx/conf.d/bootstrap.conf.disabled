@@ -1,0 +1,25 @@
+# Birinchi marta certbot sertifikat olishdan OLDIN ishlatiladi — SSL
+# sertifikat hali yo'q, shuning uchun faqat HTTP va ACME challenge.
+#
+# Ishlatish (docs/12-deploy-contabo.md §4 bootstrap qadami):
+#   mv nginx/conf.d/app.conf nginx/conf.d/app.conf.disabled
+#   mv nginx/conf.d/bootstrap.conf.disabled nginx/conf.d/bootstrap.conf
+#   docker compose -f docker-compose.prod.yml up -d nginx
+#   ... certbot certonly --webroot ...
+#   mv nginx/conf.d/bootstrap.conf nginx/conf.d/bootstrap.conf.disabled
+#   mv nginx/conf.d/app.conf.disabled nginx/conf.d/app.conf
+#   docker compose -f docker-compose.prod.yml restart nginx
+
+server {
+    listen 80;
+    server_name ariza.xronuz.uz;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 200 "bootstrap: certbot sertifikat kutilmoqda\n";
+        add_header Content-Type text/plain;
+    }
+}

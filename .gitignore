@@ -3,3 +3,7 @@
 
 # Lokal docker-compose override (mashinaga xos port/hajm sozlamalari)
 docker-compose.override.yml
+
+# Prod compose sirlari (docker-compose.prod.yml shu faylni o'qiydi) —
+# namunasi .env.prod.example (docs/12-deploy-contabo.md).
+.env
