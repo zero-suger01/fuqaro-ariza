@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { Search } from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { ROLE_LABELS } from "@/lib/status";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { UserMenu } from "@/components/layout/UserMenu";
 
 /** Qidiruv har bir bo'limda o'ziga tegishli narsani qidirishi kerak
  * (mijoz so'ragan) — masalan QR kodlar sahifasida tuman/MFY/ko'cha/izoh
@@ -68,9 +66,6 @@ function QuickSearch() {
 }
 
 export function Topbar({ title }: { title: string }) {
-  const { user } = useAuth();
-  const initials = user ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() : "";
-
   return (
     <header className="sticky top-3 z-20 flex h-16 shrink-0 items-center gap-4 rounded-2xl border border-border bg-bg-surface px-4 shadow-card">
       <h1 className="shrink-0 text-base font-semibold text-text-primary">{title}</h1>
@@ -79,23 +74,7 @@ export function Topbar({ title }: { title: string }) {
       </div>
       <ThemeToggle />
       <NotificationBell />
-      <Link href="/admin/profil" className="flex items-center gap-2.5 rounded-pill -mx-1.5 px-1.5 py-1 hover:bg-bg-subtle transition-colors">
-        <div className="h-8 w-8 rounded-full bg-navy-900 text-white flex items-center justify-center text-xs font-semibold overflow-hidden shrink-0">
-          {user?.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
-          ) : (
-            initials
-          )}
-        </div>
-        <div className="hidden sm:block leading-tight">
-          <div className="text-sm font-medium text-text-primary">{user?.fullname}</div>
-          <div className="text-xs text-text-muted">
-            {user?.role ? ROLE_LABELS[user.role] : ""}
-            {user?.department_name ? ` — ${user.department_name}` : ""}
-          </div>
-        </div>
-      </Link>
+      <UserMenu />
     </header>
   );
 }

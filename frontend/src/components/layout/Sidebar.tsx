@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import Image from "next/image";
 import { LogOut, Menu, X, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface NavItem {
   href: string;
@@ -127,6 +128,7 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
   // Drawer havola bosilganda `onNavigate` orqali yopiladi — pathname'ga
   // effekt qo'yish shart emas (va React uni kaskadli render deb ogohlantiradi).
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   const brand = (
     <div className="px-3 py-2 mb-4">
@@ -143,7 +145,7 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
 
   const logoutButton = (
     <button
-      onClick={logout}
+      onClick={() => setLogoutConfirmOpen(true)}
       className="flex items-center gap-2.5 rounded-pill px-3 py-3 md:py-2 text-[13px] font-medium text-sidebar-text hover:bg-sidebar-hover-bg hover:text-sidebar-text-hover transition-colors duration-150"
     >
       <LogOut className="h-4 w-4" />
@@ -200,6 +202,16 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
           </aside>
         </div>
       )}
+
+      <ConfirmDialog
+        open={logoutConfirmOpen}
+        title="Tizimdan chiqish"
+        description="Rostdan tizimdan chiqmoqchimisiz?"
+        confirmLabel="Chiqish"
+        danger
+        onConfirm={logout}
+        onCancel={() => setLogoutConfirmOpen(false)}
+      />
     </>
   );
 }
