@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { trackComplaint, type TrackResult } from '@/api';
+import { BottomNav } from '@/components/BottomNav';
 import { colors, radius } from '@/theme';
 
 const stepLabels: Record<string, string> = {
@@ -63,6 +64,7 @@ export default function TrackScreen() {
           {result.reply_text ? <View style={styles.reply}><Text style={styles.sectionTitle}>Hokimlik javobi</Text><Text style={styles.replyText}>{result.reply_text}</Text></View> : null}
         </View> : null}
       </ScrollView>
+      <BottomNav active="complaints" onChange={() => router.replace('/cabinet')} />
     </SafeAreaView>
   );
 }
