@@ -16,9 +16,10 @@ export type TrackResult = {
   department: { code: string; name: string } | null;
   deadline_at: string | null;
   reply_text: string | null;
+  timeline: { step: string; at: string | null; done: boolean }[];
 };
 export type AuthUser = { kind: 'citizen'; id: string; first_name: string; last_name: string | null; fullname: string; phone: string };
-export type CitizenComplaint = { id: string; ticket_number: string; status_simple: string; category: { code: string; name: string }; department: { code: string; name: string } | null; description: string; created_at: string; deadline_at: string | null };
+export type CitizenComplaint = { id: string; ticket_number: string; status_simple: string; category: { code: string; name: string }; department: { code: string; name: string } | null; assigned_staff: { name: string; phone: string } | null; description: string; created_at: string; deadline_at: string | null };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await AsyncStorage.getItem(TOKEN_KEY);
@@ -31,7 +32,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       const body = await response.json();
       message = body.detail || message;
     } catch { /* non-json response */ }
-    throw new Error(message);
+    const error = new Error(message) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
   return response.json() as Promise<T>;
 }
