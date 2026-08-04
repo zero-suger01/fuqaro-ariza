@@ -18,6 +18,7 @@ Expo + React Native skeleti `mobile/` papkasida yaratildi. Birinchi M1 oqimi rea
 
 - [x] Expo skeleti, typed API client va Android/iOS konfiguratsiyasi
 - [x] Fuqaro bosh sahifasi, murojaat yuborish wizard'i va ticket holatini tekshirish
+- [x] Mobil bosh sahifada O'zbek lotin, O'zbek kirill, Русский va English til tanlovi (AsyncStorage bilan saqlanadi)
 - [x] Mavjud `/api/public/neighborhoods`, `/api/public/complaints`, `/api/public/complaints/track`, `/api/public/support` kontraktlariga ulanish
 - [x] Foto/video/ovoz va lokatsiyani native picker orqali yuborish
 - [x] Push token registratsiyasi (Expo), notification handler va murojaat offline draft'i
