@@ -81,7 +81,10 @@ export async function submitComplaint(data: {
   form.append('last_name', data.lastName);
   form.append('phone', data.phone);
   form.append('language', 'uz');
-  form.append('source', 'mobile');
+  // The backend enum is SOURCES = ['web','telegram','qr','operator'] and the
+  // complaints table carries a matching CHECK constraint, so 'mobile' is
+  // rejected with "Noto'g'ri manba". Citizen self-service is 'web'.
+  form.append('source', 'web');
   form.append('neighborhood_id', data.neighborhoodId);
   if (data.latitude != null) form.append('latitude', String(data.latitude));
   if (data.longitude != null) form.append('longitude', String(data.longitude));

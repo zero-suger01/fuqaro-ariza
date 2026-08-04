@@ -54,7 +54,7 @@ export default function ComplaintScreen() {
 
   const [step, setStep] = useState(1);
   const [description, setDescription] = useState('');
-  const [firstName, setFirstName] = useState('');
+  const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('+998');
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
   const [neighborhoodId, setNeighborhoodId] = useState('');
@@ -94,7 +94,7 @@ export default function ComplaintScreen() {
       try {
         const draft = JSON.parse(value);
         setDescription(draft.description || '');
-        setFirstName(draft.firstName || '');
+        setFullName(draft.fullName || draft.firstName || '');
         setPhone(draft.phone || '+998');
         setNeighborhoodId(draft.neighborhoodId || '');
         setQuery(draft.query || '');
@@ -108,9 +108,9 @@ export default function ComplaintScreen() {
   useEffect(() => {
     AsyncStorage.setItem(
       DRAFT_KEY,
-      JSON.stringify({ description, firstName, phone, neighborhoodId, query, step }),
+      JSON.stringify({ description, fullName, phone, neighborhoodId, query, step }),
     ).catch(() => undefined);
-  }, [description, firstName, phone, neighborhoodId, query, step]);
+  }, [description, fullName, phone, neighborhoodId, query, step]);
 
   const pickImages = useCallback(async () => {
     setError('');
@@ -189,15 +189,18 @@ export default function ComplaintScreen() {
 
   const send = async () => {
     setError('');
-    if (!firstName.trim() || phone.replace(/\D/g, '').length !== 12) {
+    // The backend keeps first and last name apart, so one field is split on
+    // the first space: everything after it is the surname.
+    const [first = '', ...rest] = fullName.trim().split(/\s+/);
+    if (!first || phone.replace(/\D/g, '').length !== 12) {
       return setError(t.wizard.contactInvalid);
     }
     setLoading(true);
     try {
       const result = await submitComplaint({
         description,
-        firstName,
-        lastName: '',
+        firstName: first,
+        lastName: rest.join(' '),
         phone: phone.replace(/\s/g, ''),
         neighborhoodId,
         ...location,
@@ -370,11 +373,14 @@ export default function ComplaintScreen() {
           {step === 3 ? (
             <Reveal key="step3" index={1} style={styles.stepBody}>
               <Field
-                label={t.auth.firstName}
+                label={t.wizard.fullName}
+                hint={t.wizard.fullNameHint}
                 icon="user"
-                value={firstName}
-                onChangeText={setFirstName}
-                autoComplete="given-name"
+                value={fullName}
+                onChangeText={setFullName}
+                autoComplete="name"
+                textContentType="name"
+                placeholder={t.wizard.fullNamePlaceholder}
               />
               <Field
                 label={t.auth.phone}

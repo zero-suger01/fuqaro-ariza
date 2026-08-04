@@ -100,7 +100,11 @@ export function NightPanel({
       />
 
       {glow ? (
-        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+        // A fixed 0–100 viewBox stretched with preserveAspectRatio="none" is
+        // the only way these land identically on web and on native: percentage
+        // cx/cy/rx on an Ellipse resolve against different references per
+        // platform, which slid the glows around on Android.
+        <Svg style={StyleSheet.absoluteFill} viewBox="0 0 100 100" preserveAspectRatio="none">
           <Defs>
             <RadialGradient id={coolId} cx="0.5" cy="0.5" r="0.5">
               <Stop offset="0" stopColor={palette.turquoise[300]} stopOpacity={0.55} />
@@ -113,8 +117,8 @@ export function NightPanel({
           </Defs>
           {/* Warm light behind the ornament, cool light washing the floor —
               brass over turquoise would silt into olive, so they stay apart. */}
-          <Ellipse cx="88%" cy="4%" rx="56%" ry="42%" fill={`url(#${glowId})`} />
-          <Ellipse cx="6%" cy="96%" rx="62%" ry="48%" fill={`url(#${coolId})`} />
+          <Ellipse cx={86} cy={8} rx={54} ry={44} fill={`url(#${glowId})`} />
+          <Ellipse cx={8} cy={94} rx={60} ry={48} fill={`url(#${coolId})`} />
         </Svg>
       ) : null}
 

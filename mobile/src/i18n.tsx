@@ -103,6 +103,9 @@ export type Dict = {
     locationAdded: string;
     step3Title: string;
     step3Text: string;
+    fullName: string;
+    fullNamePlaceholder: string;
+    fullNameHint: string;
     photo: string;
     video: string;
     videoAdded: string;
@@ -243,6 +246,9 @@ const uz: Dict = {
     locationAdded: 'Joylashuv biriktirildi',
     step3Title: 'Bogʻlanish\nmaʼlumotlari',
     step3Text: 'Javob tayyor boʻlganda siz bilan bogʻlanamiz.',
+    fullName: 'Ism va familiyangiz',
+    fullNamePlaceholder: 'Akmaljon Karimov',
+    fullNameHint: 'Pasportdagidek yozing',
     photo: 'Foto',
     video: 'Video',
     videoAdded: 'Video tayyor',
@@ -256,7 +262,7 @@ const uz: Dict = {
     tooShort: 'Muammoni kamida 10 ta belgi bilan yozing.',
     pickNeighborhood: 'Mahallani tanlang.',
     loadingNeighborhoods: 'Mahallalar yuklanmoqda, biroz kuting.',
-    contactInvalid: 'Ism va toʻliq telefon raqamini kiriting.',
+    contactInvalid: 'Ism-familiya va toʻliq telefon raqamini kiriting.',
     sendFailed: 'Yuborishda xatolik yuz berdi.',
     permissionPhoto: 'Rasmlarga kirish uchun ruxsat bering.',
     permissionVideo: 'Videoga kirish uchun ruxsat bering.',
@@ -383,6 +389,9 @@ const oz: Dict = {
     locationAdded: 'Жойлашув бириктирилди',
     step3Title: 'Боғланиш\nмаълумотлари',
     step3Text: 'Жавоб тайёр бўлганда сиз билан боғланамиз.',
+    fullName: 'Исм ва фамилиянгиз',
+    fullNamePlaceholder: 'Акмалжон Каримов',
+    fullNameHint: 'Паспортдагидек ёзинг',
     photo: 'Фото',
     video: 'Видео',
     videoAdded: 'Видео тайёр',
@@ -396,7 +405,7 @@ const oz: Dict = {
     tooShort: 'Муаммони камида 10 та белги билан ёзинг.',
     pickNeighborhood: 'Маҳаллани танланг.',
     loadingNeighborhoods: 'Маҳаллалар юкланмоқда, бироз кутинг.',
-    contactInvalid: 'Исм ва тўлиқ телефон рақамини киритинг.',
+    contactInvalid: 'Исм-фамилия ва тўлиқ телефон рақамини киритинг.',
     sendFailed: 'Юборишда хатолик юз берди.',
     permissionPhoto: 'Расмларга кириш учун рухсат беринг.',
     permissionVideo: 'Видеога кириш учун рухсат беринг.',
@@ -523,6 +532,9 @@ const ru: Dict = {
     locationAdded: 'Местоположение добавлено',
     step3Title: 'Контактные\nданные',
     step3Text: 'Свяжемся с вами, когда ответ будет готов.',
+    fullName: 'Имя и фамилия',
+    fullNamePlaceholder: 'Акмальжон Каримов',
+    fullNameHint: 'Как в паспорте',
     photo: 'Фото',
     video: 'Видео',
     videoAdded: 'Видео готово',
@@ -536,7 +548,7 @@ const ru: Dict = {
     tooShort: 'Опишите проблему минимум 10 символами.',
     pickNeighborhood: 'Выберите махаллю.',
     loadingNeighborhoods: 'Махалли загружаются, подождите.',
-    contactInvalid: 'Введите имя и полный номер телефона.',
+    contactInvalid: 'Введите имя, фамилию и полный номер телефона.',
     sendFailed: 'Ошибка при отправке.',
     permissionPhoto: 'Разрешите доступ к фото.',
     permissionVideo: 'Разрешите доступ к видео.',
@@ -663,6 +675,9 @@ const en: Dict = {
     locationAdded: 'Location attached',
     step3Title: 'Contact\ndetails',
     step3Text: 'We will reach out once the reply is ready.',
+    fullName: 'First and last name',
+    fullNamePlaceholder: 'Akmaljon Karimov',
+    fullNameHint: 'As written in your passport',
     photo: 'Photo',
     video: 'Video',
     videoAdded: 'Video ready',
@@ -676,7 +691,7 @@ const en: Dict = {
     tooShort: 'Describe the problem with at least 10 characters.',
     pickNeighborhood: 'Choose a mahalla.',
     loadingNeighborhoods: 'Mahallas are loading, one moment.',
-    contactInvalid: 'Enter your name and full phone number.',
+    contactInvalid: 'Enter your full name and phone number.',
     sendFailed: 'Sending failed.',
     permissionPhoto: 'Allow access to photos.',
     permissionVideo: 'Allow access to video.',
