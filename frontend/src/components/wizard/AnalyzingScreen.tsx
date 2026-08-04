@@ -39,26 +39,26 @@ export function AnalyzingScreen({
 
       {!confirmed && <AiComposingOrb size={160} ariaLabel={t("title")} />}
 
-      <ol className="flex w-full max-w-xs flex-col items-center sm:max-w-sm">
+      <ol className="flex w-full max-w-xs items-start sm:max-w-sm">
         <TimelineStep state="done" label={t("step1")} />
         <TimelineConnector filled={confirmed} />
         <TimelineStep state={confirmed ? "done" : "active"} label={t("step2")} />
         <TimelineConnector filled={confirmed} />
-        {confirmed && department ? (
-          <RoutedStep department={department} />
-        ) : (
-          <TimelineStep state="pending" label={t("step3")} />
-        )}
+        <TimelineStep state={confirmed ? "done" : "pending"} label={t("step3")} />
       </ol>
+
+      {confirmed && department && <RoutedStep department={department} />}
     </div>
   );
 }
 
+// Doiralar markazi bilan bir xatda turishi uchun (doira balandligi h-10 =
+// 40px, markaz 20px = mt-5) — gorizontal chiziq shu balandlikda cho'ziladi.
 function TimelineConnector({ filled }: { filled: boolean }) {
   return (
     <span
       aria-hidden
-      className="h-8 w-0.5 shrink-0 transition-colors duration-500"
+      className="mt-5 h-0.5 flex-1 shrink transition-colors duration-500"
       style={{ backgroundColor: filled ? LINE_COLOR : "var(--border)" }}
     />
   );
@@ -72,7 +72,7 @@ function TimelineStep({
   label: string;
 }) {
   return (
-    <li className="flex flex-col items-center gap-2">
+    <li className="flex flex-1 flex-col items-center gap-2">
       <span
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-500"
         style={
@@ -90,7 +90,9 @@ function TimelineStep({
       </span>
       <span
         className={
-          state === "pending" ? "text-base text-text-muted" : "text-base text-text-primary"
+          state === "pending"
+            ? "text-center text-sm text-text-muted"
+            : "text-center text-sm text-text-primary"
         }
       >
         {label}
@@ -99,20 +101,15 @@ function TimelineStep({
   );
 }
 
-// Oxirgi bosqich — AI qaysi bo'limga yo'naltirganini fuqaro darhol
+// Yo'naltirilgan bo'lim — AI qaysi bo'limga yo'naltirganini fuqaro darhol
 // ko'rishi kerak (mijoz so'ragan "better UI, user can see"), shuning
-// uchun oddiy matn emas, ajralib turadigan karta: katta belgi doirasi +
-// aniq rangdagi bo'lim nomi.
+// uchun timeline qatoridan pastda ajralib turadigan karta ko'rsatiladi
+// (step3 doirasi allaqachon "done" holatda, shu sabab bu yerda takroriy
+// doira YO'Q — faqat aniq rangdagi bo'lim nomi).
 function RoutedStep({ department }: { department: string }) {
   const tSuccess = useTranslations("wizard.success");
   return (
-    <li className="flex w-full flex-col items-center gap-3">
-      <span
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-        style={{ backgroundColor: LINE_COLOR }}
-      >
-        <Check className="h-5 w-5 text-white" aria-hidden />
-      </span>
+    <div className="w-full max-w-xs sm:max-w-sm">
       {/* Matn/ikon rangi qattiq #0d3138'ga bog'lanmaydi — qorong'i rejimda
           o'qilmaydigan bo'lib qolmasligi uchun tema o'zgaruvchisi ishlatiladi
           (rang faqat ramka/fon belgisida, dekorativ, ikkala rejimda ham OK). */}
@@ -125,6 +122,6 @@ function RoutedStep({ department }: { department: string }) {
           {tSuccess.rich("aiRouted", { department, b: (chunks) => <b>{chunks}</b> })}
         </p>
       </div>
-    </li>
+    </div>
   );
 }

@@ -7,6 +7,9 @@ export const routing = defineRouting({
   // this proxy; `as-needed` causes `/` ↔ `/uz` redirect loops in local dev.
   // Always-prefixed paths keep the dev and production behavior deterministic.
   localePrefix: "always",
+  // Mobil brauzerlarda Accept-Language ko'pincha "en" bo'ladi — shu sabab
+  // avtomatik aniqlashni o'chiramiz, har doim defaultLocale (uz) bilan boshlanadi.
+  localeDetection: false,
 });
 
 export type Locale = (typeof routing.locales)[number];
