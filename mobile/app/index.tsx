@@ -1,58 +1,371 @@
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Linking, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { Feather } from '@expo/vector-icons';
-import { colors, radius } from '@/theme';
 import { getSupport, type SupportContact } from '@/api';
-import { languages, useI18n } from '@/i18n';
+import { LanguageSwitch } from '@/components/LanguageSwitch';
+import { useI18n } from '@/i18n';
+import {
+  Button,
+  Card,
+  Divider,
+  Drift,
+  EmblemMark,
+  GildedRule,
+  GirihStar,
+  IkatBand,
+  NightPanel,
+  Reveal,
+  SuzaniBloom,
+  Touchable,
+  Txt,
+  colors,
+  elevation,
+  layout,
+  palette,
+  radius,
+  space,
+  squircle,
+} from '@/design';
 
-export default function HomeScreen() {
+export default function LandingScreen() {
+  const insets = useSafeAreaInsets();
+  const { height, width } = useWindowDimensions();
+  const { t } = useI18n();
   const [support, setSupport] = useState<SupportContact | null>(null);
-  const { language, setLanguage, t } = useI18n();
-  useEffect(() => { getSupport().then(setSupport).catch(() => undefined); }, []);
+
+  useEffect(() => {
+    getSupport().then(setSupport).catch(() => undefined);
+  }, []);
+
+  const heroHeight = Math.max(452, height * 0.6);
+  const compact = width < 360;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.topbar}>
-        <View style={styles.logo}><Feather name="message-circle" size={22} color={colors.white} /></View>
-        <View style={styles.brandCopy}><Text style={styles.brand}>{t.brand}</Text><Text style={styles.region}>{t.region}</Text></View>
-        <Pressable style={styles.profileButton} onPress={() => router.push('/cabinet')} accessibilityLabel="Fuqaro kabineti">
-          <Feather name="user" size={18} color={colors.teal} /><Text style={styles.profileText}>{t.cabinet}</Text>
-        </Pressable>
-      </View>
-      <View style={styles.languageBar} accessibilityLabel="Tilni tanlash">
-        {languages.map((item) => <Pressable key={item.code} onPress={() => setLanguage(item.code)} style={[styles.languageChip, language === item.code && styles.languageChipActive]}><Text style={[styles.languageText, language === item.code && styles.languageTextActive]}>{item.short}</Text></Pressable>)}
-      </View>
-      <View style={styles.hero}>
-        <View style={styles.badge}><View style={styles.dot} /><Text style={styles.badgeText}>{t.badge}</Text></View>
-        <Text style={styles.title}>{t.title}</Text>
-        <Text style={styles.subtitle}>{t.subtitle}</Text>
-      </View>
-      <View style={styles.actions}>
-        <Pressable style={({ pressed }) => [styles.primary, pressed && styles.pressed]} onPress={() => router.push('/complaint')}>
-          <Feather name="edit-3" size={20} color={colors.white} /><Text style={styles.primaryText}>{t.submit}</Text><Feather name="arrow-up-right" size={20} color={colors.white} />
-        </Pressable>
-        <Pressable style={styles.secondary} onPress={() => router.push('/track')}>
-          <Feather name="search" size={19} color={colors.teal} /><Text style={styles.secondaryText}>{t.track}</Text>
-        </Pressable>
-      </View>
-      <View style={styles.infoCard}><Feather name="shield" size={21} color={colors.teal} /><View style={styles.infoCopy}><Text style={styles.infoTitle}>{t.infoTitle}</Text><Text style={styles.infoText}>{t.infoText}</Text></View></View>
-      <View style={styles.footer}><Text style={styles.help}>{t.help}</Text><Pressable onPress={() => support?.phone && Linking.openURL(`tel:${support.phone}`)}><Text style={styles.phone}>{support?.phone || '71 000 00 00'}</Text></Pressable>{support?.telegram_url ? <Pressable onPress={() => Linking.openURL(support.telegram_url!)}><Text style={styles.telegram}>{t.telegram}</Text></Pressable> : null}</View>
-    </SafeAreaView>
+    <View style={styles.root}>
+      <StatusBar style="light" />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + space.xl }}
+      >
+        <NightPanel
+          round="3xl"
+          pattern="full"
+          gilded
+          style={[styles.hero, { minHeight: heroHeight, paddingTop: insets.top + space.md }]}
+          overlay={
+            <Drift style={styles.bloom} amplitude={9}>
+              <SuzaniBloom
+                size={Math.min(330, width * 0.92)}
+                color={palette.white}
+                accent={palette.brass[200]}
+                opacity={0.16}
+              />
+            </Drift>
+          }
+        >
+          <View style={styles.heroInner}>
+            <Reveal from={-14}>
+              <View style={styles.brandRow}>
+                <View style={styles.brandMark}>
+                  <EmblemMark size={30} color={palette.white} accent={palette.brass[300]} />
+                </View>
+                <View style={styles.brandCopy}>
+                  <Txt variant="title3" tone="onDark" numberOfLines={1}>
+                    {t.brand}
+                  </Txt>
+                  <Txt variant="caption" tone="onDarkFaint" numberOfLines={1}>
+                    {t.region}
+                  </Txt>
+                </View>
+              </View>
+            </Reveal>
+
+            <Reveal index={1} style={styles.langWrap}>
+              <LanguageSwitch />
+            </Reveal>
+
+            <View style={styles.heroSpacer} />
+
+            <Reveal index={2}>
+              <View style={styles.badge}>
+                <GirihStar size={12} color={palette.brass[300]} />
+                <Txt variant="caption" tone="onDarkSoft" numberOfLines={1}>
+                  {t.landing.badge}
+                </Txt>
+              </View>
+            </Reveal>
+
+            <Reveal index={3}>
+              <Txt
+                variant={compact ? 'display' : 'displayXl'}
+                tone="onDark"
+                style={styles.title}
+                maxFontSizeMultiplier={1.2}
+              >
+                {t.landing.title}
+              </Txt>
+            </Reveal>
+
+            <Reveal index={4}>
+              <Txt variant="bodyLg" tone="onDarkSoft" style={styles.subtitle} maxFontSizeMultiplier={1.4}>
+                {t.landing.subtitle}
+              </Txt>
+            </Reveal>
+
+            <Reveal index={5} style={styles.rule}>
+              <GildedRule width={Math.min(240, width - layout.gutter * 4)} color={palette.brass[300]} />
+            </Reveal>
+          </View>
+        </NightPanel>
+
+        <Reveal index={5} delay={90} style={styles.actionsWrap}>
+          <Card lift="float" round="2xl" padded="md">
+            <Button
+              label={t.landing.submit}
+              trailingIcon="arrow-up-right"
+              onPress={() => router.push('/complaint')}
+              accessibilityHint={t.landing.submitHint}
+              haptic="medium"
+            />
+            <Txt variant="caption" tone="muted" center style={styles.actionHint}>
+              {t.landing.submitHint}
+            </Txt>
+
+            <Button
+              label={t.landing.track}
+              variant="outline"
+              icon="search"
+              size="md"
+              onPress={() => router.push('/track')}
+              style={styles.secondaryAction}
+            />
+
+            <Divider style={styles.actionsDivider} />
+
+            <Touchable
+              onPress={() => router.push('/cabinet')}
+              accessibilityRole="button"
+              accessibilityLabel={t.landing.cabinet}
+              accessibilityHint={t.landing.cabinetHint}
+              style={styles.cabinetRow}
+            >
+              <View style={styles.cabinetIcon}>
+                <Feather name="user" size={17} color={colors.primary} />
+              </View>
+              <View style={styles.cabinetCopy}>
+                <Txt variant="bodyStrong" numberOfLines={1}>
+                  {t.landing.cabinet}
+                </Txt>
+                <Txt variant="caption" tone="muted" numberOfLines={1}>
+                  {t.landing.cabinetHint}
+                </Txt>
+              </View>
+              <Feather name="chevron-right" size={19} color={colors.textMuted} />
+            </Touchable>
+          </Card>
+        </Reveal>
+
+        <Reveal index={6} delay={90}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            decelerationRate="fast"
+            snapToInterval={244 + space.sm}
+            snapToAlignment="start"
+            contentContainerStyle={styles.features}
+          >
+            {t.landing.features.map((feature) => (
+              <Card key={feature.title} round="xl" padded="md" lift="rest" tone="alt" style={styles.featureCard}>
+                <View style={styles.featureIcon}>
+                  <Feather
+                    name={feature.icon as keyof typeof Feather.glyphMap}
+                    size={18}
+                    color={colors.accentInk}
+                  />
+                </View>
+                <Txt variant="title3" style={styles.featureTitle} numberOfLines={2}>
+                  {feature.title}
+                </Txt>
+                <Txt variant="caption" tone="secondary" numberOfLines={3}>
+                  {feature.text}
+                </Txt>
+              </Card>
+            ))}
+          </ScrollView>
+        </Reveal>
+
+        <Reveal index={7} delay={90} style={styles.section}>
+          <Card round="2xl" padded="lg" tone="tint" lift="rest">
+            <View style={styles.helpHead}>
+              <View style={styles.helpIcon}>
+                <Feather name="life-buoy" size={18} color={colors.onDark} />
+              </View>
+              <View style={styles.helpCopy}>
+                <Txt variant="title3">{t.landing.helpTitle}</Txt>
+                <Txt variant="caption" tone="secondary" style={styles.helpText}>
+                  {t.landing.helpText}
+                </Txt>
+              </View>
+            </View>
+
+            <View style={styles.helpActions}>
+              <Button
+                label={support?.phone || t.landing.call}
+                variant="primary"
+                size="md"
+                icon="phone"
+                onPress={() => support?.phone && Linking.openURL(`tel:${support.phone}`)}
+                disabled={!support?.phone}
+                style={styles.helpButton}
+              />
+              {support?.telegram_url ? (
+                <Button
+                  label={t.landing.telegram}
+                  variant="outline"
+                  size="md"
+                  icon="send"
+                  onPress={() => Linking.openURL(support.telegram_url as string)}
+                  style={styles.helpButton}
+                />
+              ) : null}
+            </View>
+          </Card>
+        </Reveal>
+
+        <View style={styles.footer}>
+          <IkatBand
+            width={Math.min(300, width - layout.gutter * 2)}
+            height={30}
+            color={palette.turquoise[300]}
+            accent={palette.brass[300]}
+            opacity={0.6}
+            repeat={5}
+          />
+          <Txt variant="caption" tone="faint" center style={styles.footerText}>
+            {t.brand} · {t.region}
+          </Txt>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 20 },
-  topbar: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingTop: 8 }, languageBar: { flexDirection: 'row', gap: 6, marginTop: 13 }, languageChip: { minWidth: 42, alignItems: 'center', borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white, paddingHorizontal: 10, paddingVertical: 7 }, languageChipActive: { backgroundColor: colors.teal, borderColor: colors.teal }, languageText: { color: colors.muted, fontSize: 12, fontWeight: '800' }, languageTextActive: { color: colors.white },
-  brandCopy: { flex: 1 },
-  logo: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.teal, alignItems: 'center', justifyContent: 'center' },
-  brand: { color: colors.ink, fontSize: 18, fontWeight: '800' }, region: { color: colors.muted, fontSize: 12, marginTop: 2 },
-  profileButton: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white, paddingHorizontal: 10, paddingVertical: 9 }, profileText: { color: colors.tealDark, fontSize: 12, fontWeight: '800' },
-  hero: { paddingTop: 54, paddingBottom: 28 }, badge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: colors.mint, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 8 }, dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.teal, marginRight: 7 }, badgeText: { color: colors.tealDark, fontSize: 12, fontWeight: '700' },
-  title: { color: colors.ink, fontSize: 38, lineHeight: 43, fontWeight: '800', letterSpacing: -1, marginTop: 19 }, subtitle: { color: colors.muted, fontSize: 16, lineHeight: 24, marginTop: 15, maxWidth: 360 },
-  actions: { gap: 11 }, primary: { minHeight: 58, borderRadius: radius.control, backgroundColor: colors.teal, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 11 }, primaryText: { flex: 1, color: colors.white, fontSize: 16, fontWeight: '800' }, secondary: { minHeight: 55, borderRadius: radius.control, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 11 }, secondaryText: { color: colors.ink, fontSize: 15, fontWeight: '700' }, pressed: { opacity: 0.82 },
-  infoCard: { marginTop: 28, borderRadius: radius.card, padding: 17, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, flexDirection: 'row', gap: 12 }, infoCopy: { flex: 1 }, infoTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' }, infoText: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 4 },
-  footer: { marginTop: 'auto', paddingVertical: 18, alignItems: 'center' }, help: { color: colors.muted, fontSize: 12 }, phone: { color: colors.teal, fontSize: 16, fontWeight: '800', marginTop: 4 }, telegram: { color: colors.tealDark, fontSize: 13, fontWeight: '700', marginTop: 10 },
+  root: { flex: 1, backgroundColor: colors.canvas },
+  hero: {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    paddingHorizontal: layout.gutter,
+    paddingBottom: space['4xl'],
+  },
+  heroInner: { flex: 1 },
+  bloom: {
+    position: 'absolute',
+    top: -54,
+    right: -108,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+  },
+  brandMark: {
+    ...squircle,
+    width: 46,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: StyleSheet.hairlineWidth * 1.5,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  brandCopy: { flex: 1, minWidth: 0 },
+  langWrap: { marginTop: space.lg, alignSelf: 'flex-start', minWidth: 210 },
+  heroSpacer: { flex: 1, minHeight: space['3xl'] },
+  badge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth * 1.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: space.sm,
+    paddingVertical: 7,
+  },
+  title: { marginTop: space.lg },
+  subtitle: { marginTop: space.sm, maxWidth: 420 },
+  rule: { marginTop: space.lg },
+
+  actionsWrap: {
+    marginTop: -space['3xl'],
+    paddingHorizontal: layout.gutter,
+  },
+  actionHint: { marginTop: space.xs },
+  secondaryAction: { marginTop: space.sm },
+  actionsDivider: { marginVertical: space.md },
+  cabinetRow: {
+    minHeight: layout.tapTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+  },
+  cabinetIcon: {
+    ...squircle,
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryTint,
+  },
+  cabinetCopy: { flex: 1, minWidth: 0 },
+
+  features: {
+    gap: space.sm,
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.xl,
+    paddingBottom: space.xxs,
+  },
+  featureCard: { width: 244 },
+  featureIcon: {
+    ...squircle,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+    backgroundColor: colors.accentTint,
+    marginBottom: space.sm,
+  },
+  featureTitle: { marginBottom: space['3xs'] },
+
+  section: { paddingHorizontal: layout.gutter, paddingTop: space.lg },
+  helpHead: { flexDirection: 'row', gap: space.sm },
+  helpIcon: {
+    ...squircle,
+    ...elevation.action,
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+    backgroundColor: colors.primary,
+  },
+  helpCopy: { flex: 1, minWidth: 0 },
+  helpText: { marginTop: space['3xs'] },
+  helpActions: { flexDirection: 'row', gap: space.xs, marginTop: space.md },
+  helpButton: { flex: 1, minWidth: 0 },
+
+  footer: {
+    alignItems: 'center',
+    paddingTop: space['2xl'],
+    gap: space.xs,
+  },
+  footerText: { letterSpacing: 0.2 },
 });

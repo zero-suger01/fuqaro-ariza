@@ -16,6 +16,14 @@
       "cwd": "backend",
       "port": 8000,
       "autoPort": false
+    },
+    {
+      "name": "mobile-web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["expo", "start", "--web", "--port", "8082"],
+      "cwd": "mobile",
+      "port": 8082,
+      "autoPort": false
     }
   ]
 }

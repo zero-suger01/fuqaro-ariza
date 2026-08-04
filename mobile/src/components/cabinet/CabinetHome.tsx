@@ -1,144 +1,168 @@
+import { ScrollView, StyleSheet, View, type ScrollViewProps } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { AuthUser, CitizenComplaint } from '@/api';
-import { useI18n } from '@/i18n';
-import { EmptyRequests } from '@/design-system/components/EmptyRequests';
-import { NewRequestHero } from '@/design-system/components/NewRequestHero';
-import { RequestCard } from '@/design-system/components/RequestCard';
-import { StatisticsOverview } from '@/design-system/components/StatisticsOverview';
-import { getCabinetDesignCopy } from '@/design-system/copy';
-import { colorTokens, spacing, typography } from '@/design-system/tokens';
+import { fill, useI18n } from '@/i18n';
+import { EmptyState } from './EmptyState';
+import { RequestCard } from './RequestCard';
+import { StatBento } from './StatBento';
+import {
+  Button,
+  Drift,
+  NightPanel,
+  Reveal,
+  SuzaniBloom,
+  Touchable,
+  Txt,
+  colors,
+  layout,
+  palette,
+  space,
+} from '@/design';
 
 type CabinetHomeProps = {
   user: AuthUser;
   complaints: CitizenComplaint[];
+  contentPadding: number;
+  refreshControl?: ScrollViewProps['refreshControl'];
   onNewRequest: () => void;
   onViewAll: () => void;
   onOpenRequest: (complaint: CitizenComplaint) => void;
 };
 
-export function CabinetHome({ user, complaints, onNewRequest, onViewAll, onOpenRequest }: CabinetHomeProps) {
-  const { language } = useI18n();
-  const copy = getCabinetDesignCopy(language);
-  const name = user.first_name?.trim() || copy.citizenFallback;
-  const hasLongName = name.length > 18;
+export function CabinetHome({
+  user,
+  complaints,
+  contentPadding,
+  refreshControl,
+  onNewRequest,
+  onViewAll,
+  onOpenRequest,
+}: CabinetHomeProps) {
+  const { t } = useI18n();
+  const name = user.first_name?.trim() || user.fullname?.trim() || '—';
 
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+      refreshControl={refreshControl}
+      contentContainerStyle={[styles.content, { paddingBottom: contentPadding }]}
     >
-      <View style={styles.inner}>
-        <View style={styles.greetingBlock}>
-          <Text
-            numberOfLines={2}
-            maxFontSizeMultiplier={1.4}
-            style={[styles.greeting, hasLongName && styles.greetingLong]}
-          >
-            {copy.greeting.replace('{name}', name)}
-          </Text>
-          <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={styles.supporting}>
-            {copy.supporting}
-          </Text>
-        </View>
+      <Reveal>
+        <Txt variant="title1" maxFontSizeMultiplier={1.3} style={styles.greeting}>
+          {fill(t.cabinet.greeting, { name })}
+        </Txt>
+        <Txt variant="body" tone="secondary" style={styles.greetingSub}>
+          {t.cabinet.greetingSub}
+        </Txt>
+      </Reveal>
 
-        <NewRequestHero onPress={onNewRequest} />
+      <Reveal index={1} style={styles.block}>
+        <NightPanel
+          round="2xl"
+          pattern="full"
+          gilded
+          style={styles.hero}
+          overlay={
+            <Drift style={styles.heroBloom} amplitude={6} duration={11000}>
+              <SuzaniBloom size={190} color={palette.white} accent={palette.brass[200]} opacity={0.17} />
+            </Drift>
+          }
+        >
+          <View style={styles.heroInner}>
+            <Txt variant="title2" tone="onDark" numberOfLines={1}>
+              {t.cabinet.heroTitle}
+            </Txt>
+            <Txt variant="body" tone="onDarkSoft" style={styles.heroText} numberOfLines={3}>
+              {t.cabinet.heroText}
+            </Txt>
+            <Button
+              label={t.cabinet.heroAction}
+              variant="gold"
+              size="md"
+              trailingIcon="arrow-right"
+              block={false}
+              onPress={onNewRequest}
+              style={styles.heroAction}
+            />
+          </View>
+        </NightPanel>
+      </Reveal>
 
-        <View style={styles.statistics}>
-          <StatisticsOverview statuses={complaints.map((complaint) => complaint.status_simple)} />
-        </View>
+      <Reveal index={2} style={styles.block}>
+        <StatBento statuses={complaints.map((complaint) => complaint.status_simple)} />
+      </Reveal>
 
-        <View style={styles.sectionHeader}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>{copy.recentRequests}</Text>
+      <Reveal index={3} style={styles.block}>
+        <View style={styles.sectionHead}>
+          <Txt variant="title3" accessibilityRole="header" numberOfLines={1} style={styles.sectionTitle}>
+            {t.cabinet.recent}
+          </Txt>
           {complaints.length > 0 ? (
-            <Pressable
+            <Touchable
               onPress={onViewAll}
               accessibilityRole="button"
-              style={({ pressed }) => [styles.viewAll, pressed && styles.pressed]}
+              accessibilityLabel={t.cabinet.seeAll}
+              style={styles.seeAll}
             >
-              <Text style={styles.viewAllText}>{copy.allRequests}</Text>
-              <Feather name="chevron-right" size={16} color={colorTokens.primary} aria-hidden />
-            </Pressable>
+              <Txt variant="caption" tone="primary">
+                {t.cabinet.seeAll}
+              </Txt>
+              <Feather name="arrow-right" size={14} color={colors.primary} />
+            </Touchable>
           ) : null}
         </View>
+      </Reveal>
 
-        {complaints.length > 0 ? (
-          <View style={styles.requests}>
-            {complaints.slice(0, 3).map((complaint) => (
-              <RequestCard key={complaint.id} complaint={complaint} onPress={() => onOpenRequest(complaint)} />
-            ))}
-          </View>
-        ) : (
-          <EmptyRequests onPress={onNewRequest} />
-        )}
-      </View>
+      {complaints.length > 0 ? (
+        <View style={styles.list}>
+          {complaints.slice(0, 3).map((complaint, index) => (
+            <Reveal key={complaint.id} index={4 + index}>
+              <RequestCard complaint={complaint} onPress={() => onOpenRequest(complaint)} />
+            </Reveal>
+          ))}
+        </View>
+      ) : (
+        <Reveal index={4}>
+          <EmptyState
+            icon="inbox"
+            title={t.cabinet.emptyTitle}
+            text={t.cabinet.emptyText}
+            actionLabel={t.cabinet.emptyAction}
+            onAction={onNewRequest}
+          />
+        </Reveal>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    paddingTop: spacing.xxs,
-    paddingBottom: spacing.xxl,
+    paddingTop: space.xs,
+    paddingHorizontal: layout.gutter,
   },
-  inner: {
-    width: '100%',
-    maxWidth: 720,
-    alignSelf: 'center',
-  },
-  greetingBlock: {
-    marginBottom: spacing.md,
-  },
-  greeting: {
-    fontSize: 24,
-    lineHeight: 29,
-    fontWeight: '600',
-    letterSpacing: -0.35,
-    color: colorTokens.textPrimary,
-  },
-  greetingLong: {
-    fontSize: 22,
-    lineHeight: 27,
-  },
-  supporting: {
-    ...typography.supporting,
-    color: colorTokens.textSecondary,
-    marginTop: spacing.xxs,
-  },
-  statistics: {
-    marginTop: spacing.sm,
-  },
-  sectionHeader: {
-    minHeight: 44,
+  greeting: { marginTop: space.xxs },
+  greetingSub: { marginTop: space.xxs },
+  block: { marginTop: space.lg },
+  hero: { padding: space.lg },
+  heroInner: { maxWidth: 300 },
+  heroBloom: { position: 'absolute', top: -46, right: -52 },
+  heroText: { marginTop: space.xxs },
+  heroAction: { marginTop: space.md },
+  sectionHead: {
+    minHeight: 32,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
+    gap: space.sm,
   },
-  sectionTitle: {
-    ...typography.sectionTitle,
-    minWidth: 0,
-    flex: 1,
-    color: colorTokens.textPrimary,
-  },
-  viewAll: {
-    minHeight: 44,
+  sectionTitle: { flex: 1, minWidth: 0 },
+  seeAll: {
+    minHeight: layout.tapTarget,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xxs,
-    paddingLeft: spacing.xs,
+    gap: space.xxs,
+    paddingLeft: space.xs,
   },
-  viewAllText: {
-    ...typography.button,
-    color: colorTokens.primary,
-  },
-  pressed: {
-    opacity: 0.64,
-  },
-  requests: {
-    gap: spacing.sm,
-  },
+  list: { gap: space.sm, marginTop: space.sm },
 });

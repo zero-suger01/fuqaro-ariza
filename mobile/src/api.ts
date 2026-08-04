@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { CitizenStatusCode } from '@/design-system/status';
+import type { CitizenStatusCode } from '@/design/status';
 
 // Production API is served behind the same domain as the public web app.
 // EXPO_PUBLIC_API_URL can still override this for an emulator/local stack.
