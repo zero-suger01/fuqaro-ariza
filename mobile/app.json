@@ -11,7 +11,8 @@
       "expo-font",
       "expo-asset",
       "expo-image-picker",
-      "expo-location"
+      "expo-location",
+      "expo-notifications"
     ],
     "android": {
       "package": "uz.emurojaat.citizen",

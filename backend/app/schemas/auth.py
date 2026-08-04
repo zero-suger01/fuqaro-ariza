@@ -21,6 +21,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class CitizenOtpRequest(BaseModel):
+    phone: str = Field(pattern=PHONE_PATTERN)
+
+
+class CitizenOtpVerifyRequest(BaseModel):
+    phone: str = Field(pattern=PHONE_PATTERN)
+    code: str = Field(min_length=6, max_length=6)
+
+
 class MeOut(BaseModel):
     kind: str  # "citizen" | "staff"
     id: uuid.UUID

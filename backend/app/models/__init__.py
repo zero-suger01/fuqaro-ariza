@@ -12,6 +12,7 @@ from app.models.district import District
 from app.models.district_department import DistrictDepartment
 from app.models.neighborhood import Neighborhood
 from app.models.notification import Notification
+from app.models.push_token import PushToken
 from app.models.qr_code import QrCode
 from app.models.reply import Reply
 from app.models.region import Region
@@ -40,4 +41,5 @@ __all__ = [
     "Setting",
     "AuditLog",
     "Notification",
+    "PushToken",
 ]

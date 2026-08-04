@@ -177,6 +177,8 @@ Mavjud `/api/auth/register|login|me` saqlanadi. `register` endi **fuqaro kabinet
 | `DELETE /api/auth/me/avatar` — `avatar_url` ni tozalaydi | avatar o'chirish | staff |
 | `POST /api/auth/forgot-password` body `{phone}` — shu telefon bilan faol xodim bo'lsa SMS orqali 6 xonali kod yuboriladi (Redis, 10 daqiqa). **Enumeration himoyasi:** xodim topilmasa ham bir xil umumiy javob qaytadi. Rate limit: 3/soat/telefon, 10/soat/IP | parolni tiklash — kod so'rash | ochiq (auth shart emas) |
 | `POST /api/auth/reset-password` body `{phone, code, new_password}` — kod noto'g'ri/muddati o'tgan bo'lsa 400 `validation_error`; 5 marta noto'g'ri urinishdan keyin kod bekor bo'ladi. To'g'ri bo'lsa parol yangilanadi va `login` bilan bir xil shakldagi `TokenResponse` qaytadi (avtomatik kirish) | parolni tiklash — yangilash | ochiq (auth shart emas) |
+| `POST /api/auth/citizen/request-otp` body `{phone}` → enumeration-safe umumiy javob; fuqaro uchun 6 xonali kod Redis'da 10 daqiqa saqlanadi va SMS orqali yuboriladi | fuqaro telefonini tasdiqlash | ochiq |
+| `POST /api/auth/citizen/verify-otp` body `{phone, code}` → `{"verified":true}` yoki 400 | fuqaro telefonini tasdiqlash | ochiq |
 
 `MeOut` ga `avatar_url: str \| null` qo'shildi.
 
@@ -220,6 +222,12 @@ Eskalatsiya, SLA ogohlantirishi va biriktirish xabarlari shu yerga tushadi; R1'd
 - `GET /api/notifications` → oxirgi 50 ta (R0: limit qo'shiladi — hozir cheksiz): `[{"id", "message", "complaint_id", "is_read", "created_at"}]` (R0: javobga `created_at` qo'shiladi).
 - `PATCH /api/notifications/{id}/read` → bitta bildirishnoma o'qildi (mavjud).
 - `POST /api/notifications/read-all` → hammasi o'qildi (YANGI, R1).
+
+### 5.2 Fuqaro mobil push (`/api/citizen/push-tokens`, citizen JWT)
+
+- `POST /api/citizen/push-tokens` body `{"token":"ExponentPushToken[...]","platform":"ios|android"}` → token ro'yxatga olinadi; fuqaro bir nechta qurilma ulashi mumkin.
+- `DELETE /api/citizen/push-tokens/{token}` → qurilma tokenini o'chiradi.
+- Status va javob bildirishnomalarida Expo Push Service'ga best-effort xabar yuboriladi; push xatosi murojaat workflow'ini bloklamaydi.
 
 ## 6. Bot API (`/api/bot/*`, header `X-Bot-Token: <BOT_API_TOKEN>`)
 

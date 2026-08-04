@@ -20,4 +20,34 @@ Expo + React Native skeleti `mobile/` papkasida yaratildi. Birinchi M1 oqimi rea
 - [x] Fuqaro bosh sahifasi, murojaat yuborish wizard'i va ticket holatini tekshirish
 - [x] Mavjud `/api/public/neighborhoods`, `/api/public/complaints`, `/api/public/complaints/track`, `/api/public/support` kontraktlariga ulanish
 - [x] Foto/video/ovoz va lokatsiyani native picker orqali yuborish
-- [ ] Push bildirishnoma, lokal ticketlar va offline draft
+- [x] Push token registratsiyasi (Expo), notification handler va murojaat offline draft'i
+- [x] Fuqaro kabineti ro'yxatdan o'tishida SMS OTP tasdiqlash
+- [ ] Push production delivery: EAS project ID va real Android/iOS device test
+
+## M2/M3 qabul checklisti
+
+### 60+ yoshli fuqaro bilan real test
+
+- [ ] 375 px telefonda `/uz/yangi` ochiladi, matn va tugmalar kattaligi o'qiladi
+- [ ] Fuqaro kategoriya, MFY, matn va telefonni mustaqil to'ldira oladi
+- [ ] Rasm biriktirish va murojaat yuborish bajariladi
+- [ ] Ticket raqami ekranda ko'rinadi va nusxalanadi
+- [ ] `/uz/holat` orqali murojaat holati tekshiriladi
+- [ ] Har bir qadamda xato xabari oddiy tilda tushunarli
+
+### 4 til smoke testi
+
+Veb build quyidagi yo'llarni tekshiradi: `/uz`, `/oz`, `/ru`, `/en` va ularning `/yangi`, `/holat`, `/kabinet`, `/go` sahifalari. Har bir tilda quyidagilar qo'lda tekshiriladi:
+
+- [ ] Navigatsiya va forma yorliqlari tarjima qilingan
+- [ ] Xato, yuklanish va muvaffaqiyat xabarlari tarjima qilingan
+- [ ] Uzun rus/ingliz matni mobil viewportda kesilmaydi
+
+### Real Android/iOS testi
+
+- [ ] Android: Expo development build, kamera/media, lokatsiya va push ruxsatlari
+- [ ] iOS: Expo development build, kamera/media, lokatsiya va push ruxsatlari
+- [ ] Internet uzilganda draft saqlanadi, internet qaytganda yuboriladi
+- [ ] Push kelganda notification banner/list ko'rinadi
+
+Real fuqaro, fizik Android/iOS qurilma va push uchun EAS project ID tashqi test resursidir; avtomatik build tekshiruvi ularning o'rnini bosmaydi.

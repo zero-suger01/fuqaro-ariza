@@ -11,6 +11,7 @@ from app.models.notification import Notification
 from app.models.user import User
 from app.services.sms import send_sms
 from app.services.telegram import send_telegram_message
+from app.services.push import send_push
 
 
 def notify_citizen(
@@ -73,6 +74,9 @@ def notify_citizen(
                 )
             )
         db.flush()
+
+    if message:
+        send_push(db, citizen, message, str(complaint_id) if complaint_id else None)
 
     return notification
 

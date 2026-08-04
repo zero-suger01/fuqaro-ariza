@@ -44,6 +44,10 @@ export const registerCitizen = async (data: { first_name: string; last_name: str
   await AsyncStorage.setItem(TOKEN_KEY, response.access_token);
   return response.user;
 };
+export const requestCitizenOtp = (phone: string) =>
+  request<{ detail: string }>('/api/auth/citizen/request-otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone }) });
+export const verifyCitizenOtp = (phone: string, code: string) =>
+  request<{ verified: boolean }>('/api/auth/citizen/verify-otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, code }) });
 export const getMe = () => request<AuthUser>('/api/auth/me');
 export const getMyComplaints = () => request<CitizenComplaint[]>('/api/citizen/complaints');
 export const logoutCitizen = () => AsyncStorage.removeItem(TOKEN_KEY);

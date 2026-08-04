@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 
 from pydantic import BaseModel
+from pydantic import Field
 
 from app.schemas.public import CategoryBrief, DepartmentPublic
 
@@ -28,3 +29,14 @@ class CitizenComplaintOut(BaseModel):
     description: str
     created_at: datetime
     deadline_at: datetime | None
+
+
+class PushTokenIn(BaseModel):
+    token: str = Field(min_length=10, max_length=255)
+    platform: str = Field(pattern="^(ios|android)$")
+
+
+class PushTokenOut(BaseModel):
+    id: uuid.UUID
+    token: str
+    platform: str

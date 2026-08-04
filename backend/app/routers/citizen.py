@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.constants import STATUS_SIMPLE_MAP
@@ -7,10 +7,31 @@ from app.core.deps import get_current_citizen
 from app.database import get_db
 from app.models.citizen import Citizen
 from app.models.complaint import Complaint
-from app.schemas.citizen import AssignedStaffPublic, CitizenComplaintOut
+from app.models.push_token import PushToken
+from app.schemas.citizen import AssignedStaffPublic, CitizenComplaintOut, PushTokenIn, PushTokenOut
 from app.schemas.public import CategoryBrief, DepartmentPublic
 
 router = APIRouter(prefix="/api/citizen", tags=["citizen"])
+
+
+@router.post("/push-tokens", response_model=PushTokenOut)
+def register_push_token(payload: PushTokenIn, db: Session = Depends(get_db), citizen: Citizen = Depends(get_current_citizen)):
+    token = db.execute(select(PushToken).where(PushToken.token == payload.token)).scalar_one_or_none()
+    if token is None:
+        token = PushToken(citizen_id=citizen.id, token=payload.token, platform=payload.platform)
+        db.add(token)
+    else:
+        token.citizen_id = citizen.id
+        token.platform = payload.platform
+    db.commit()
+    db.refresh(token)
+    return token
+
+
+@router.delete("/push-tokens/{token}", status_code=status.HTTP_204_NO_CONTENT)
+def unregister_push_token(token: str, db: Session = Depends(get_db), citizen: Citizen = Depends(get_current_citizen)):
+    db.execute(delete(PushToken).where(PushToken.citizen_id == citizen.id, PushToken.token == token))
+    db.commit()
 
 
 def _description_or_transcript(c: Complaint) -> str:

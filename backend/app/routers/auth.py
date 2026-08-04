@@ -19,11 +19,36 @@ from app.schemas.auth import (
     RegisterRequest,
     ResetPasswordRequest,
     TokenResponse,
+    CitizenOtpRequest,
+    CitizenOtpVerifyRequest,
     UpdateProfileRequest,
 )
 from app.services import password_reset, storage
+from app.services import citizen_otp
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+@router.post("/citizen/request-otp")
+def request_citizen_otp(payload: CitizenOtpRequest, request: Request, db: Session = Depends(get_db)):
+    """Citizen phone verification. Response is enumeration-safe."""
+    enforce_forgot_password_limit(request, payload.phone)
+    citizen = db.execute(select(Citizen).where(Citizen.phone == payload.phone)).scalar_one_or_none()
+    if citizen is not None:
+        citizen_otp.issue(payload.phone)
+    return {"detail": "Agar bu raqam tizimda bo'lsa, tasdiqlash kodi SMS orqali yuborildi"}
+
+
+@router.post("/citizen/verify-otp")
+def verify_citizen_otp(payload: CitizenOtpVerifyRequest, db: Session = Depends(get_db)):
+    if not citizen_otp.verify(payload.phone, payload.code):
+        raise AppError(400, "validation_error", "Kod noto'g'ri yoki muddati o'tgan")
+    citizen = db.execute(select(Citizen).where(Citizen.phone == payload.phone)).scalar_one_or_none()
+    if citizen is None:
+        raise AppError(400, "validation_error", "Fuqaroni topib bo'lmadi")
+    citizen.is_phone_verified = True
+    db.commit()
+    return {"verified": True}
 
 
 def _citizen_me(citizen: Citizen) -> MeOut:
