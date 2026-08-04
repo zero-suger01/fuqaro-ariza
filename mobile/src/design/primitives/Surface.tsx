@@ -1,8 +1,15 @@
-import { useId, type PropsWithChildren, type ReactNode } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
+import { useCallback, useId, useState, type PropsWithChildren, type ReactNode } from 'react';
+import {
+  StyleSheet,
+  View,
+  type LayoutChangeEvent,
+  type StyleProp,
+  type ViewProps,
+  type ViewStyle,
+} from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { GirihField } from '../motifs';
 import { colors, elevation, gradients, palette, radius, space, squircle } from '../tokens';
 
@@ -88,9 +95,20 @@ export function NightPanel({
 }: NightPanelProps) {
   const glowId = `glow-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const coolId = `cool-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  const measure = useCallback((event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setSize((current) =>
+      current.width === width && current.height === height ? current : { width, height },
+    );
+  }, []);
 
   return (
-    <View style={[squircle, styles.night, { borderRadius: radius[round] }, style]}>
+    <View
+      onLayout={glow ? measure : undefined}
+      style={[squircle, styles.night, { borderRadius: radius[round] }, style]}
+    >
       <LinearGradient
         colors={[...gradients.night]}
         locations={[...gradients.nightLocations]}
@@ -99,26 +117,47 @@ export function NightPanel({
         style={StyleSheet.absoluteFill}
       />
 
-      {glow ? (
-        // A fixed 0–100 viewBox stretched with preserveAspectRatio="none" is
-        // the only way these land identically on web and on native: percentage
-        // cx/cy/rx on an Ellipse resolve against different references per
-        // platform, which slid the glows around on Android.
-        <Svg style={StyleSheet.absoluteFill} viewBox="0 0 100 100" preserveAspectRatio="none">
+      {glow && size.width > 0 ? (
+        // Every coordinate here is an absolute point value measured from the
+        // panel itself. Percentages, viewBox scaling and objectBoundingBox
+        // gradients all resolve differently between react-native-svg's web and
+        // Android backends, which is what kept sliding these glows around; a
+        // full-bleed rect painted with a userSpaceOnUse gradient leaves the
+        // renderer nothing to interpret.
+        <Svg
+          width={size.width}
+          height={size.height}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        >
           <Defs>
-            <RadialGradient id={coolId} cx="0.5" cy="0.5" r="0.5">
-              <Stop offset="0" stopColor={palette.turquoise[300]} stopOpacity={0.55} />
-              <Stop offset="1" stopColor={palette.turquoise[300]} stopOpacity={0} />
-            </RadialGradient>
-            <RadialGradient id={glowId} cx="0.5" cy="0.5" r="0.5">
+            {/* Warm light behind the ornament, cool light washing the floor —
+                brass over turquoise would silt into olive, so they stay apart. */}
+            <RadialGradient
+              id={glowId}
+              gradientUnits="userSpaceOnUse"
+              cx={size.width * 0.86}
+              cy={size.height * 0.08}
+              rx={size.width * 0.54}
+              ry={size.height * 0.46}
+            >
               <Stop offset="0" stopColor={palette.brass[300]} stopOpacity={0.34} />
               <Stop offset="1" stopColor={palette.brass[300]} stopOpacity={0} />
             </RadialGradient>
+            <RadialGradient
+              id={coolId}
+              gradientUnits="userSpaceOnUse"
+              cx={size.width * 0.08}
+              cy={size.height * 0.94}
+              rx={size.width * 0.6}
+              ry={size.height * 0.5}
+            >
+              <Stop offset="0" stopColor={palette.turquoise[300]} stopOpacity={0.55} />
+              <Stop offset="1" stopColor={palette.turquoise[300]} stopOpacity={0} />
+            </RadialGradient>
           </Defs>
-          {/* Warm light behind the ornament, cool light washing the floor —
-              brass over turquoise would silt into olive, so they stay apart. */}
-          <Ellipse cx={86} cy={8} rx={54} ry={44} fill={`url(#${glowId})`} />
-          <Ellipse cx={8} cy={94} rx={60} ry={48} fill={`url(#${coolId})`} />
+          <Rect x={0} y={0} width={size.width} height={size.height} fill={`url(#${glowId})`} />
+          <Rect x={0} y={0} width={size.width} height={size.height} fill={`url(#${coolId})`} />
         </Svg>
       ) : null}
 
