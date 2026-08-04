@@ -14,9 +14,10 @@ type StatisticItem = {
 
 export function StatisticsOverview({ statuses }: { statuses: readonly string[] }) {
   const { language } = useI18n();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
   const copy = getCabinetDesignCopy(language);
   const summary = summarizeCitizenStatuses(statuses);
+  const stacked = fontScale >= 1.6 || width < 310;
   const items: StatisticItem[] = [
     { value: summary.total, label: copy.totalRequests, icon: 'file-text', surface: colorTokens.surfaceWarm },
     { value: summary.active, label: copy.activeRequests, icon: 'clock', surface: colorTokens.primarySoft },
@@ -24,14 +25,19 @@ export function StatisticsOverview({ statuses }: { statuses: readonly string[] }
   ];
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, stacked && styles.rowStacked]}>
       {items.map((item) => (
         <View
           key={item.label}
           accessible
           accessibilityRole="summary"
           accessibilityLabel={`${item.label}: ${item.value}`}
-          style={[styles.tile, fontScale > 1.2 && styles.tileScaled, { backgroundColor: item.surface }]}
+          style={[
+            styles.tile,
+            fontScale > 1.2 && styles.tileScaled,
+            stacked && styles.tileStacked,
+            { backgroundColor: item.surface },
+          ]}
         >
           <View style={styles.tileTop}>
             <Text style={styles.value}>{item.value}</Text>
@@ -39,7 +45,7 @@ export function StatisticsOverview({ statuses }: { statuses: readonly string[] }
               <Feather name={item.icon} size={14} color={colorTokens.primary} aria-hidden />
             </View>
           </View>
-          <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.78} style={styles.label}>
+          <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={styles.label}>
             {item.label}
           </Text>
         </View>
@@ -53,17 +59,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.xs,
   },
+  rowStacked: {
+    flexDirection: 'column',
+  },
   tile: {
     ...componentShapes.compact,
     ...shadows.tile,
     minWidth: 0,
     minHeight: 86,
-    flex: 1,
+    flexBasis: 0,
+    flexGrow: 1,
+    flexShrink: 1,
     justifyContent: 'space-between',
     padding: spacing.sm,
   },
   tileScaled: {
-    minHeight: 98,
+    minHeight: 104,
+  },
+  tileStacked: {
+    width: '100%',
+    minHeight: 76,
+    flexBasis: 'auto',
+    flexGrow: 0,
   },
   tileTop: {
     flexDirection: 'row',
@@ -77,8 +94,8 @@ const styles = StyleSheet.create({
   },
   iconFrame: {
     ...componentShapes.icon,
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',

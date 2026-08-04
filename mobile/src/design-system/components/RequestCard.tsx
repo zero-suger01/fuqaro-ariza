@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import type { CitizenComplaint } from '@/api';
 import type { Language } from '@/i18n';
 import { useI18n } from '@/i18n';
@@ -55,10 +55,12 @@ function formatRequestDate(value: string, language: Language) {
 
 export function RequestCard({ complaint, onPress }: { complaint: CitizenComplaint; onPress: () => void }) {
   const { language } = useI18n();
+  const { fontScale } = useWindowDimensions();
   const copy = getCabinetDesignCopy(language);
   const categoryName = complaint.category.name;
   const statusLabel = getCitizenStatusLabel(complaint.status_simple, language);
   const categoryIcon = categoryIcons[complaint.category.code] ?? 'file-text';
+  const largeText = fontScale > 1.25;
 
   return (
     <Pressable
@@ -68,27 +70,31 @@ export function RequestCard({ complaint, onPress }: { complaint: CitizenComplain
       accessibilityHint={copy.viewDetails}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <View style={styles.topRow}>
-        <View style={styles.identity}>
+      <View style={[styles.topRow, largeText && styles.topRowLarge]}>
+        <View style={[styles.identity, largeText && styles.identityLarge]}>
           <View style={styles.iconFrame}>
             <Feather name={categoryIcon} size={17} color={colorTokens.primary} aria-hidden />
           </View>
-          <Text numberOfLines={1} ellipsizeMode="middle" style={styles.ticket}>#{complaint.ticket_number}</Text>
+          <Text numberOfLines={1} ellipsizeMode="clip" maxFontSizeMultiplier={1.5} style={styles.ticket}>
+            #{complaint.ticket_number}
+          </Text>
         </View>
-        <StatusChip status={complaint.status_simple} compact style={styles.status} />
+        <StatusChip status={complaint.status_simple} compact style={[styles.status, largeText && styles.statusLarge]} />
       </View>
 
-      <Text numberOfLines={1} style={styles.category}>{categoryName}</Text>
-      <Text numberOfLines={2} style={styles.description}>
+      <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={styles.category}>{categoryName}</Text>
+      <Text numberOfLines={2} maxFontSizeMultiplier={1.6} style={styles.description}>
         {complaint.description || copy.summaryFallback}
       </Text>
 
       <View style={styles.footer}>
         <View style={styles.metadata}>
-          <Text numberOfLines={1} style={styles.organization}>
+          <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={styles.organization}>
             {complaint.department?.name || copy.organizationFallback}
           </Text>
-          <Text style={styles.date}>{formatRequestDate(complaint.created_at, language)}</Text>
+          <Text numberOfLines={1} maxFontSizeMultiplier={1.4} style={styles.date}>
+            {formatRequestDate(complaint.created_at, language)}
+          </Text>
         </View>
         <View style={styles.chevronFrame}>
           <Feather name="chevron-right" size={18} color={colorTokens.primary} aria-hidden />
@@ -116,12 +122,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.xs,
   },
+  topRowLarge: {
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+  },
   identity: {
     minWidth: 0,
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+  },
+  identityLarge: {
+    width: '100%',
+    flexBasis: '100%',
   },
   iconFrame: {
     ...componentShapes.icon,
@@ -134,7 +148,7 @@ const styles = StyleSheet.create({
   },
   ticket: {
     ...typography.label,
-    flexShrink: 1,
+    flexShrink: 0,
     color: colorTokens.textSecondary,
     fontVariant: ['tabular-nums'],
     letterSpacing: 0.2,
@@ -143,6 +157,11 @@ const styles = StyleSheet.create({
     maxWidth: '49%',
     flexShrink: 1,
   },
+  statusLarge: {
+    maxWidth: '100%',
+    marginTop: spacing.xs,
+    marginLeft: 42,
+  },
   category: {
     ...typography.cardTitle,
     color: colorTokens.textPrimary,
@@ -150,6 +169,7 @@ const styles = StyleSheet.create({
   },
   description: {
     ...typography.body,
+    minHeight: typography.body.lineHeight * 2,
     color: colorTokens.textSecondary,
     marginTop: spacing.xxs,
   },

@@ -32,7 +32,8 @@ export function StatusChip({ status, compact = false, style }: StatusChipProps) 
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
-        minimumFontScale={0.78}
+        minimumFontScale={0.86}
+        maxFontSizeMultiplier={1.4}
         style={[styles.text, compact && styles.compactText, { color: definition.foreground }]}
       >
         {label}
@@ -49,20 +50,20 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   regular: {
-    minHeight: 28,
+    minHeight: 30,
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   compact: {
-    minHeight: 24,
+    minHeight: 26,
     gap: 5,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   dot: {
-    width: 5,
-    height: 5,
+    width: 6,
+    height: 6,
     flexShrink: 0,
     borderRadius: 3,
   },

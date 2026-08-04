@@ -22,8 +22,8 @@ export function NewRequestHero({ onPress }: { onPress: () => void }) {
         <Feather name="edit-3" size={21} color={colorTokens.white} aria-hidden />
       </View>
       <View style={styles.copy}>
-        <Text style={styles.title}>{copy.heroTitle}</Text>
-        <Text numberOfLines={2} style={styles.description}>{copy.heroDescription}</Text>
+        <Text numberOfLines={2} maxFontSizeMultiplier={1.4} style={styles.title}>{copy.heroTitle}</Text>
+        <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={styles.description}>{copy.heroDescription}</Text>
       </View>
       <View style={styles.actionFrame}>
         <Feather name="arrow-up-right" size={18} color={colorTokens.white} aria-hidden />

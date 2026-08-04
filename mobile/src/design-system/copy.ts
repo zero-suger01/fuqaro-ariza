@@ -15,6 +15,8 @@ export type CabinetDesignCopy = {
   resolvedRequests: string;
   recentRequests: string;
   allRequests: string;
+  requestsTitle: string;
+  requestCount: string;
   requestNumber: string;
   organizationFallback: string;
   summaryFallback: string;
@@ -61,6 +63,8 @@ export const cabinetDesignCopy: Record<Language, CabinetDesignCopy> = {
     resolvedRequests: 'Hal qilingan',
     recentRequests: 'So‘nggi murojaatlar',
     allRequests: 'Barchasi',
+    requestsTitle: 'Murojaatlarim',
+    requestCount: '{count} ta',
     requestNumber: 'Murojaat raqami',
     organizationFallback: 'Mas’ul tashkilot aniqlanmoqda',
     summaryFallback: 'Murojaat matni tayyorlanmoqda',
@@ -98,6 +102,8 @@ export const cabinetDesignCopy: Record<Language, CabinetDesignCopy> = {
     resolvedRequests: 'Ҳал қилинган',
     recentRequests: 'Сўнгги мурожаатлар',
     allRequests: 'Барчаси',
+    requestsTitle: 'Мурожаатларим',
+    requestCount: '{count} та',
     requestNumber: 'Мурожаат рақами',
     organizationFallback: 'Масъул ташкилот аниқланмоқда',
     summaryFallback: 'Мурожаат матни тайёрланмоқда',
@@ -135,6 +141,8 @@ export const cabinetDesignCopy: Record<Language, CabinetDesignCopy> = {
     resolvedRequests: 'Решено',
     recentRequests: 'Последние обращения',
     allRequests: 'Все',
+    requestsTitle: 'Мои обращения',
+    requestCount: '{count}',
     requestNumber: 'Номер обращения',
     organizationFallback: 'Ответственная организация определяется',
     summaryFallback: 'Текст обращения подготавливается',
@@ -172,6 +180,8 @@ export const cabinetDesignCopy: Record<Language, CabinetDesignCopy> = {
     resolvedRequests: 'Resolved',
     recentRequests: 'Recent requests',
     allRequests: 'View all',
+    requestsTitle: 'My requests',
+    requestCount: '{count}',
     requestNumber: 'Request number',
     organizationFallback: 'Responsible organization is being assigned',
     summaryFallback: 'Request text is being prepared',

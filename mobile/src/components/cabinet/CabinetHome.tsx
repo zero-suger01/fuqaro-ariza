@@ -21,6 +21,7 @@ export function CabinetHome({ user, complaints, onNewRequest, onViewAll, onOpenR
   const { language } = useI18n();
   const copy = getCabinetDesignCopy(language);
   const name = user.first_name?.trim() || copy.citizenFallback;
+  const hasLongName = name.length > 18;
 
   return (
     <ScrollView
@@ -31,15 +32,13 @@ export function CabinetHome({ user, complaints, onNewRequest, onViewAll, onOpenR
       <View style={styles.inner}>
         <View style={styles.greetingBlock}>
           <Text
-            accessibilityRole="header"
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.82}
-            style={styles.greeting}
+            numberOfLines={2}
+            maxFontSizeMultiplier={1.4}
+            style={[styles.greeting, hasLongName && styles.greetingLong]}
           >
             {copy.greeting.replace('{name}', name)}
           </Text>
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82} style={styles.supporting}>
+          <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={styles.supporting}>
             {copy.supporting}
           </Text>
         </View>
@@ -81,7 +80,7 @@ export function CabinetHome({ user, complaints, onNewRequest, onViewAll, onOpenR
 const styles = StyleSheet.create({
   content: {
     paddingTop: spacing.xxs,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   inner: {
     width: '100%',
@@ -89,7 +88,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   greetingBlock: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   greeting: {
     fontSize: 24,
@@ -97,6 +96,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.35,
     color: colorTokens.textPrimary,
+  },
+  greetingLong: {
+    fontSize: 22,
+    lineHeight: 27,
   },
   supporting: {
     ...typography.supporting,

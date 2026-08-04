@@ -218,6 +218,13 @@ export default function CabinetScreen() {
     setLanguage(languages[(currentIndex + 1) % languages.length].code);
   };
   const initials = `${user.first_name?.[0] || 'F'}${user.last_name?.[0] || ''}`.toLocaleUpperCase();
+  const screenTitle = tab === 'complaints'
+    ? copy.requestsTitle
+    : tab === 'notifications'
+      ? copy.notificationsTitle
+      : tab === 'settings'
+        ? copy.settingsTitle
+        : copy.appBarTitle;
 
   const home = (
     <CabinetHome
@@ -232,12 +239,6 @@ export default function CabinetScreen() {
   const list = (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.inner}>
-        <View style={styles.sectionHeader}>
-          <Text accessibilityRole="header" style={styles.title}>Murojaatlarim</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.count}>{complaints.length} ta</Text>
-          </View>
-        </View>
         {complaints.length > 0 ? (
           <View style={styles.requestList}>
             {complaints.map((complaint) => (
@@ -254,17 +255,21 @@ export default function CabinetScreen() {
   const settings = (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.inner}>
-        <Text accessibilityRole="header" style={styles.title}>{copy.settingsTitle}</Text>
-        <View style={styles.profileCard}>
+        <View
+          accessible
+          accessibilityRole="summary"
+          accessibilityLabel={`${user.fullname}. ${user.phone}. ${copy.verifiedLabel}`}
+          style={styles.profileCard}
+        >
           <View style={styles.profileAvatar}>
             <Text style={styles.profileAvatarText}>{initials}</Text>
           </View>
           <View style={styles.profileCopy}>
-            <Text style={styles.profileName}>{user.fullname}</Text>
-            <Text style={styles.profilePhone}>{user.phone}</Text>
+            <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={styles.profileName}>{user.fullname}</Text>
+            <Text numberOfLines={1} maxFontSizeMultiplier={1.4} style={styles.profilePhone}>{user.phone}</Text>
             <View style={styles.verifiedRow}>
               <Feather name="check-circle" size={12} color={colorTokens.primary} aria-hidden />
-              <Text style={styles.verifiedText}>{copy.verifiedLabel}</Text>
+              <Text numberOfLines={1} maxFontSizeMultiplier={1.4} style={styles.verifiedText}>{copy.verifiedLabel}</Text>
             </View>
           </View>
         </View>
@@ -274,7 +279,13 @@ export default function CabinetScreen() {
           <SettingsRow icon="bell" title={copy.notificationsSetting} onPress={() => setTab('notifications')} />
           <SettingsRow icon="info" title={copy.aboutSetting} value={copy.versionLabel} last />
         </View>
-        <Pressable onPress={signOut} accessibilityRole="button" style={({ pressed }) => [styles.logoutAction, pressed && styles.logoutPressed]}>
+        <Pressable
+          onPress={signOut}
+          accessibilityRole="button"
+          accessibilityLabel={copy.logout}
+          hitSlop={4}
+          style={({ pressed }) => [styles.logoutAction, pressed && styles.logoutPressed]}
+        >
           <Feather name="log-out" size={16} color={colorTokens.danger} aria-hidden />
           <Text style={styles.logoutText}>{copy.logout}</Text>
         </Pressable>
@@ -285,7 +296,6 @@ export default function CabinetScreen() {
   const notifications = (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.inner}>
-        <Text accessibilityRole="header" style={styles.title}>{copy.notificationsTitle}</Text>
         <View style={styles.notificationState}>
           <NotificationEmptyState onViewRequests={() => setTab('complaints')} />
         </View>
@@ -298,11 +308,36 @@ export default function CabinetScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
       <View style={[styles.topbar, { paddingHorizontal: pagePadding }]}>
-        <Text style={styles.topbarTitle}>{copy.appBarTitle}</Text>
-        <View accessible accessibilityRole="text" accessibilityLabel={copy.systemStatus} style={styles.online}>
-          <View style={styles.onlineDot} aria-hidden />
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82} style={styles.onlineText}>{copy.systemStatus}</Text>
-        </View>
+        <Text
+          accessibilityRole="header"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.84}
+          maxFontSizeMultiplier={1.4}
+          style={styles.topbarTitle}
+        >
+          {screenTitle}
+        </Text>
+        {tab === 'home' ? (
+          <View accessible accessibilityRole="text" accessibilityLabel={copy.systemStatus} style={styles.online}>
+            <View style={styles.onlineDot} aria-hidden />
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.86}
+              maxFontSizeMultiplier={1.3}
+              style={styles.onlineText}
+            >
+              {copy.systemStatus}
+            </Text>
+          </View>
+        ) : tab === 'complaints' ? (
+          <View accessible accessibilityRole="text" style={styles.countBadge}>
+            <Text numberOfLines={1} maxFontSizeMultiplier={1.4} style={styles.count}>
+              {copy.requestCount.replace('{count}', String(complaints.length))}
+            </Text>
+          </View>
+        ) : null}
       </View>
       <View style={[styles.flex, { paddingHorizontal: pagePadding }]}>{body}</View>
       <BottomNav active={tab} onChange={setTab} />
@@ -418,6 +453,7 @@ const styles = StyleSheet.create({
   },
   topbarTitle: {
     ...typography.pageTitle,
+    minWidth: 0,
     flex: 1,
     color: colorTokens.textPrimary,
   },
@@ -445,21 +481,7 @@ const styles = StyleSheet.create({
   },
   page: {
     paddingTop: spacing.xs,
-    paddingBottom: spacing.lg,
-  },
-  sectionHeader: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  title: {
-    ...typography.pageTitle,
-    minWidth: 0,
-    flex: 1,
-    color: colorTokens.textPrimary,
+    paddingBottom: spacing.xxl,
   },
   countBadge: {
     minHeight: 28,
@@ -477,14 +499,14 @@ const styles = StyleSheet.create({
   profileCard: {
     ...componentShapes.surface,
     ...shadows.tile,
-    minHeight: 84,
+    minHeight: 88,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.sm,
+    marginTop: spacing.xxs,
     backgroundColor: colorTokens.primarySoft,
     paddingHorizontal: spacing.md,
-    paddingVertical: 14,
+    paddingVertical: spacing.md,
   },
   profileAvatar: {
     width: 48,
@@ -541,7 +563,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxs,
   },
   logoutAction: {
-    minHeight: 44,
+    minHeight: 48,
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
@@ -557,7 +579,7 @@ const styles = StyleSheet.create({
     opacity: 0.62,
   },
   notificationState: {
-    marginTop: spacing.md,
+    marginTop: spacing.xs,
   },
   authHeader: {
     flexDirection: 'row',

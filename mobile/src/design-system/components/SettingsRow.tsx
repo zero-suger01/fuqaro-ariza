@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colorTokens, componentShapes, motion, spacing, typography } from '@/design-system/tokens';
+import { colorTokens, componentShapes, spacing, typography } from '@/design-system/tokens';
 
 type SettingsRowProps = {
   icon: keyof typeof Feather.glyphMap;
@@ -18,8 +18,10 @@ export function SettingsRow({ icon, title, value, onPress, destructive = false, 
         <Feather name={icon} size={17} color={destructive ? colorTokens.danger : colorTokens.primary} aria-hidden />
       </View>
       <View style={styles.copy}>
-        <Text style={[styles.title, destructive && styles.titleDestructive]}>{title}</Text>
-        {value ? <Text numberOfLines={1} style={styles.value}>{value}</Text> : null}
+        <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={[styles.title, destructive && styles.titleDestructive]}>
+          {title}
+        </Text>
+        {value ? <Text numberOfLines={2} maxFontSizeMultiplier={1.5} style={styles.value}>{value}</Text> : null}
       </View>
       {onPress && !destructive ? <Feather name="chevron-right" size={17} color={colorTokens.textMuted} aria-hidden /> : null}
       {!last ? <View style={styles.separator} aria-hidden /> : null}
@@ -27,13 +29,14 @@ export function SettingsRow({ icon, title, value, onPress, destructive = false, 
   );
 
   if (!onPress) {
-    return <View accessible style={styles.row}>{content}</View>;
+    return <View accessible accessibilityLabel={value ? `${title}. ${value}` : title} style={styles.row}>{content}</View>;
   }
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={value ? `${title}. ${value}` : title}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       {content}
@@ -49,6 +52,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   iconFrame: {
     ...componentShapes.icon,
@@ -89,7 +93,6 @@ const styles = StyleSheet.create({
     backgroundColor: colorTokens.border,
   },
   pressed: {
-    opacity: 0.72,
-    transform: [{ scale: motion.pressScale }],
+    backgroundColor: colorTokens.primaryMist,
   },
 });

@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '@/i18n';
 import { getCabinetDesignCopy } from '@/design-system/copy';
-import { colorTokens, componentShapes, motion, shadows, spacing, typography } from '@/design-system/tokens';
+import { colorTokens, componentShapes, shadows, spacing, typography } from '@/design-system/tokens';
 
 export type CabinetTab = 'home' | 'complaints' | 'new' | 'notifications' | 'settings';
 
@@ -32,7 +32,9 @@ export function BottomNav({ active, onChange }: { active: CabinetTab; onChange?:
               onPress={() => isNew ? router.push('/complaint') : onChange?.(item.key)}
               accessibilityRole="tab"
               accessibilityLabel={item.label}
+              accessibilityHint={isNew ? copy.heroDescription : undefined}
               accessibilityState={{ selected }}
+              aria-selected={selected}
               style={({ pressed }) => [styles.item, isNew && styles.newItem, pressed && styles.pressed]}
             >
               <View style={[styles.iconFrame, selected && styles.iconFrameSelected, isNew && styles.newIconFrame]}>
@@ -46,12 +48,12 @@ export function BottomNav({ active, onChange }: { active: CabinetTab; onChange?:
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
-                minimumFontScale={0.8}
+                minimumFontScale={0.84}
+                maxFontSizeMultiplier={1.25}
                 style={[styles.label, selected && styles.labelSelected, isNew && styles.newLabel]}
               >
                 {item.shortLabel || item.label}
               </Text>
-              <View style={[styles.selectionDot, selected && !isNew && styles.selectionDotActive]} aria-hidden />
             </Pressable>
           );
         })}
@@ -73,27 +75,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.xs,
-    paddingTop: 6,
+    paddingTop: 7,
   },
   item: {
     minWidth: 0,
-    minHeight: 54,
+    minHeight: 58,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 3,
     paddingHorizontal: 2,
   },
   newItem: {
-    transform: [{ translateY: -2 }],
+    transform: [{ translateY: -1 }],
   },
   pressed: {
-    opacity: 0.68,
-    transform: [{ scale: motion.pressScale }],
+    opacity: 0.66,
   },
   iconFrame: {
     ...componentShapes.icon,
-    width: 36,
+    width: 34,
     height: 30,
     alignItems: 'center',
     justifyContent: 'center',
@@ -102,8 +103,8 @@ const styles = StyleSheet.create({
     backgroundColor: colorTokens.primarySoft,
   },
   newIconFrame: {
-    width: 38,
-    height: 34,
+    width: 40,
+    height: 36,
     backgroundColor: colorTokens.primary,
   },
   label: {
@@ -113,18 +114,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   labelSelected: {
-    color: colorTokens.textPrimary,
+    color: colorTokens.primaryDark,
   },
   newLabel: {
     color: colorTokens.primaryDark,
-  },
-  selectionDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: 'transparent',
-  },
-  selectionDotActive: {
-    backgroundColor: colorTokens.primary,
   },
 });
