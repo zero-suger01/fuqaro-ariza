@@ -1,7 +1,6 @@
 import { Platform, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import Constants from 'expo-constants';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   Manrope_400Regular,
   Manrope_500Medium,
@@ -40,7 +39,7 @@ export default function RootLayout() {
   if (!fontsReady) return <BrandSplash />;
 
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <View style={styles.root}>
       <I18nProvider>
         <Stack
           screenOptions={{
@@ -54,7 +53,7 @@ export default function RootLayout() {
           <Stack.Screen name="complaint" options={{ animation: 'slide_from_bottom' }} />
         </Stack>
       </I18nProvider>
-    </GestureHandlerRootView>
+    </View>
   );
 }
 
