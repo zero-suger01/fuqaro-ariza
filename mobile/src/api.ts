@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8001';
+// Production API is served behind the same domain as the public web app.
+// EXPO_PUBLIC_API_URL can still override this for an emulator/local stack.
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://ariza.xron.uz';
 const TOKEN_KEY = 'emurojaat_token';
 
 export type Neighborhood = { id: string; name: string; district_id: string | null };

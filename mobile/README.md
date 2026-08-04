@@ -6,12 +6,12 @@ Expo + React Native fuqaro ilovasi. Mavjud `/api/public` kontraktlaridan foydala
 cd mobile
 npm install
 cp .env.example .env
-# .env ichida kompyuterning LAN IP manzilini yozing, masalan:
-# EXPO_PUBLIC_API_URL=http://10.247.122.52:8001
+# Production API allaqachon sozlangan: https://ariza.xron.uz
+# Faqat lokal backend ishlatsangiz EXPO_PUBLIC_API_URL ni LAN IP ga almashtiring.
 npx expo start
 ```
 
-Telefon va kompyuter bir Wi-Fi tarmog‘ida bo‘lishi kerak. Backend ham LAN’dan tinglashi kerak:
+Lokal backend bilan ishlaganda telefon va kompyuter bir Wi-Fi tarmog‘ida bo‘lishi kerak. Backend ham LAN’dan tinglashi kerak:
 
 ```bash
 cd backend

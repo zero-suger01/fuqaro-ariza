@@ -53,6 +53,8 @@ Veb build quyidagi yo'llarni tekshiradi: `/uz`, `/oz`, `/ru`, `/en` va ularning 
 
 Real fuqaro, fizik Android/iOS qurilma va push uchun EAS project ID tashqi test resursidir; avtomatik build tekshiruvi ularning o'rnini bosmaydi.
 
-### Expo Go bilan lokal ulanish
+### Production va Expo Go bilan lokal ulanish
+
+Mobil ilovaning standart API manzili: `https://ariza.xron.uz`. Expo QR orqali ochilganda alohida lokal IP sozlash shart emas; telefon internetga ulangan bo'lsa production API ishlaydi.
 
 Telefon `127.0.0.1` ni o'zining manzili deb qabul qiladi. Shuning uchun `mobile/.env` ichida kompyuterning LAN IP'si (`EXPO_PUBLIC_API_URL=http://<LAN-IP>:8001`) yoziladi, backend esa `0.0.0.0:8001` ga bind qilinadi. Aks holda mahalla ro'yxati yuklanmaydi va keyingi qadamda "Mahallani tanlang" xatosi chiqadi. Expo Go remote pushni qo'llamaydi; bu xato emas, push uchun development build kerak.
