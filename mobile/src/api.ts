@@ -1,4 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8001';
+const TOKEN_KEY = 'emurojaat_token';
 
 export type Neighborhood = { id: string; name: string; district_id: string | null };
 export type SupportContact = { phone: string | null; telegram_url: string | null };
@@ -12,9 +15,14 @@ export type TrackResult = {
   deadline_at: string | null;
   reply_text: string | null;
 };
+export type AuthUser = { kind: 'citizen'; id: string; first_name: string; last_name: string | null; fullname: string; phone: string };
+export type CitizenComplaint = { id: string; ticket_number: string; status_simple: string; category: { code: string; name: string }; department: { code: string; name: string } | null; description: string; created_at: string; deadline_at: string | null };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, init);
+  const token = await AsyncStorage.getItem(TOKEN_KEY);
+  const headers = new Headers(init?.headers);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
   if (!response.ok) {
     let message = 'So‘rovni bajarib bo‘lmadi';
     try {
@@ -25,6 +33,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return response.json() as Promise<T>;
 }
+
+export const loginCitizen = async (login: string, password: string) => {
+  const response = await request<{ access_token: string; user: AuthUser }>('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login, password }) });
+  await AsyncStorage.setItem(TOKEN_KEY, response.access_token);
+  return response.user;
+};
+export const registerCitizen = async (data: { first_name: string; last_name: string; phone: string; password: string }) => {
+  const response = await request<{ access_token: string; user: AuthUser }>('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...data, language: 'uz' }) });
+  await AsyncStorage.setItem(TOKEN_KEY, response.access_token);
+  return response.user;
+};
+export const getMe = () => request<AuthUser>('/api/auth/me');
+export const getMyComplaints = () => request<CitizenComplaint[]>('/api/citizen/complaints');
+export const logoutCitizen = () => AsyncStorage.removeItem(TOKEN_KEY);
 
 export const getNeighborhoods = () => request<Neighborhood[]>('/api/public/neighborhoods');
 export const getSupport = () => request<SupportContact>('/api/public/support');

@@ -14,7 +14,10 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.topbar}>
         <View style={styles.logo}><Feather name="message-circle" size={22} color={colors.white} /></View>
-        <View><Text style={styles.brand}>e-Murojaat</Text><Text style={styles.region}>Namangan viloyati</Text></View>
+        <View style={styles.brandCopy}><Text style={styles.brand}>e-Murojaat</Text><Text style={styles.region}>Namangan viloyati</Text></View>
+        <Pressable style={styles.profileButton} onPress={() => router.push('/cabinet')} accessibilityLabel="Fuqaro kabineti">
+          <Feather name="user" size={18} color={colors.teal} /><Text style={styles.profileText}>Kabinetim</Text>
+        </Pressable>
       </View>
       <View style={styles.hero}>
         <View style={styles.badge}><View style={styles.dot} /><Text style={styles.badgeText}>Fuqarolar uchun yagona portal</Text></View>
@@ -38,8 +41,10 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 20 },
   topbar: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingTop: 8 },
+  brandCopy: { flex: 1 },
   logo: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.teal, alignItems: 'center', justifyContent: 'center' },
   brand: { color: colors.ink, fontSize: 18, fontWeight: '800' }, region: { color: colors.muted, fontSize: 12, marginTop: 2 },
+  profileButton: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white, paddingHorizontal: 10, paddingVertical: 9 }, profileText: { color: colors.tealDark, fontSize: 12, fontWeight: '800' },
   hero: { paddingTop: 54, paddingBottom: 28 }, badge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: colors.mint, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 8 }, dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.teal, marginRight: 7 }, badgeText: { color: colors.tealDark, fontSize: 12, fontWeight: '700' },
   title: { color: colors.ink, fontSize: 38, lineHeight: 43, fontWeight: '800', letterSpacing: -1, marginTop: 19 }, subtitle: { color: colors.muted, fontSize: 16, lineHeight: 24, marginTop: 15, maxWidth: 360 },
   actions: { gap: 11 }, primary: { minHeight: 58, borderRadius: radius.control, backgroundColor: colors.teal, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 11 }, primaryText: { flex: 1, color: colors.white, fontSize: 16, fontWeight: '800' }, secondary: { minHeight: 55, borderRadius: radius.control, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 11 }, secondaryText: { color: colors.ink, fontSize: 15, fontWeight: '700' }, pressed: { opacity: 0.82 },

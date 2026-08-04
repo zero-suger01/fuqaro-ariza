@@ -13,4 +13,11 @@ Bu repo 2 kishilik jamoa + AI coder'lar (Claude Code / Kimi Code) bilan quriladi
 6. **Commit prefikslari:** `[BE]` `[FE]` `[BOT]` `[AI]` `[OPS]` `[DOCS]`.
 7. Frontendda ishlashdan oldin `frontend/AGENTS.md` ni ham o'qi (Next.js 16 ogohlantirishi).
 
+## Git sinxronlash qoidasi
+
+- Har bir yangi task boshida remote holatni tekshir va `git pull --rebase origin main` bajar.
+- Task yakunida tekshiruvlardan keyin o'zgarishlarni commit qil va `main` branch'ga `git push origin main` bajar.
+- Push oldidan sherikning yangi commitlari kelgan bo'lsa, ularni yo'qotmasdan `pull --rebase` qil; konfliktni yashirmasdan hal qil yoki foydalanuvchiga ayt.
+- Lokal virtualenv, `.env`, `node_modules` va build artefaktlarini commit qilma.
+
 Loyihani lokal ko'tarish: `docs/11-devops.md` §1.
