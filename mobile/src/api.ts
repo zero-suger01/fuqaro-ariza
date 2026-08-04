@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { CitizenStatusCode } from '@/design-system/status';
 
 // Production API is served behind the same domain as the public web app.
 // EXPO_PUBLIC_API_URL can still override this for an emulator/local stack.
@@ -7,11 +8,11 @@ const TOKEN_KEY = 'emurojaat_token';
 
 export type Neighborhood = { id: string; name: string; district_id: string | null };
 export type SupportContact = { phone: string | null; telegram_url: string | null };
-export type ComplaintResult = { ticket_number: string; status_simple: string; track_url: string };
+export type ComplaintResult = { ticket_number: string; status_simple: CitizenStatusCode; track_url: string };
 export type MediaAttachment = { uri: string; name: string; type: string };
 export type TrackResult = {
   ticket_number: string;
-  status_simple: string;
+  status_simple: CitizenStatusCode;
   category: { code: string; name: string };
   department: { code: string; name: string } | null;
   deadline_at: string | null;
@@ -19,7 +20,7 @@ export type TrackResult = {
   timeline: { step: string; at: string | null; done: boolean }[];
 };
 export type AuthUser = { kind: 'citizen'; id: string; first_name: string; last_name: string | null; fullname: string; phone: string };
-export type CitizenComplaint = { id: string; ticket_number: string; status_simple: string; category: { code: string; name: string }; department: { code: string; name: string } | null; assigned_staff: { name: string; phone: string } | null; description: string; created_at: string; deadline_at: string | null };
+export type CitizenComplaint = { id: string; ticket_number: string; status_simple: CitizenStatusCode; category: { code: string; name: string }; department: { code: string; name: string } | null; assigned_staff: { name: string; phone: string } | null; description: string; created_at: string; deadline_at: string | null };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await AsyncStorage.getItem(TOKEN_KEY);

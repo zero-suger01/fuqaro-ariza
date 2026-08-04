@@ -1,35 +1,137 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius } from '@/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useI18n } from '@/i18n';
+import { getCabinetDesignCopy } from '@/design-system/copy';
+import { colorTokens, motion, radii, shadows, spacing, typography } from '@/design-system/tokens';
 
 export type CabinetTab = 'home' | 'complaints' | 'new' | 'notifications' | 'settings';
-const items: { key: CabinetTab; label: string; icon: keyof typeof Feather.glyphMap }[] = [
-  { key: 'home', label: 'Bosh sahifa', icon: 'home' },
-  { key: 'complaints', label: 'Murojaatlar', icon: 'file-text' },
-  { key: 'new', label: 'Yangi murojaat', icon: 'plus' },
-  { key: 'notifications', label: 'Bildirishnomalar', icon: 'bell' },
-  { key: 'settings', label: 'Sozlamalar', icon: 'settings' },
-];
 
 export function BottomNav({ active, onChange }: { active: CabinetTab; onChange?: (tab: CabinetTab) => void }) {
-  return <View style={styles.shell}>{items.map((item) => {
-    const selected = active === item.key;
-    return <Pressable key={item.key} style={[styles.item, item.key === 'new' && styles.newItem]} onPress={() => item.key === 'new' ? router.push('/complaint') : onChange?.(item.key)} accessibilityRole="button" accessibilityLabel={item.label}>
-      <View style={[styles.iconWrap, selected && styles.iconWrapSelected, item.key === 'new' && styles.newIcon]}><Feather name={item.icon} size={item.key === 'new' ? 25 : 19} color={item.key === 'new' ? colors.white : selected ? colors.teal : colors.muted} /></View>
-      <Text style={[styles.label, selected && styles.labelSelected, item.key === 'new' && styles.newLabel]}>{item.key === 'new' ? 'Yangi' : item.label}</Text>
-    </Pressable>;
-  })}</View>;
+  const insets = useSafeAreaInsets();
+  const { language } = useI18n();
+  const copy = getCabinetDesignCopy(language);
+  const items: { key: CabinetTab; label: string; shortLabel?: string; icon: keyof typeof Feather.glyphMap }[] = [
+    { key: 'home', label: copy.nav.home, icon: 'home' },
+    { key: 'complaints', label: copy.nav.requests, icon: 'file-text' },
+    { key: 'new', label: copy.nav.newRequest, shortLabel: copy.nav.newShort, icon: 'plus' },
+    { key: 'notifications', label: copy.nav.notifications, icon: 'bell' },
+    { key: 'settings', label: copy.nav.settings, icon: 'settings' },
+  ];
+
+  return (
+    <View style={[styles.safeArea, { paddingBottom: Math.max(insets.bottom, spacing.xs) }]}>
+      <View style={styles.shell} accessibilityRole="tablist">
+        {items.map((item) => {
+          const selected = active === item.key;
+          const isNew = item.key === 'new';
+          return (
+            <Pressable
+              key={item.key}
+              onPress={() => isNew ? router.push('/complaint') : onChange?.(item.key)}
+              accessibilityRole="tab"
+              accessibilityLabel={item.label}
+              accessibilityState={{ selected }}
+              style={({ pressed }) => [styles.item, isNew && styles.newItem, pressed && styles.pressed]}
+            >
+              <View style={[styles.iconWrap, selected && styles.iconWrapSelected, isNew && styles.newIcon]}>
+                <Feather
+                  name={item.icon}
+                  size={isNew ? 24 : 20}
+                  color={isNew ? colorTokens.white : selected ? colorTokens.primary : colorTokens.textMuted}
+                  aria-hidden
+                />
+              </View>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
+                style={[styles.label, selected && styles.labelSelected, isNew && styles.newLabel]}
+              >
+                {item.shortLabel || item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  shell: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: 27, paddingHorizontal: 4, paddingTop: 8, paddingBottom: 8, shadowColor: '#0B3439', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 7 },
-  item: { flex: 1, alignItems: 'center', gap: 3, minHeight: 57, justifyContent: 'center' },
-  newItem: { marginTop: -19 },
-  iconWrap: { width: 38, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 13 },
-  iconWrapSelected: { backgroundColor: colors.mint },
-  newIcon: { width: 54, height: 54, borderRadius: 27, backgroundColor: colors.teal, borderWidth: 5, borderColor: colors.background, shadowColor: colors.teal, shadowOpacity: 0.3, shadowRadius: 9, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
-  label: { color: colors.muted, fontSize: 10, fontWeight: '700' },
-  labelSelected: { color: colors.tealDark },
-  newLabel: { color: colors.tealDark, fontSize: 10, fontWeight: '800' },
+  safeArea: {
+    backgroundColor: colorTokens.background,
+    paddingTop: spacing.sm,
+  },
+  shell: {
+    ...shadows.navigation,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colorTokens.surface,
+    borderWidth: 1,
+    borderColor: colorTokens.border,
+    borderRadius: radii.navigation,
+    paddingHorizontal: spacing.xxs,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+  },
+  item: {
+    minWidth: 0,
+    minHeight: 58,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    paddingHorizontal: 2,
+  },
+  pressed: {
+    opacity: 0.76,
+    transform: [{ scale: motion.pressScale }],
+  },
+  newItem: {
+    marginTop: -14,
+  },
+  iconWrap: {
+    width: 40,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopLeftRadius: radii.icon,
+    borderTopRightRadius: radii.icon,
+    borderBottomRightRadius: radii.icon,
+    borderBottomLeftRadius: 6,
+  },
+  iconWrapSelected: {
+    backgroundColor: colorTokens.primarySoft,
+  },
+  newIcon: {
+    width: 50,
+    height: 50,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderBottomRightRadius: 22,
+    borderBottomLeftRadius: 10,
+    backgroundColor: colorTokens.primary,
+    borderWidth: 4,
+    borderColor: colorTokens.surface,
+  },
+  label: {
+    ...typography.navigation,
+    width: '100%',
+    minHeight: 16,
+    color: colorTokens.textMuted,
+    textAlign: 'center',
+  },
+  labelSelected: {
+    color: colorTokens.primaryDark,
+    fontWeight: '700',
+  },
+  newLabel: {
+    color: colorTokens.primaryDark,
+    fontWeight: '700',
+  },
 });
