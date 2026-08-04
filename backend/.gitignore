@@ -7,4 +7,4 @@ __pycache__/
 # GigaAM ASR model (~590MB .onnx) — GitHub'ning 100MB fayl limitidan katta,
 # git orqali push qilinmaydi. Serverga alohida scp/rsync bilan yuboriladi
 # (docs/07-ai-layer.md §6, docs/11-devops.md §3).
-models/
+/models/
