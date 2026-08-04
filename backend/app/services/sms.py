@@ -27,6 +27,8 @@ def _redis() -> redis.Redis:
 
 
 def _fetch_token() -> str:
+    if not settings.eskiz_email or not settings.eskiz_password:
+        raise RuntimeError("ESKIZ_TOKEN yoki ESKIZ_EMAIL/ESKIZ_PASSWORD sozlanmagan")
     resp = httpx.post(
         f"{_ESKIZ_BASE}/auth/login",
         data={"email": settings.eskiz_email, "password": settings.eskiz_password},
@@ -37,6 +39,8 @@ def _fetch_token() -> str:
 
 
 def _get_token(*, force_refresh: bool = False) -> str:
+    if settings.eskiz_token and not force_refresh:
+        return settings.eskiz_token
     r = _redis()
     if not force_refresh:
         cached = r.get(_TOKEN_KEY)
@@ -50,7 +54,7 @@ def _get_token(*, force_refresh: bool = False) -> str:
 def send_sms(phone: str, message: str) -> bool:
     """Best-effort SMS yuborish. Eskiz sozlanmagan bo'lsa jimgina o'tkazib
     yuboriladi (dev muhitida odatiy holat)."""
-    if not settings.eskiz_email or not settings.eskiz_password:
+    if not settings.eskiz_token and (not settings.eskiz_email or not settings.eskiz_password):
         logger.info("SMS o'tkazib yuborildi (Eskiz sozlanmagan): %s", phone)
         return False
 
@@ -64,6 +68,9 @@ def send_sms(phone: str, message: str) -> bool:
             timeout=10,
         )
         if resp.status_code == 401:
+            if settings.eskiz_token and not settings.eskiz_email:
+                logger.warning("Eskiz token muddati tugagan (%s)", phone)
+                return False
             token = _get_token(force_refresh=True)
             resp = httpx.post(
                 f"{_ESKIZ_BASE}/message/sms/send",

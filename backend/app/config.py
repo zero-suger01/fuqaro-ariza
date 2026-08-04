@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     gigaam_model_dir: str | None = None
 
     # Notifications
+    eskiz_token: str | None = None
     eskiz_email: str | None = None
     eskiz_password: str | None = None
     telegram_bot_token: str | None = None
