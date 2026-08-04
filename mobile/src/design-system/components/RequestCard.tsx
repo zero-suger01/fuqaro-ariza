@@ -1,12 +1,12 @@
 import { Feather } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CitizenComplaint } from '@/api';
 import type { Language } from '@/i18n';
 import { useI18n } from '@/i18n';
 import { getCabinetDesignCopy } from '@/design-system/copy';
 import { getCitizenStatusLabel } from '@/design-system/status';
 import { StatusChip } from '@/design-system/components/StatusChip';
-import { colorTokens, componentShapes, motion, radii, spacing, typography } from '@/design-system/tokens';
+import { colorTokens, componentShapes, motion, shadows, spacing, typography } from '@/design-system/tokens';
 
 const categoryIcons: Record<string, keyof typeof Feather.glyphMap> = {
   elektr: 'zap',
@@ -45,7 +45,6 @@ const monthNames: Record<Language, string[]> = {
 function formatRequestDate(value: string, language: Language) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  // API timestamps are UTC; Uzbekistan uses UTC+5 year-round.
   const tashkentDate = new Date(date.getTime() + 5 * 60 * 60 * 1000);
   const day = tashkentDate.getUTCDate();
   const month = monthNames[language][tashkentDate.getUTCMonth()];
@@ -55,12 +54,11 @@ function formatRequestDate(value: string, language: Language) {
 }
 
 export function RequestCard({ complaint, onPress }: { complaint: CitizenComplaint; onPress: () => void }) {
-  const { width } = useWindowDimensions();
   const { language } = useI18n();
   const copy = getCabinetDesignCopy(language);
-  const categoryIcon = categoryIcons[complaint.category.code] ?? 'file-text';
-  const statusLabel = getCitizenStatusLabel(complaint.status_simple, language);
   const categoryName = complaint.category.name;
+  const statusLabel = getCitizenStatusLabel(complaint.status_simple, language);
+  const categoryIcon = categoryIcons[complaint.category.code] ?? 'file-text';
 
   return (
     <Pressable
@@ -70,40 +68,31 @@ export function RequestCard({ complaint, onPress }: { complaint: CitizenComplain
       accessibilityHint={copy.viewDetails}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <View style={styles.accentRail} aria-hidden />
       <View style={styles.topRow}>
         <View style={styles.identity}>
           <View style={styles.iconFrame}>
-            <Feather name={categoryIcon} size={19} color={colorTokens.primary} aria-hidden />
+            <Feather name={categoryIcon} size={17} color={colorTokens.primary} aria-hidden />
           </View>
-          <View style={styles.ticketCopy}>
-            <Text style={styles.ticketLabel}>{copy.requestNumber}</Text>
-            <Text style={styles.ticket}>{complaint.ticket_number}</Text>
-          </View>
+          <Text numberOfLines={1} ellipsizeMode="middle" style={styles.ticket}>#{complaint.ticket_number}</Text>
         </View>
-        {width >= 350 ? <StatusChip status={complaint.status_simple} compact style={styles.status} /> : null}
+        <StatusChip status={complaint.status_simple} compact style={styles.status} />
       </View>
-      {width < 350 ? <StatusChip status={complaint.status_simple} compact style={styles.narrowStatus} /> : null}
 
-      <Text style={styles.category}>{categoryName}</Text>
-      <Text style={styles.description} numberOfLines={2}>
+      <Text numberOfLines={1} style={styles.category}>{categoryName}</Text>
+      <Text numberOfLines={2} style={styles.description}>
         {complaint.description || copy.summaryFallback}
       </Text>
 
-      <View style={styles.meta}>
-        <View style={styles.metaRow}>
-          <Feather name="briefcase" size={15} color={colorTokens.textSecondary} aria-hidden />
-          <Text style={styles.metaText} numberOfLines={2}>{complaint.department?.name || copy.organizationFallback}</Text>
+      <View style={styles.footer}>
+        <View style={styles.metadata}>
+          <Text numberOfLines={1} style={styles.organization}>
+            {complaint.department?.name || copy.organizationFallback}
+          </Text>
+          <Text style={styles.date}>{formatRequestDate(complaint.created_at, language)}</Text>
         </View>
-        <View style={styles.metaRow}>
-          <Feather name="calendar" size={15} color={colorTokens.textSecondary} aria-hidden />
-          <Text style={styles.metaText}>{formatRequestDate(complaint.created_at, language)}</Text>
+        <View style={styles.chevronFrame}>
+          <Feather name="chevron-right" size={18} color={colorTokens.primary} aria-hidden />
         </View>
-      </View>
-
-      <View style={styles.actionRow}>
-        <Text style={styles.action}>{copy.viewDetails}</Text>
-        <Feather name="arrow-right" size={17} color={colorTokens.primary} aria-hidden />
       </View>
     </Pressable>
   );
@@ -111,64 +100,48 @@ export function RequestCard({ complaint, onPress }: { complaint: CitizenComplain
 
 const styles = StyleSheet.create({
   card: {
-    ...componentShapes.trailing,
-    position: 'relative',
-    overflow: 'hidden',
-    backgroundColor: colorTokens.surface,
-    borderWidth: 1,
-    borderColor: colorTokens.border,
+    ...componentShapes.surface,
+    ...shadows.card,
+    backgroundColor: colorTokens.surfaceWarm,
     padding: spacing.md,
-    paddingLeft: spacing.lg,
   },
   pressed: {
-    opacity: 0.92,
+    opacity: 0.93,
     transform: [{ scale: motion.pressScale }],
   },
   topRow: {
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   identity: {
     minWidth: 0,
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   iconFrame: {
-    width: 36,
-    height: 36,
+    ...componentShapes.icon,
+    width: 34,
+    height: 34,
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    borderTopLeftRadius: radii.icon,
-    borderTopRightRadius: radii.icon,
-    borderBottomRightRadius: radii.icon,
-    borderBottomLeftRadius: radii.inner,
-    backgroundColor: colorTokens.primaryMist,
-  },
-  ticketCopy: {
-    minWidth: 0,
-    flex: 1,
-  },
-  ticketLabel: {
-    ...typography.caption,
-    color: colorTokens.textSecondary,
+    backgroundColor: colorTokens.primarySoft,
   },
   ticket: {
-    ...typography.bodyStrong,
-    color: colorTokens.textPrimary,
+    ...typography.label,
+    flexShrink: 1,
+    color: colorTokens.textSecondary,
     fontVariant: ['tabular-nums'],
-    letterSpacing: 0.25,
+    letterSpacing: 0.2,
   },
   status: {
-    maxWidth: '55%',
-  },
-  narrowStatus: {
-    maxWidth: '100%',
-    marginTop: spacing.sm,
+    maxWidth: '49%',
+    flexShrink: 1,
   },
   category: {
     ...typography.cardTitle,
@@ -176,42 +149,39 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   description: {
-    ...typography.supporting,
+    ...typography.body,
     color: colorTokens.textSecondary,
     marginTop: spacing.xxs,
   },
-  meta: {
-    gap: spacing.xxs,
+  footer: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
     marginTop: spacing.sm,
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.xs,
-  },
-  metaText: {
-    ...typography.caption,
+  metadata: {
+    minWidth: 0,
     flex: 1,
+  },
+  organization: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500',
     color: colorTokens.textSecondary,
   },
-  actionRow: {
-    minHeight: 36,
-    flexDirection: 'row',
+  date: {
+    ...typography.caption,
+    color: colorTokens.textMuted,
+    marginTop: 2,
+  },
+  chevronFrame: {
+    ...componentShapes.icon,
+    width: 32,
+    height: 32,
+    flexShrink: 0,
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: spacing.xs,
-    marginTop: spacing.xxs,
-  },
-  action: {
-    ...typography.button,
-    color: colorTokens.primary,
-  },
-  accentRail: {
-    position: 'absolute',
-    left: 0,
-    top: spacing.md,
-    bottom: spacing.md,
-    width: 3,
-    backgroundColor: colorTokens.primary,
+    justifyContent: 'center',
+    backgroundColor: colorTokens.primaryMist,
   },
 });

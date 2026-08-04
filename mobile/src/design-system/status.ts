@@ -36,7 +36,7 @@ export const citizenStatusDefinitions: Record<CitizenStatusCode, StatusDefinitio
     background: colorTokens.infoSoft,
     indicator: colorTokens.info,
     phase: 'active',
-    labels: { uz: 'Ko‘rib chiqilmoqda', oz: 'Кўриб чиқилмоқда', ru: 'На рассмотрении', en: 'Under review' },
+    labels: { uz: 'Ko‘rilmoqda', oz: 'Кўрилмоқда', ru: 'На рассмотрении', en: 'Under review' },
   },
   ijroda: {
     icon: 'clock',

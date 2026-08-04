@@ -1,8 +1,9 @@
 import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@/i18n';
+import { CivicEmboss } from '@/design-system/components/CivicEmboss';
 import { getCabinetDesignCopy } from '@/design-system/copy';
-import { colorTokens, componentShapes, motion, radii, spacing, typography } from '@/design-system/tokens';
+import { colorTokens, componentShapes, motion, shadows, spacing, typography } from '@/design-system/tokens';
 
 export function NewRequestHero({ onPress }: { onPress: () => void }) {
   const { language } = useI18n();
@@ -16,10 +17,7 @@ export function NewRequestHero({ onPress }: { onPress: () => void }) {
       accessibilityHint={copy.heroDescription}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <View style={styles.accentRail} aria-hidden>
-        <View style={styles.accentRailStrong} />
-        <View style={styles.accentRailSoft} />
-      </View>
+      <CivicEmboss />
       <View style={styles.iconFrame}>
         <Feather name="edit-3" size={21} color={colorTokens.white} aria-hidden />
       </View>
@@ -27,8 +25,8 @@ export function NewRequestHero({ onPress }: { onPress: () => void }) {
         <Text style={styles.title}>{copy.heroTitle}</Text>
         <Text numberOfLines={2} style={styles.description}>{copy.heroDescription}</Text>
       </View>
-      <View style={styles.arrowFrame}>
-        <Feather name="arrow-up-right" size={19} color={colorTokens.white} aria-hidden />
+      <View style={styles.actionFrame}>
+        <Feather name="arrow-up-right" size={18} color={colorTokens.white} aria-hidden />
       </View>
     </Pressable>
   );
@@ -36,41 +34,40 @@ export function NewRequestHero({ onPress }: { onPress: () => void }) {
 
 const styles = StyleSheet.create({
   card: {
-    ...componentShapes.leading,
+    ...componentShapes.surface,
+    ...shadows.card,
     position: 'relative',
     overflow: 'hidden',
+    minHeight: 124,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    minHeight: 124,
     backgroundColor: colorTokens.primaryDark,
-    paddingLeft: spacing.lg,
-    paddingRight: spacing.md,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
   pressed: {
-    opacity: 0.94,
+    opacity: 0.95,
     transform: [{ scale: motion.pressScale }],
   },
   iconFrame: {
-    width: 48,
-    height: 48,
-    borderTopLeftRadius: radii.icon,
-    borderTopRightRadius: radii.compactCard,
-    borderBottomRightRadius: radii.icon,
-    borderBottomLeftRadius: radii.inner,
+    ...componentShapes.icon,
+    width: 46,
+    height: 46,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colorTokens.primary,
-    borderWidth: 1,
-    borderColor: colorTokens.onDarkBorder,
+    backgroundColor: 'rgba(255,255,255,0.11)',
   },
   copy: {
-    flex: 1,
     minWidth: 0,
+    flex: 1,
   },
   title: {
-    ...typography.cardTitle,
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: '600',
+    letterSpacing: -0.1,
     color: colorTokens.white,
   },
   description: {
@@ -78,32 +75,13 @@ const styles = StyleSheet.create({
     color: colorTokens.onDarkMuted,
     marginTop: spacing.xxs,
   },
-  arrowFrame: {
-    width: 40,
-    height: 40,
+  actionFrame: {
+    ...componentShapes.icon,
+    width: 38,
+    height: 38,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    borderTopLeftRadius: radii.icon,
-    borderTopRightRadius: radii.icon,
-    borderBottomRightRadius: radii.inner,
-    borderBottomLeftRadius: radii.icon,
-    borderWidth: 1,
-    borderColor: colorTokens.onDarkBorder,
-  },
-  accentRail: {
-    position: 'absolute',
-    left: 0,
-    top: spacing.lg,
-    bottom: spacing.lg,
-    width: 3,
-    gap: 3,
-  },
-  accentRailStrong: {
-    flex: 2,
-    backgroundColor: colorTokens.brass,
-  },
-  accentRailSoft: {
-    flex: 1,
-    backgroundColor: colorTokens.primary,
+    backgroundColor: 'rgba(255,255,255,0.09)',
   },
 });

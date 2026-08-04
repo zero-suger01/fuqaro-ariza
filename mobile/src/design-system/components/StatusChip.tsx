@@ -1,9 +1,8 @@
-import { Feather } from '@expo/vector-icons';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useI18n } from '@/i18n';
 import { getCabinetDesignCopy } from '@/design-system/copy';
 import { getCitizenStatusDefinition, getCitizenStatusLabel } from '@/design-system/status';
-import { radii, spacing, typography } from '@/design-system/tokens';
+import { radii, typography } from '@/design-system/tokens';
 
 type StatusChipProps = {
   status: string;
@@ -29,11 +28,11 @@ export function StatusChip({ status, compact = false, style }: StatusChipProps) 
         style,
       ]}
     >
-      <Feather name={definition.icon} size={compact ? 13 : 14} color={definition.indicator} aria-hidden />
+      <View style={[styles.dot, { backgroundColor: definition.indicator }]} aria-hidden />
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
-        minimumFontScale={0.84}
+        minimumFontScale={0.78}
         style={[styles.text, compact && styles.compactText, { color: definition.foreground }]}
       >
         {label}
@@ -50,16 +49,22 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   regular: {
-    minHeight: 32,
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 7,
-  },
-  compact: {
     minHeight: 28,
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 5,
+  },
+  compact: {
+    minHeight: 24,
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    flexShrink: 0,
+    borderRadius: 3,
   },
   text: {
     ...typography.status,

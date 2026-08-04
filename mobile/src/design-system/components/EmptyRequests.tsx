@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@/i18n';
 import { getCabinetDesignCopy } from '@/design-system/copy';
-import { colorTokens, componentShapes, motion, radii, spacing, typography } from '@/design-system/tokens';
+import { colorTokens, componentShapes, motion, radii, shadows, spacing, typography } from '@/design-system/tokens';
 
 export function EmptyRequests({ onPress }: { onPress: () => void }) {
   const { language } = useI18n();
@@ -10,7 +10,6 @@ export function EmptyRequests({ onPress }: { onPress: () => void }) {
 
   return (
     <View style={styles.card}>
-      <View style={styles.accentRail} aria-hidden />
       <View style={styles.iconFrame}>
         <Feather name="file-plus" size={24} color={colorTokens.primary} aria-hidden />
       </View>
@@ -30,13 +29,12 @@ export function EmptyRequests({ onPress }: { onPress: () => void }) {
 
 const styles = StyleSheet.create({
   card: {
-    ...componentShapes.trailing,
+    ...componentShapes.surface,
+    ...shadows.tile,
     position: 'relative',
     overflow: 'hidden',
     alignItems: 'center',
     backgroundColor: colorTokens.primaryMist,
-    borderWidth: 1,
-    borderColor: colorTokens.border,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
   },
@@ -45,10 +43,7 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderTopLeftRadius: radii.compactCard,
-    borderTopRightRadius: radii.icon,
-    borderBottomRightRadius: radii.compactCard,
-    borderBottomLeftRadius: radii.inner,
+    ...componentShapes.icon,
     backgroundColor: colorTokens.surface,
   },
   title: {
@@ -83,13 +78,5 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: colorTokens.primary,
     textAlign: 'center',
-  },
-  accentRail: {
-    position: 'absolute',
-    left: 0,
-    top: spacing.lg,
-    bottom: spacing.lg,
-    width: 3,
-    backgroundColor: colorTokens.primary,
   },
 });

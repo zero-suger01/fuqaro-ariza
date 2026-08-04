@@ -34,7 +34,7 @@ import { NotificationEmptyState } from '@/design-system/components/NotificationE
 import { RequestCard } from '@/design-system/components/RequestCard';
 import { SettingsRow } from '@/design-system/components/SettingsRow';
 import { getCabinetDesignCopy } from '@/design-system/copy';
-import { colorTokens, componentShapes, radii, spacing, typography } from '@/design-system/tokens';
+import { colorTokens, componentShapes, radii, shadows, spacing, typography } from '@/design-system/tokens';
 import { languages, useI18n } from '@/i18n';
 
 type AuthProps = {
@@ -233,11 +233,10 @@ export default function CabinetScreen() {
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.inner}>
         <View style={styles.sectionHeader}>
-          <View style={styles.flex}>
-            <Text style={styles.eyebrow}>FAOLIYAT</Text>
-            <Text style={styles.title}>Murojaatlarim</Text>
+          <Text accessibilityRole="header" style={styles.title}>Murojaatlarim</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.count}>{complaints.length} ta</Text>
           </View>
-          <Text style={styles.count}>{complaints.length} ta</Text>
         </View>
         {complaints.length > 0 ? (
           <View style={styles.requestList}>
@@ -263,6 +262,10 @@ export default function CabinetScreen() {
           <View style={styles.profileCopy}>
             <Text style={styles.profileName}>{user.fullname}</Text>
             <Text style={styles.profilePhone}>{user.phone}</Text>
+            <View style={styles.verifiedRow}>
+              <Feather name="check-circle" size={12} color={colorTokens.primary} aria-hidden />
+              <Text style={styles.verifiedText}>{copy.verifiedLabel}</Text>
+            </View>
           </View>
         </View>
         <Text style={styles.groupLabel}>{copy.settingsSection}</Text>
@@ -271,9 +274,10 @@ export default function CabinetScreen() {
           <SettingsRow icon="bell" title={copy.notificationsSetting} onPress={() => setTab('notifications')} />
           <SettingsRow icon="info" title={copy.aboutSetting} value={copy.versionLabel} last />
         </View>
-        <View style={styles.logoutGroup}>
-          <SettingsRow icon="log-out" title={copy.logout} onPress={signOut} destructive last />
-        </View>
+        <Pressable onPress={signOut} accessibilityRole="button" style={({ pressed }) => [styles.logoutAction, pressed && styles.logoutPressed]}>
+          <Feather name="log-out" size={16} color={colorTokens.danger} aria-hidden />
+          <Text style={styles.logoutText}>{copy.logout}</Text>
+        </Pressable>
       </View>
     </ScrollView>
   );
@@ -444,53 +448,55 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   sectionHeader: {
-    minHeight: 56,
+    minHeight: 48,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  eyebrow: {
-    ...typography.label,
-    color: colorTokens.primary,
-    letterSpacing: 1.2,
+    marginBottom: spacing.sm,
   },
   title: {
     ...typography.pageTitle,
+    minWidth: 0,
+    flex: 1,
     color: colorTokens.textPrimary,
-    marginTop: spacing.xs,
+  },
+  countBadge: {
+    minHeight: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.pill,
+    backgroundColor: colorTokens.primarySoft,
+    paddingHorizontal: spacing.sm,
   },
   count: {
     ...typography.label,
     color: colorTokens.primary,
-    paddingBottom: 5,
   },
-  requestList: { gap: spacing.xs },
+  requestList: { gap: spacing.sm },
   profileCard: {
-    ...componentShapes.leading,
-    minHeight: 76,
+    ...componentShapes.surface,
+    ...shadows.tile,
+    minHeight: 84,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.md,
-    backgroundColor: colorTokens.primaryMist,
+    marginTop: spacing.sm,
+    backgroundColor: colorTokens.primarySoft,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 14,
   },
   profileAvatar: {
     width: 48,
     height: 48,
-    borderTopLeftRadius: radii.icon,
-    borderTopRightRadius: radii.compactCard,
-    borderBottomRightRadius: radii.icon,
-    borderBottomLeftRadius: radii.inner,
-    backgroundColor: colorTokens.surface,
+    ...componentShapes.icon,
+    flexShrink: 0,
+    backgroundColor: colorTokens.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileAvatarText: {
-    color: colorTokens.primaryDark,
+    color: colorTokens.white,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -503,9 +509,23 @@ const styles = StyleSheet.create({
     color: colorTokens.textPrimary,
   },
   profilePhone: {
-    ...typography.supporting,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '400',
     color: colorTokens.textSecondary,
-    marginTop: spacing.xxs,
+    marginTop: 1,
+  },
+  verifiedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
+  verifiedText: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '500',
+    color: colorTokens.primary,
   },
   groupLabel: {
     ...typography.label,
@@ -514,19 +534,27 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   settingsGroup: {
-    ...componentShapes.trailing,
+    ...componentShapes.surface,
+    ...shadows.tile,
     overflow: 'hidden',
-    backgroundColor: colorTokens.surface,
-    borderWidth: 1,
-    borderColor: colorTokens.border,
+    backgroundColor: colorTokens.surfaceWarm,
+    paddingVertical: spacing.xxs,
   },
-  logoutGroup: {
-    ...componentShapes.trailing,
-    overflow: 'hidden',
-    backgroundColor: colorTokens.surface,
-    borderWidth: 1,
-    borderColor: colorTokens.border,
-    marginTop: spacing.md,
+  logoutAction: {
+    minHeight: 44,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xs,
+  },
+  logoutText: {
+    ...typography.button,
+    color: colorTokens.danger,
+  },
+  logoutPressed: {
+    opacity: 0.62,
   },
   notificationState: {
     marginTop: spacing.md,

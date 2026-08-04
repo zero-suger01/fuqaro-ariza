@@ -25,25 +25,28 @@ export function CabinetHome({ user, complaints, onNewRequest, onViewAll, onOpenR
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
     >
       <View style={styles.inner}>
-        <View style={styles.introduction}>
+        <View style={styles.greetingBlock}>
           <Text
             accessibilityRole="header"
             numberOfLines={1}
             adjustsFontSizeToFit
-            minimumFontScale={0.84}
+            minimumFontScale={0.82}
             style={styles.greeting}
           >
             {copy.greeting.replace('{name}', name)}
           </Text>
-          <Text style={styles.supporting}>{copy.supporting}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82} style={styles.supporting}>
+            {copy.supporting}
+          </Text>
         </View>
 
         <NewRequestHero onPress={onNewRequest} />
-        <View style={styles.overview}>
+
+        <View style={styles.statistics}>
           <StatisticsOverview statuses={complaints.map((complaint) => complaint.status_simple)} />
         </View>
 
@@ -56,7 +59,7 @@ export function CabinetHome({ user, complaints, onNewRequest, onViewAll, onOpenR
               style={({ pressed }) => [styles.viewAll, pressed && styles.pressed]}
             >
               <Text style={styles.viewAllText}>{copy.allRequests}</Text>
-              <Feather name="arrow-right" size={16} color={colorTokens.primary} aria-hidden />
+              <Feather name="chevron-right" size={16} color={colorTokens.primary} aria-hidden />
             </Pressable>
           ) : null}
         </View>
@@ -64,11 +67,7 @@ export function CabinetHome({ user, complaints, onNewRequest, onViewAll, onOpenR
         {complaints.length > 0 ? (
           <View style={styles.requests}>
             {complaints.slice(0, 3).map((complaint) => (
-              <RequestCard
-                key={complaint.id}
-                complaint={complaint}
-                onPress={() => onOpenRequest(complaint)}
-              />
+              <RequestCard key={complaint.id} complaint={complaint} onPress={() => onOpenRequest(complaint)} />
             ))}
           </View>
         ) : (
@@ -80,7 +79,7 @@ export function CabinetHome({ user, complaints, onNewRequest, onViewAll, onOpenR
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
+  content: {
     paddingTop: spacing.xxs,
     paddingBottom: spacing.lg,
   },
@@ -89,27 +88,26 @@ const styles = StyleSheet.create({
     maxWidth: 720,
     alignSelf: 'center',
   },
-  introduction: {
+  greetingBlock: {
     marginBottom: spacing.sm,
   },
   greeting: {
     fontSize: 24,
     lineHeight: 29,
     fontWeight: '600',
-    letterSpacing: -0.25,
+    letterSpacing: -0.35,
     color: colorTokens.textPrimary,
   },
   supporting: {
     ...typography.supporting,
-    maxWidth: 480,
     color: colorTokens.textSecondary,
     marginTop: spacing.xxs,
   },
-  overview: {
+  statistics: {
     marginTop: spacing.sm,
   },
   sectionHeader: {
-    minHeight: 48,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -119,6 +117,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.sectionTitle,
+    minWidth: 0,
     flex: 1,
     color: colorTokens.textPrimary,
   },
@@ -126,18 +125,17 @@ const styles = StyleSheet.create({
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.xs,
-  },
-  pressed: {
-    opacity: 0.68,
+    gap: spacing.xxs,
+    paddingLeft: spacing.xs,
   },
   viewAllText: {
     ...typography.button,
     color: colorTokens.primary,
   },
+  pressed: {
+    opacity: 0.64,
+  },
   requests: {
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
 });

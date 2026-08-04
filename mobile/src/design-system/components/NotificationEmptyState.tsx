@@ -41,7 +41,7 @@ export function NotificationEmptyState({ onViewRequests }: { onViewRequests: () 
 
 const styles = StyleSheet.create({
   card: {
-    ...componentShapes.trailing,
+    ...componentShapes.surface,
     alignItems: 'center',
     backgroundColor: colorTokens.surface,
     borderWidth: 1,

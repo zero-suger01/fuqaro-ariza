@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '@/i18n';
 import { getCabinetDesignCopy } from '@/design-system/copy';
-import { colorTokens, motion, radii, shadows, spacing, typography } from '@/design-system/tokens';
+import { colorTokens, componentShapes, motion, shadows, spacing, typography } from '@/design-system/tokens';
 
 export type CabinetTab = 'home' | 'complaints' | 'new' | 'notifications' | 'settings';
 
@@ -35,8 +35,7 @@ export function BottomNav({ active, onChange }: { active: CabinetTab; onChange?:
               accessibilityState={{ selected }}
               style={({ pressed }) => [styles.item, isNew && styles.newItem, pressed && styles.pressed]}
             >
-              <View style={[styles.indicator, selected && styles.indicatorSelected]} aria-hidden />
-              <View style={[styles.iconWrap, selected && styles.iconWrapSelected, isNew && styles.newIcon]}>
+              <View style={[styles.iconFrame, selected && styles.iconFrameSelected, isNew && styles.newIconFrame]}>
                 <Feather
                   name={item.icon}
                   size={isNew ? 20 : 19}
@@ -47,11 +46,12 @@ export function BottomNav({ active, onChange }: { active: CabinetTab; onChange?:
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
-                minimumFontScale={0.82}
+                minimumFontScale={0.8}
                 style={[styles.label, selected && styles.labelSelected, isNew && styles.newLabel]}
               >
                 {item.shortLabel || item.label}
               </Text>
+              <View style={[styles.selectionDot, selected && !isNew && styles.selectionDotActive]} aria-hidden />
             </Pressable>
           );
         })}
@@ -62,23 +62,18 @@ export function BottomNav({ active, onChange }: { active: CabinetTab; onChange?:
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: colorTokens.surface,
+    ...shadows.navigation,
+    flexShrink: 0,
+    backgroundColor: 'rgba(251,252,252,0.97)',
   },
   shell: {
-    ...shadows.navigation,
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colorTokens.surface,
-    borderTopWidth: 1,
-    borderTopColor: colorTokens.border,
-    borderTopLeftRadius: radii.navigation,
-    borderTopRightRadius: radii.navigation,
-    paddingHorizontal: spacing.xxs,
-    paddingTop: spacing.xxs,
-    paddingBottom: spacing.xxs,
+    paddingHorizontal: spacing.xs,
+    paddingTop: 6,
   },
   item: {
     minWidth: 0,
@@ -89,57 +84,47 @@ const styles = StyleSheet.create({
     gap: 2,
     paddingHorizontal: 2,
   },
+  newItem: {
+    transform: [{ translateY: -2 }],
+  },
   pressed: {
-    opacity: 0.76,
+    opacity: 0.68,
     transform: [{ scale: motion.pressScale }],
   },
-  newItem: {
-    marginTop: 0,
-  },
-  iconWrap: {
+  iconFrame: {
+    ...componentShapes.icon,
     width: 36,
-    height: 28,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    borderTopLeftRadius: radii.icon,
-    borderTopRightRadius: radii.icon,
-    borderBottomRightRadius: radii.icon,
-    borderBottomLeftRadius: 6,
   },
-  iconWrapSelected: {
-    backgroundColor: colorTokens.primaryMist,
+  iconFrameSelected: {
+    backgroundColor: colorTokens.primarySoft,
   },
-  newIcon: {
+  newIconFrame: {
     width: 38,
-    height: 30,
-    borderTopLeftRadius: radii.icon,
-    borderTopRightRadius: radii.icon,
-    borderBottomRightRadius: radii.inner,
-    borderBottomLeftRadius: radii.icon,
+    height: 34,
     backgroundColor: colorTokens.primary,
   },
   label: {
     ...typography.navigation,
     width: '100%',
-    minHeight: 16,
     color: colorTokens.textMuted,
     textAlign: 'center',
   },
   labelSelected: {
-    color: colorTokens.primaryDark,
-    fontWeight: '600',
+    color: colorTokens.textPrimary,
   },
   newLabel: {
     color: colorTokens.primaryDark,
-    fontWeight: '600',
   },
-  indicator: {
-    width: 22,
-    height: 2,
-    borderRadius: 1,
+  selectionDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
     backgroundColor: 'transparent',
   },
-  indicatorSelected: {
+  selectionDotActive: {
     backgroundColor: colorTokens.primary,
   },
 });
