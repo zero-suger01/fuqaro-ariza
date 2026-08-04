@@ -22,6 +22,11 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      # Host nginx (bu serverdagi boshqa loyihalar bilan bir xil pattern,
+      # 80/443 host nginx'da band) shu loopback portdan /storage/ ni
+      # proxy qiladi — docs/11-devops.md D4.
+      - "127.0.0.1:8095:9000"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -60,6 +65,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    ports:
+      - "127.0.0.1:8094:8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/api/health')"]
       interval: 10s
@@ -91,35 +98,10 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     restart: unless-stopped
-    depends_on:
-      - backend
-    networks: [internal]
-
-  nginx:
-    image: nginx:1.27-alpine
-    restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - certbot_www:/var/www/certbot:ro
-      - certbot_certs:/etc/letsencrypt:ro
+      - "127.0.0.1:8093:3000"
     depends_on:
-      - frontend
       - backend
-    networks: [internal]
-
-  # Sertifikatni har 12 soatda yangilashga urinadi (certbot o'zi shart
-  # yetmaganini tekshiradi — 30 kundan kam qolganda haqiqiy yangilanadi).
-  certbot:
-    image: certbot/certbot
-    restart: unless-stopped
-    volumes:
-      - certbot_www:/var/www/certbot
-      - certbot_certs:/etc/letsencrypt
-    entrypoint: >
-      /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done;"
     networks: [internal]
 
 networks:
@@ -129,5 +111,3 @@ volumes:
   postgres_data:
   minio_data:
   redis_data:
-  certbot_www:
-  certbot_certs:

@@ -49,12 +49,12 @@ cd backend && TEST_DATABASE_URL=postgresql+psycopg://ariza:ariza@localhost:5433/
 ## 2. D-tasklar
 
 - [x] **D1 (S)** compose'ga `redis` qo'shildi (B1.7 bilan birga), `redis:7-alpine`, healthcheck bilan.
-- [x] **D2 (M)** Dockerfile'lar: `backend/Dockerfile` (uvicorn, non-root, ffmpeg+libmagic1 o'rnatilgan), worker xuddi shu image'dan (`docker-compose.prod.yml`da `command` bilan almashtiriladi), `frontend/Dockerfile` (multi-stage, `output: "standalone"` `next.config.ts`ga qo'shildi). `bot/Dockerfile` (T3.3) hali qilinmagan — mijoz bu safar so'ramadi.
-- [x] **D3 (M)** `docker-compose.prod.yml`: nginx + frontend + backend + worker + redis + postgres + minio (ollama/bot YO'Q — `LLM_PROVIDER=deepseek` bilan davom etilmoqda, mijoz tanlovi). Volume'lar, healthcheck'lar, `restart: unless-stopped`, `internal` tarmoq (faqat nginx 80/443 ochiq). Sirlar `.env` (root, `.env.prod.example` namunasi) + `backend/.env`dan `env_file` orqali.
-- [x] **D4 (S)** `nginx/conf.d/app.conf`: `/` → frontend, `/api` → backend, `/storage` → minio (prefiks olib tashlanadi, read-only). `client_max_body_size 60m`, gzip. HTTPS: certbot (webroot), bootstrap ketma-ketligi `bootstrap.conf.disabled` + `docs/12-deploy-contabo.md` §4da.
+- [ ] **D2 (M)** Dockerfile'lar: `backend/Dockerfile` (uvicorn, non-root, ffmpeg o'rnatilgan), worker (xuddi shu image, boshqa command), `frontend/Dockerfile` (multi-stage, `output: "standalone"`), keyin `bot/Dockerfile` (T3.3).
+- [x] **D3 (M)** `docker-compose.prod.yml`: frontend + backend + worker + redis + postgres + minio. Volume'lar, healthcheck'lar, `restart: unless-stopped`, ichki tarmoq. Serverda host darajasidagi nginx 80/443'ni allaqachon boshqa loyihalar bilan band qilgani uchun (fvv.xron.uz, xedu.uz va h.k.) — bu compose'da ALOHIDA nginx/certbot konteyner YO'Q, o'rniga frontend/backend/minio `127.0.0.1:809{3,4,5}`ga chiqariladi (D4ga qarang).
+- [x] **D4 (S)** nginx konfig: host darajasidagi tizim nginx'da (`/etc/nginx/sites-available/ariza.xron.uz`, boshqa loyihalar bilan bir xil pattern) — `/` → `127.0.0.1:8093` (frontend), `/api` → `127.0.0.1:8094` (backend), `/storage` → `127.0.0.1:8095` (minio, read-only proxy), client_max_body_size 60m, gzip. HTTPS: Cloudflare (Flexible SSL, boshqa loyihalar bilan bir xil) — certbot ishlatilmadi.
 - [ ] **D5 (S)** GitHub Actions CI: har PR'da — backend `ruff + pytest -m smoke` (Postgres service bilan), frontend `lint + build`. `main` yashil bo'lmasa merge yo'q.
 - [ ] **D6 (S)** Backup: kunlik `pg_dump` + MinIO papka rsync → alohida disk/obyekt; 14 kun saqlash; tiklash skripti sinovdan o'tgan bo'lishi SHART.
-- [x] **D7 (S)** `deploy.sh`: `git pull && docker compose -f docker-compose.prod.yml up -d --build && alembic upgrade head`. To'liq birinchi-marta yo'riqnoma: `docs/12-deploy-contabo.md`.
+- [x] **D7 (S)** Deploy skripti (`deploy.sh`): `git pull && docker compose -f docker-compose.prod.yml up -d --build && docker compose exec backend alembic upgrade head`. Log ko'rish: `docker compose logs -f backend worker`. Birinchi deploy (2026-08-02, `ariza.xron.uz`) qo'lda bajarildi — keyingi deploylar uchun `./deploy.sh` yetarli.
 - [ ] **D8 (S)** Monitoring-lite: UptimeRobot (yoki cron+curl) `/api/health`; docker log rotation; `docker stats` uchun eslatma. (To'liq Grafana V2.)
 
 ## 3. Server talablari (pilot, 1 tuman)
