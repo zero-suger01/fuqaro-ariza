@@ -2,7 +2,6 @@ import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@/i18n';
 import { getCabinetDesignCopy } from '@/design-system/copy';
-import { PatternSurface } from '@/design-system/components/PatternSurface';
 import { colorTokens, componentShapes, motion, radii, spacing, typography } from '@/design-system/tokens';
 
 export function NewRequestHero({ onPress }: { onPress: () => void }) {
@@ -17,17 +16,19 @@ export function NewRequestHero({ onPress }: { onPress: () => void }) {
       accessibilityHint={copy.heroDescription}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <PatternSurface variant="dark" />
+      <View style={styles.accentRail} aria-hidden>
+        <View style={styles.accentRailStrong} />
+        <View style={styles.accentRailSoft} />
+      </View>
       <View style={styles.iconFrame}>
-        <Feather name="edit-3" size={25} color={colorTokens.white} aria-hidden />
+        <Feather name="edit-3" size={21} color={colorTokens.white} aria-hidden />
       </View>
       <View style={styles.copy}>
         <Text style={styles.title}>{copy.heroTitle}</Text>
-        <Text style={styles.description}>{copy.heroDescription}</Text>
-        <View style={styles.action}>
-          <Text style={styles.actionText}>{copy.heroAction}</Text>
-          <Feather name="arrow-right" size={17} color={colorTokens.white} aria-hidden />
-        </View>
+        <Text numberOfLines={2} style={styles.description}>{copy.heroDescription}</Text>
+      </View>
+      <View style={styles.arrowFrame}>
+        <Feather name="arrow-up-right" size={19} color={colorTokens.white} aria-hidden />
       </View>
     </Pressable>
   );
@@ -35,28 +36,29 @@ export function NewRequestHero({ onPress }: { onPress: () => void }) {
 
 const styles = StyleSheet.create({
   card: {
-    ...componentShapes.hero,
+    ...componentShapes.leading,
     position: 'relative',
     overflow: 'hidden',
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 124,
     backgroundColor: colorTokens.primaryDark,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xl,
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.md,
+    paddingVertical: spacing.md,
   },
   pressed: {
     opacity: 0.94,
     transform: [{ scale: motion.pressScale }],
   },
   iconFrame: {
-    width: 52,
-    height: 52,
+    width: 48,
+    height: 48,
     borderTopLeftRadius: radii.icon,
     borderTopRightRadius: radii.compactCard,
     borderBottomRightRadius: radii.icon,
-    borderBottomLeftRadius: 7,
+    borderBottomLeftRadius: radii.inner,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colorTokens.primary,
@@ -65,6 +67,7 @@ const styles = StyleSheet.create({
   },
   copy: {
     flex: 1,
+    minWidth: 0,
   },
   title: {
     ...typography.cardTitle,
@@ -73,21 +76,34 @@ const styles = StyleSheet.create({
   description: {
     ...typography.supporting,
     color: colorTokens.onDarkMuted,
-    marginTop: spacing.xs,
+    marginTop: spacing.xxs,
   },
-  action: {
-    minHeight: 36,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
+  arrowFrame: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
-    gap: spacing.xs,
-    borderRadius: radii.control,
-    backgroundColor: colorTokens.primary,
-    paddingHorizontal: spacing.sm,
-    marginTop: spacing.md,
+    justifyContent: 'center',
+    borderTopLeftRadius: radii.icon,
+    borderTopRightRadius: radii.icon,
+    borderBottomRightRadius: radii.inner,
+    borderBottomLeftRadius: radii.icon,
+    borderWidth: 1,
+    borderColor: colorTokens.onDarkBorder,
   },
-  actionText: {
-    ...typography.button,
-    color: colorTokens.white,
+  accentRail: {
+    position: 'absolute',
+    left: 0,
+    top: spacing.lg,
+    bottom: spacing.lg,
+    width: 3,
+    gap: 3,
+  },
+  accentRailStrong: {
+    flex: 2,
+    backgroundColor: colorTokens.brass,
+  },
+  accentRailSoft: {
+    flex: 1,
+    backgroundColor: colorTokens.primary,
   },
 });

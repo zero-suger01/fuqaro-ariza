@@ -23,6 +23,17 @@ export type CabinetDesignCopy = {
   emptyTitle: string;
   emptyText: string;
   emptyAction: string;
+  settingsTitle: string;
+  settingsSection: string;
+  languageSetting: string;
+  notificationsSetting: string;
+  aboutSetting: string;
+  versionLabel: string;
+  logout: string;
+  notificationsTitle: string;
+  notificationEmptyTitle: string;
+  notificationEmptyText: string;
+  notificationEmptyAction: string;
   nav: {
     home: string;
     requests: string;
@@ -36,13 +47,13 @@ export type CabinetDesignCopy = {
 export const cabinetDesignCopy: Record<Language, CabinetDesignCopy> = {
   uz: {
     appBarTitle: 'Kabinetim',
-    systemStatus: 'Tizim ishlamoqda',
+    systemStatus: 'Onlayn',
     personalLabel: 'Shaxsiy kabinet',
     citizenFallback: 'fuqaro',
     greeting: 'Assalomu alaykum, {name}',
     supporting: 'Murojaatlaringiz holatini bir joydan kuzating.',
-    heroTitle: 'Muammo yoki taklifingiz bormi?',
-    heroDescription: 'Yangi murojaat yuboring va uning ko‘rib chiqilishini kuzating.',
+    heroTitle: 'Yangi murojaat',
+    heroDescription: 'Muammo yoki taklifingizni yuboring.',
     heroAction: 'Yangi murojaat',
     totalRequests: 'Jami murojaatlar',
     activeRequests: 'Jarayonda',
@@ -57,17 +68,28 @@ export const cabinetDesignCopy: Record<Language, CabinetDesignCopy> = {
     emptyTitle: 'Hozircha murojaatlar yo‘q',
     emptyText: 'Muammo yoki taklifingizni yuboring — uning holatini shu yerdan kuzatasiz.',
     emptyAction: 'Birinchi murojaatni yuborish',
+    settingsTitle: 'Sozlamalar',
+    settingsSection: 'Kabinet sozlamalari',
+    languageSetting: 'Til',
+    notificationsSetting: 'Bildirishnomalar',
+    aboutSetting: 'Ilova haqida',
+    versionLabel: 'Versiya 0.1.0',
+    logout: 'Kabinetdan chiqish',
+    notificationsTitle: 'Bildirishnomalar',
+    notificationEmptyTitle: 'Hozircha bildirishnoma yo‘q',
+    notificationEmptyText: 'Murojaatingiz holati o‘zgarsa, xabar shu yerda ko‘rinadi.',
+    notificationEmptyAction: 'Murojaatlarni ko‘rish',
     nav: { home: 'Asosiy', requests: 'Murojaat', newRequest: 'Yangi murojaat', newShort: 'Yangi', notifications: 'Xabarlar', settings: 'Sozlamalar' },
   },
   oz: {
     appBarTitle: 'Кабинетим',
-    systemStatus: 'Тизим ишламоқда',
+    systemStatus: 'Онлайн',
     personalLabel: 'Шахсий кабинет',
     citizenFallback: 'фуқаро',
     greeting: 'Ассалому алайкум, {name}',
     supporting: 'Мурожаатларингиз ҳолатини бир жойдан кузатинг.',
-    heroTitle: 'Муаммо ёки таклифингиз борми?',
-    heroDescription: 'Янги мурожаат юборинг ва унинг кўриб чиқилишини кузатинг.',
+    heroTitle: 'Янги мурожаат',
+    heroDescription: 'Муаммо ёки таклифингизни юборинг.',
     heroAction: 'Янги мурожаат',
     totalRequests: 'Жами мурожаатлар',
     activeRequests: 'Жараёнда',
@@ -82,17 +104,28 @@ export const cabinetDesignCopy: Record<Language, CabinetDesignCopy> = {
     emptyTitle: 'Ҳозирча мурожаатлар йўқ',
     emptyText: 'Муаммо ёки таклифингизни юборинг — унинг ҳолатини шу ердан кузатасиз.',
     emptyAction: 'Биринчи мурожаатни юбориш',
+    settingsTitle: 'Созламалар',
+    settingsSection: 'Кабинет созламалари',
+    languageSetting: 'Тил',
+    notificationsSetting: 'Билдиришномалар',
+    aboutSetting: 'Илова ҳақида',
+    versionLabel: 'Версия 0.1.0',
+    logout: 'Кабинетдан чиқиш',
+    notificationsTitle: 'Билдиришномалар',
+    notificationEmptyTitle: 'Ҳозирча билдиришнома йўқ',
+    notificationEmptyText: 'Мурожаатингиз ҳолати ўзгарса, хабар шу ерда кўринади.',
+    notificationEmptyAction: 'Мурожаатларни кўриш',
     nav: { home: 'Асосий', requests: 'Мурожаат', newRequest: 'Янги мурожаат', newShort: 'Янги', notifications: 'Хабарлар', settings: 'Созламалар' },
   },
   ru: {
     appBarTitle: 'Мой кабинет',
-    systemStatus: 'Система работает',
+    systemStatus: 'Онлайн',
     personalLabel: 'Личный кабинет',
     citizenFallback: 'гражданин',
     greeting: 'Здравствуйте, {name}',
     supporting: 'Следите за всеми обращениями в одном месте.',
-    heroTitle: 'Есть проблема или предложение?',
-    heroDescription: 'Отправьте новое обращение и следите за его рассмотрением.',
+    heroTitle: 'Новое обращение',
+    heroDescription: 'Отправьте проблему или предложение.',
     heroAction: 'Новое обращение',
     totalRequests: 'Всего обращений',
     activeRequests: 'В работе',
@@ -107,17 +140,28 @@ export const cabinetDesignCopy: Record<Language, CabinetDesignCopy> = {
     emptyTitle: 'Обращений пока нет',
     emptyText: 'Отправьте проблему или предложение — здесь можно будет следить за статусом.',
     emptyAction: 'Отправить первое обращение',
+    settingsTitle: 'Настройки',
+    settingsSection: 'Настройки кабинета',
+    languageSetting: 'Язык',
+    notificationsSetting: 'Уведомления',
+    aboutSetting: 'О приложении',
+    versionLabel: 'Версия 0.1.0',
+    logout: 'Выйти из кабинета',
+    notificationsTitle: 'Уведомления',
+    notificationEmptyTitle: 'Уведомлений пока нет',
+    notificationEmptyText: 'Когда статус обращения изменится, сообщение появится здесь.',
+    notificationEmptyAction: 'Посмотреть обращения',
     nav: { home: 'Главная', requests: 'Заявки', newRequest: 'Новое обращение', newShort: 'Новое', notifications: 'События', settings: 'Настройки' },
   },
   en: {
     appBarTitle: 'My cabinet',
-    systemStatus: 'System operational',
+    systemStatus: 'Online',
     personalLabel: 'Personal cabinet',
     citizenFallback: 'citizen',
     greeting: 'Hello, {name}',
     supporting: 'Track all your requests in one place.',
-    heroTitle: 'Have a problem or suggestion?',
-    heroDescription: 'Send a new request and follow its review.',
+    heroTitle: 'New request',
+    heroDescription: 'Send your problem or suggestion.',
     heroAction: 'New request',
     totalRequests: 'Total requests',
     activeRequests: 'In progress',
@@ -132,6 +176,17 @@ export const cabinetDesignCopy: Record<Language, CabinetDesignCopy> = {
     emptyTitle: 'No requests yet',
     emptyText: 'Send a problem or suggestion and track its status here.',
     emptyAction: 'Send your first request',
+    settingsTitle: 'Settings',
+    settingsSection: 'Cabinet settings',
+    languageSetting: 'Language',
+    notificationsSetting: 'Notifications',
+    aboutSetting: 'About the app',
+    versionLabel: 'Version 0.1.0',
+    logout: 'Sign out',
+    notificationsTitle: 'Notifications',
+    notificationEmptyTitle: 'No notifications yet',
+    notificationEmptyText: 'When a request status changes, its message will appear here.',
+    notificationEmptyAction: 'View requests',
     nav: { home: 'Home', requests: 'Requests', newRequest: 'New request', newShort: 'New', notifications: 'Alerts', settings: 'Settings' },
   },
 };

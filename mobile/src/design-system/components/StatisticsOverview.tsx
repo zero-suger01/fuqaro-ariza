@@ -52,12 +52,12 @@ export function StatisticsOverview({ statuses }: { statuses: readonly string[] }
 
 const styles = StyleSheet.create({
   card: {
-    ...componentShapes.overview,
+    ...componentShapes.leading,
     flexDirection: 'row',
     backgroundColor: colorTokens.surface,
     borderWidth: 1,
     borderColor: colorTokens.border,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
   },
   cardStacked: {
     flexDirection: 'column',
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   item: {
     flex: 1,
     minWidth: 0,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   itemStacked: {
     minHeight: 66,
@@ -86,14 +86,14 @@ const styles = StyleSheet.create({
     borderTopColor: colorTokens.border,
   },
   iconFrame: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
     borderTopLeftRadius: radii.icon,
     borderTopRightRadius: radii.icon,
     borderBottomRightRadius: radii.icon,
-    borderBottomLeftRadius: 6,
+    borderBottomLeftRadius: radii.inner,
     backgroundColor: colorTokens.primaryMist,
   },
   stackedCopy: {
@@ -105,12 +105,12 @@ const styles = StyleSheet.create({
   value: {
     ...typography.number,
     color: colorTokens.textPrimary,
-    marginTop: spacing.xs,
+    marginTop: spacing.xxs,
   },
   label: {
     ...typography.caption,
     color: colorTokens.textSecondary,
-    marginTop: 3,
-    minHeight: 32,
+    marginTop: 2,
+    minHeight: 30,
   },
 });

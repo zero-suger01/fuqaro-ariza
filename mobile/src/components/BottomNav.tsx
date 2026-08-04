@@ -35,10 +35,11 @@ export function BottomNav({ active, onChange }: { active: CabinetTab; onChange?:
               accessibilityState={{ selected }}
               style={({ pressed }) => [styles.item, isNew && styles.newItem, pressed && styles.pressed]}
             >
+              <View style={[styles.indicator, selected && styles.indicatorSelected]} aria-hidden />
               <View style={[styles.iconWrap, selected && styles.iconWrapSelected, isNew && styles.newIcon]}>
                 <Feather
                   name={item.icon}
-                  size={isNew ? 24 : 20}
+                  size={isNew ? 20 : 19}
                   color={isNew ? colorTokens.white : selected ? colorTokens.primary : colorTokens.textMuted}
                   aria-hidden
                 />
@@ -61,8 +62,7 @@ export function BottomNav({ active, onChange }: { active: CabinetTab; onChange?:
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: colorTokens.background,
-    paddingTop: spacing.sm,
+    backgroundColor: colorTokens.surface,
   },
   shell: {
     ...shadows.navigation,
@@ -72,20 +72,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colorTokens.surface,
-    borderWidth: 1,
-    borderColor: colorTokens.border,
-    borderRadius: radii.navigation,
+    borderTopWidth: 1,
+    borderTopColor: colorTokens.border,
+    borderTopLeftRadius: radii.navigation,
+    borderTopRightRadius: radii.navigation,
     paddingHorizontal: spacing.xxs,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.xs,
+    paddingTop: spacing.xxs,
+    paddingBottom: spacing.xxs,
   },
   item: {
     minWidth: 0,
-    minHeight: 58,
+    minHeight: 54,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 2,
     paddingHorizontal: 2,
   },
   pressed: {
@@ -93,11 +94,11 @@ const styles = StyleSheet.create({
     transform: [{ scale: motion.pressScale }],
   },
   newItem: {
-    marginTop: -14,
+    marginTop: 0,
   },
   iconWrap: {
-    width: 40,
-    height: 34,
+    width: 36,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
     borderTopLeftRadius: radii.icon,
@@ -106,18 +107,16 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 6,
   },
   iconWrapSelected: {
-    backgroundColor: colorTokens.primarySoft,
+    backgroundColor: colorTokens.primaryMist,
   },
   newIcon: {
-    width: 50,
-    height: 50,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderBottomRightRadius: 22,
-    borderBottomLeftRadius: 10,
+    width: 38,
+    height: 30,
+    borderTopLeftRadius: radii.icon,
+    borderTopRightRadius: radii.icon,
+    borderBottomRightRadius: radii.inner,
+    borderBottomLeftRadius: radii.icon,
     backgroundColor: colorTokens.primary,
-    borderWidth: 4,
-    borderColor: colorTokens.surface,
   },
   label: {
     ...typography.navigation,
@@ -128,10 +127,19 @@ const styles = StyleSheet.create({
   },
   labelSelected: {
     color: colorTokens.primaryDark,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   newLabel: {
     color: colorTokens.primaryDark,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  indicator: {
+    width: 22,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'transparent',
+  },
+  indicatorSelected: {
+    backgroundColor: colorTokens.primary,
   },
 });

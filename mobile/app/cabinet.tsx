@@ -30,10 +30,12 @@ import {
 import { BottomNav, type CabinetTab } from '@/components/BottomNav';
 import { CabinetHome } from '@/components/cabinet/CabinetHome';
 import { EmptyRequests } from '@/design-system/components/EmptyRequests';
+import { NotificationEmptyState } from '@/design-system/components/NotificationEmptyState';
 import { RequestCard } from '@/design-system/components/RequestCard';
+import { SettingsRow } from '@/design-system/components/SettingsRow';
 import { getCabinetDesignCopy } from '@/design-system/copy';
-import { colorTokens, radii, spacing, typography } from '@/design-system/tokens';
-import { useI18n } from '@/i18n';
+import { colorTokens, componentShapes, radii, spacing, typography } from '@/design-system/tokens';
+import { languages, useI18n } from '@/i18n';
 
 type AuthProps = {
   mode: 'login' | 'register';
@@ -58,7 +60,7 @@ type AuthProps = {
 
 export default function CabinetScreen() {
   const { width } = useWindowDimensions();
-  const { language } = useI18n();
+  const { language, setLanguage } = useI18n();
   const copy = getCabinetDesignCopy(language);
   const pagePadding = width < 360 ? spacing.md : spacing.lg;
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -210,6 +212,13 @@ export default function CabinetScreen() {
     router.push({ pathname: '/track', params: { ticket: complaint.ticket_number } });
   };
 
+  const currentLanguage = languages.find((item) => item.code === language) ?? languages[0];
+  const cycleLanguage = () => {
+    const currentIndex = languages.findIndex((item) => item.code === language);
+    setLanguage(languages[(currentIndex + 1) % languages.length].code);
+  };
+  const initials = `${user.first_name?.[0] || 'F'}${user.last_name?.[0] || ''}`.toLocaleUpperCase();
+
   const home = (
     <CabinetHome
       user={user}
@@ -246,19 +255,25 @@ export default function CabinetScreen() {
   const settings = (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.inner}>
-        <Text style={styles.eyebrow}>SHAXSIY MA’LUMOTLAR</Text>
-        <Text style={styles.title}>Sozlamalar</Text>
+        <Text accessibilityRole="header" style={styles.title}>{copy.settingsTitle}</Text>
         <View style={styles.profileCard}>
           <View style={styles.profileAvatar}>
-            <Text style={styles.profileAvatarText}>{(user.first_name || 'F').slice(0, 1).toUpperCase()}</Text>
+            <Text style={styles.profileAvatarText}>{initials}</Text>
           </View>
-          <Text style={styles.profileName}>{user.fullname}</Text>
-          <Text style={styles.profilePhone}>{user.phone}</Text>
+          <View style={styles.profileCopy}>
+            <Text style={styles.profileName}>{user.fullname}</Text>
+            <Text style={styles.profilePhone}>{user.phone}</Text>
+          </View>
         </View>
-        <Pressable style={styles.logoutButton} onPress={signOut} accessibilityRole="button">
-          <Feather name="log-out" size={18} color={colorTokens.danger} aria-hidden />
-          <Text style={styles.logoutText}>Kabinetdan chiqish</Text>
-        </Pressable>
+        <Text style={styles.groupLabel}>{copy.settingsSection}</Text>
+        <View style={styles.settingsGroup}>
+          <SettingsRow icon="globe" title={copy.languageSetting} value={currentLanguage.label} onPress={cycleLanguage} />
+          <SettingsRow icon="bell" title={copy.notificationsSetting} onPress={() => setTab('notifications')} />
+          <SettingsRow icon="info" title={copy.aboutSetting} value={copy.versionLabel} last />
+        </View>
+        <View style={styles.logoutGroup}>
+          <SettingsRow icon="log-out" title={copy.logout} onPress={signOut} destructive last />
+        </View>
       </View>
     </ScrollView>
   );
@@ -266,12 +281,9 @@ export default function CabinetScreen() {
   const notifications = (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.inner}>
-        <Text style={styles.eyebrow}>AXBOROT</Text>
-        <Text style={styles.title}>Bildirishnomalar</Text>
-        <View style={styles.notificationEmpty}>
-          <Feather name="bell" size={30} color={colorTokens.primary} aria-hidden />
-          <Text style={styles.emptyTitle}>Hozircha bildirishnoma yo‘q</Text>
-          <Text style={styles.emptyText}>Murojaatingiz holati o‘zgarsa, shu yerda ko‘rasiz.</Text>
+        <Text accessibilityRole="header" style={styles.title}>{copy.notificationsTitle}</Text>
+        <View style={styles.notificationState}>
+          <NotificationEmptyState onViewRequests={() => setTab('complaints')} />
         </View>
       </View>
     </ScrollView>
@@ -280,15 +292,15 @@ export default function CabinetScreen() {
   const body = tab === 'home' ? home : tab === 'complaints' ? list : tab === 'notifications' ? notifications : settings;
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { paddingHorizontal: pagePadding }]}>
-      <View style={styles.topbar}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
+      <View style={[styles.topbar, { paddingHorizontal: pagePadding }]}>
         <Text style={styles.topbarTitle}>{copy.appBarTitle}</Text>
         <View accessible accessibilityRole="text" accessibilityLabel={copy.systemStatus} style={styles.online}>
-          <Feather name="check-circle" size={14} color={colorTokens.success} aria-hidden />
+          <View style={styles.onlineDot} aria-hidden />
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82} style={styles.onlineText}>{copy.systemStatus}</Text>
         </View>
       </View>
-      <View style={styles.flex}>{body}</View>
+      <View style={[styles.flex, { paddingHorizontal: pagePadding }]}>{body}</View>
       <BottomNav active={tab} onChange={setTab} />
     </SafeAreaView>
   );
@@ -351,7 +363,7 @@ function AuthScreen({
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.authSafe}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.authHeader}>
           <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button" accessibilityLabel="Orqaga">
@@ -376,6 +388,10 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colorTokens.background,
+  },
+  authSafe: {
+    flex: 1,
+    backgroundColor: colorTokens.background,
     paddingHorizontal: spacing.lg,
   },
   flex: { flex: 1 },
@@ -388,38 +404,44 @@ const styles = StyleSheet.create({
   topbar: {
     width: '100%',
     maxWidth: 720,
-    minHeight: 56,
+    minHeight: 48,
+    flexShrink: 0,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingTop: spacing.xxs,
-    paddingBottom: spacing.xs,
+    paddingVertical: spacing.xxs,
   },
   topbarTitle: {
-    ...typography.sectionTitle,
+    ...typography.pageTitle,
     flex: 1,
     color: colorTokens.textPrimary,
   },
   online: {
-    maxWidth: '53%',
-    minHeight: 34,
+    maxWidth: '38%',
+    minHeight: 28,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     borderRadius: radii.pill,
     backgroundColor: colorTokens.successSoft,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   onlineText: {
     ...typography.caption,
     flexShrink: 1,
     color: colorTokens.success,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  onlineDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: colorTokens.success,
   },
   page: {
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xxl,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.lg,
   },
   sectionHeader: {
     minHeight: 56,
@@ -444,70 +466,70 @@ const styles = StyleSheet.create({
     color: colorTokens.primary,
     paddingBottom: 5,
   },
-  requestList: { gap: spacing.sm },
+  requestList: { gap: spacing.xs },
   profileCard: {
-    marginTop: spacing.xl,
-    backgroundColor: colorTokens.surface,
-    borderRadius: radii.card,
-    borderWidth: 1,
-    borderColor: colorTokens.border,
-    padding: spacing.xl,
+    ...componentShapes.leading,
+    minHeight: 76,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    backgroundColor: colorTokens.primaryMist,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   profileAvatar: {
-    width: 68,
-    height: 68,
-    borderRadius: radii.card,
-    backgroundColor: colorTokens.primarySoft,
+    width: 48,
+    height: 48,
+    borderTopLeftRadius: radii.icon,
+    borderTopRightRadius: radii.compactCard,
+    borderBottomRightRadius: radii.icon,
+    borderBottomLeftRadius: radii.inner,
+    backgroundColor: colorTokens.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileAvatarText: {
     color: colorTokens.primaryDark,
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  profileCopy: {
+    minWidth: 0,
+    flex: 1,
   },
   profileName: {
     ...typography.cardTitle,
     color: colorTokens.textPrimary,
-    marginTop: spacing.md,
   },
   profilePhone: {
     ...typography.supporting,
     color: colorTokens.textSecondary,
     marginTop: spacing.xxs,
   },
-  logoutButton: {
-    minHeight: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.lg,
-    borderRadius: radii.control,
-    borderWidth: 1,
-    borderColor: colorTokens.dangerBorder,
-    backgroundColor: colorTokens.dangerSoft,
-  },
-  logoutText: {
-    ...typography.button,
-    color: colorTokens.danger,
-  },
-  notificationEmpty: {
-    alignItems: 'center',
-    paddingTop: spacing.giant,
-    paddingHorizontal: spacing.xl,
-  },
-  emptyTitle: {
-    ...typography.cardTitle,
-    color: colorTokens.textPrimary,
-    marginTop: spacing.sm,
-  },
-  emptyText: {
-    ...typography.supporting,
+  groupLabel: {
+    ...typography.label,
     color: colorTokens.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.xs,
+    marginTop: spacing.lg,
+    marginBottom: spacing.xs,
+  },
+  settingsGroup: {
+    ...componentShapes.trailing,
+    overflow: 'hidden',
+    backgroundColor: colorTokens.surface,
+    borderWidth: 1,
+    borderColor: colorTokens.border,
+  },
+  logoutGroup: {
+    ...componentShapes.trailing,
+    overflow: 'hidden',
+    backgroundColor: colorTokens.surface,
+    borderWidth: 1,
+    borderColor: colorTokens.border,
+    marginTop: spacing.md,
+  },
+  notificationState: {
+    marginTop: spacing.md,
   },
   authHeader: {
     flexDirection: 'row',

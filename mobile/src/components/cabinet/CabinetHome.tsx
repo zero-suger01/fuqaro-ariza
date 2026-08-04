@@ -30,8 +30,15 @@ export function CabinetHome({ user, complaints, onNewRequest, onViewAll, onOpenR
     >
       <View style={styles.inner}>
         <View style={styles.introduction}>
-          <Text style={styles.eyebrow}>{copy.personalLabel.toLocaleUpperCase()}</Text>
-          <Text accessibilityRole="header" style={styles.greeting}>{copy.greeting.replace('{name}', name)}</Text>
+          <Text
+            accessibilityRole="header"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.84}
+            style={styles.greeting}
+          >
+            {copy.greeting.replace('{name}', name)}
+          </Text>
           <Text style={styles.supporting}>{copy.supporting}</Text>
         </View>
 
@@ -74,8 +81,8 @@ export function CabinetHome({ user, complaints, onNewRequest, onViewAll, onOpenR
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xxl,
+    paddingTop: spacing.xxs,
+    paddingBottom: spacing.lg,
   },
   inner: {
     width: '100%',
@@ -83,23 +90,20 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   introduction: {
-    marginBottom: spacing.xl,
-  },
-  eyebrow: {
-    ...typography.label,
-    color: colorTokens.primary,
-    letterSpacing: 1.25,
+    marginBottom: spacing.sm,
   },
   greeting: {
-    ...typography.pageTitle,
+    fontSize: 24,
+    lineHeight: 29,
+    fontWeight: '600',
+    letterSpacing: -0.25,
     color: colorTokens.textPrimary,
-    marginTop: spacing.xs,
   },
   supporting: {
-    ...typography.body,
+    ...typography.supporting,
     maxWidth: 480,
     color: colorTokens.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: spacing.xxs,
   },
   overview: {
     marginTop: spacing.sm,
@@ -110,8 +114,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
-    marginTop: spacing.xxl,
-    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
   sectionTitle: {
     ...typography.sectionTitle,
@@ -134,6 +138,6 @@ const styles = StyleSheet.create({
     color: colorTokens.primary,
   },
   requests: {
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
 });

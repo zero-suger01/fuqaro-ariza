@@ -24,6 +24,7 @@ Expo + React Native skeleti `mobile/` papkasida yaratildi. Birinchi M1 oqimi rea
 - [x] Push token registratsiyasi (Expo), notification handler va murojaat offline draft'i
 - [x] Fuqaro kabineti ro'yxatdan o'tishida SMS OTP tasdiqlash
 - [x] Fuqaro kabineti bosh ekrani uchun qayta ishlatiladigan «Contemporary Uzbek Civic Design» tizimi: tokenlar, status mapping, hero, statistika, murojaat kartasi, bottom navigation va original light/dark SVG patternlar qo'shildi; 375px/1280px Expo Web renderda tekshirildi.
+- [x] «Quiet Uzbek Civic Modernism» corrective sprint: Home kompozitsiyasi va bottom navigation ixchamlashtirildi, Settings guruhlangan amaliy layoutga o'tkazildi, Notifications uchun original SVG empty state qo'shildi; 360×800 da useful content va uch ekran vizual tekshirildi.
 - [ ] Push production delivery: EAS project ID va real Android/iOS device test
 
 **Follow-up topilma:** mobil client `POST /api/public/complaints` da `source=mobile` yuboradi, `docs/03-kontraktlar.md` §2.3 esa hozircha `mobile` qiymatini sanamaydi. Joriy client/backend xulqi ushbu UI sprintida ataylab o'zgartirilmadi; keyingi kontrakt ko'rib chiqishda hujjat va amaldagi telemetriya semantikasi bir xil qilinishi kerak.

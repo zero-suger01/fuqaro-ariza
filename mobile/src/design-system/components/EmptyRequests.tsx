@@ -2,7 +2,6 @@ import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@/i18n';
 import { getCabinetDesignCopy } from '@/design-system/copy';
-import { PatternSurface } from '@/design-system/components/PatternSurface';
 import { colorTokens, componentShapes, motion, radii, spacing, typography } from '@/design-system/tokens';
 
 export function EmptyRequests({ onPress }: { onPress: () => void }) {
@@ -11,7 +10,7 @@ export function EmptyRequests({ onPress }: { onPress: () => void }) {
 
   return (
     <View style={styles.card}>
-      <PatternSurface variant="light" />
+      <View style={styles.accentRail} aria-hidden />
       <View style={styles.iconFrame}>
         <Feather name="file-plus" size={24} color={colorTokens.primary} aria-hidden />
       </View>
@@ -31,26 +30,25 @@ export function EmptyRequests({ onPress }: { onPress: () => void }) {
 
 const styles = StyleSheet.create({
   card: {
-    ...componentShapes.card,
+    ...componentShapes.trailing,
     position: 'relative',
     overflow: 'hidden',
     alignItems: 'center',
     backgroundColor: colorTokens.primaryMist,
     borderWidth: 1,
     borderColor: colorTokens.border,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xxl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
   },
   iconFrame: {
-    width: 52,
-    height: 52,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderTopLeftRadius: radii.compactCard,
     borderTopRightRadius: radii.icon,
     borderBottomRightRadius: radii.compactCard,
-    borderBottomLeftRadius: 7,
+    borderBottomLeftRadius: radii.inner,
     backgroundColor: colorTokens.surface,
   },
   title: {
@@ -67,7 +65,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   button: {
-    minHeight: 48,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -75,7 +73,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.control,
     backgroundColor: colorTokens.surface,
     paddingHorizontal: spacing.md,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   pressed: {
     opacity: 0.86,
@@ -85,5 +83,13 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: colorTokens.primary,
     textAlign: 'center',
+  },
+  accentRail: {
+    position: 'absolute',
+    left: 0,
+    top: spacing.lg,
+    bottom: spacing.lg,
+    width: 3,
+    backgroundColor: colorTokens.primary,
   },
 });

@@ -6,7 +6,7 @@ import { useI18n } from '@/i18n';
 import { getCabinetDesignCopy } from '@/design-system/copy';
 import { getCitizenStatusLabel } from '@/design-system/status';
 import { StatusChip } from '@/design-system/components/StatusChip';
-import { colorTokens, componentShapes, motion, radii, shadows, spacing, typography } from '@/design-system/tokens';
+import { colorTokens, componentShapes, motion, radii, spacing, typography } from '@/design-system/tokens';
 
 const categoryIcons: Record<string, keyof typeof Feather.glyphMap> = {
   elektr: 'zap',
@@ -70,6 +70,7 @@ export function RequestCard({ complaint, onPress }: { complaint: CitizenComplain
       accessibilityHint={copy.viewDetails}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
+      <View style={styles.accentRail} aria-hidden />
       <View style={styles.topRow}>
         <View style={styles.identity}>
           <View style={styles.iconFrame}>
@@ -85,7 +86,7 @@ export function RequestCard({ complaint, onPress }: { complaint: CitizenComplain
       {width < 350 ? <StatusChip status={complaint.status_simple} compact style={styles.narrowStatus} /> : null}
 
       <Text style={styles.category}>{categoryName}</Text>
-      <Text style={styles.description} numberOfLines={3}>
+      <Text style={styles.description} numberOfLines={2}>
         {complaint.description || copy.summaryFallback}
       </Text>
 
@@ -110,12 +111,14 @@ export function RequestCard({ complaint, onPress }: { complaint: CitizenComplain
 
 const styles = StyleSheet.create({
   card: {
-    ...componentShapes.card,
-    ...shadows.card,
+    ...componentShapes.trailing,
+    position: 'relative',
+    overflow: 'hidden',
     backgroundColor: colorTokens.surface,
     borderWidth: 1,
     borderColor: colorTokens.border,
-    padding: spacing.lg,
+    padding: spacing.md,
+    paddingLeft: spacing.lg,
   },
   pressed: {
     opacity: 0.92,
@@ -123,7 +126,7 @@ const styles = StyleSheet.create({
   },
   topRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
   },
@@ -135,15 +138,15 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   iconFrame: {
-    width: 42,
-    height: 42,
+    width: 36,
+    height: 36,
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
     borderTopLeftRadius: radii.icon,
     borderTopRightRadius: radii.icon,
     borderBottomRightRadius: radii.icon,
-    borderBottomLeftRadius: 6,
+    borderBottomLeftRadius: radii.inner,
     backgroundColor: colorTokens.primaryMist,
   },
   ticketCopy: {
@@ -169,17 +172,17 @@ const styles = StyleSheet.create({
   },
   category: {
     ...typography.cardTitle,
-    color: colorTokens.primary,
-    marginTop: spacing.md,
+    color: colorTokens.textPrimary,
+    marginTop: spacing.sm,
   },
   description: {
-    ...typography.body,
-    color: colorTokens.textPrimary,
-    marginTop: spacing.xs,
+    ...typography.supporting,
+    color: colorTokens.textSecondary,
+    marginTop: spacing.xxs,
   },
   meta: {
-    gap: spacing.xs,
-    marginTop: spacing.md,
+    gap: spacing.xxs,
+    marginTop: spacing.sm,
   },
   metaRow: {
     flexDirection: 'row',
@@ -192,15 +195,23 @@ const styles = StyleSheet.create({
     color: colorTokens.textSecondary,
   },
   actionRow: {
-    minHeight: 44,
+    minHeight: 36,
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: spacing.xs,
-    marginTop: spacing.sm,
+    marginTop: spacing.xxs,
   },
   action: {
     ...typography.button,
     color: colorTokens.primary,
+  },
+  accentRail: {
+    position: 'absolute',
+    left: 0,
+    top: spacing.md,
+    bottom: spacing.md,
+    width: 3,
+    backgroundColor: colorTokens.primary,
   },
 });
