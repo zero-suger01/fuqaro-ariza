@@ -86,7 +86,7 @@ function CategoryForm({
         </div>
 
         <div>
-          <Label>Javob muddati (soat)</Label>
+          <Label>Ijro muddati (soat)</Label>
           <Input type="number" min={1} value={sla} onChange={(e) => setSla(e.target.value)} />
           <p className="text-xs text-text-muted mt-1">
             Muhimlik yuqori bo&apos;lsa muddat avtomatik qisqaradi (critical — 2 soat).
@@ -197,7 +197,7 @@ function CategoriesView() {
   }, [categories, searchQuery]);
 
   return (
-    <AppShell title="Kategoriyalar" requireRoles={["admin"]}>
+    <AppShell title="Kategoriyalar" requireRoles={["district_admin", "system_admin"]}>
       <Card>
         <div className="flex items-start gap-2">
           <Sparkles className="h-4 w-4 text-accent mt-0.5 shrink-0" />

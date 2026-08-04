@@ -49,6 +49,9 @@ def _staff_me(user: User) -> MeOut:
         role=user.role,
         department_id=user.department_id,
         department_name=user.department.name("uz") if user.department else None,
+        region_id=user.region_id,
+        district_id=user.district_id,
+        district_name=(user.district.names or {}).get("uz") if user.district else None,
         must_change_password=user.must_change_password,
         avatar_url=user.avatar_url,
     )

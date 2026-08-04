@@ -12,6 +12,7 @@ class QrCode(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     code: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    district_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("districts.id"), nullable=True, index=True)
     neighborhood_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("neighborhoods.id"), nullable=True)
     note: Mapped[str | None] = mapped_column(String(200), nullable=True)
     # M16/v1.7.2 — QR har bir tuman/MFY/ko'cha uchun noyob (mijoz so'ragan):

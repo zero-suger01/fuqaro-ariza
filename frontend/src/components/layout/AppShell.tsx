@@ -42,27 +42,30 @@ const ADMIN_NAV: GatedGroup[] = [
   {
     title: "Operatsion navbat",
     items: [
-      { href: "/admin", label: "Bosh ekran", icon: LayoutDashboard, roles: ["admin"] },
+      { href: "/admin", label: "Bosh ekran", icon: LayoutDashboard, roles: ["district_admin", "system_admin"] },
+      { href: "/admin/viloyat", label: "Viloyat monitoringi", icon: BarChart3, roles: ["province_admin", "system_admin"] },
+      { href: "/admin/hududlar", label: "Hududlar", icon: Map, roles: ["system_admin"] },
       { href: "/admin/navbatim", label: "Navbatim", icon: Inbox, roles: ["department_staff"] },
       {
         href: "/admin/murojaatlar?queue=unassigned",
         label: "Biriktirilmagan",
         icon: ClipboardList,
-        roles: ["admin"],
+        roles: ["district_admin"],
         countKey: "unassigned",
       },
       {
         href: "/admin/tasdiqlash",
         label: "AI nazorati",
         icon: SquareCheckBig,
-        roles: ["admin"],
+        roles: ["district_admin"],
         countKey: "ai_exceptions",
       },
-      { href: "/admin/murojaatlar?queue=sla_risk", label: "Muddat tugayapti", icon: Clock, countKey: "sla_risk" },
+      { href: "/admin/murojaatlar?queue=sla_risk", label: "Muddat tugayapti", icon: Clock, roles: ["district_admin"], countKey: "sla_risk" },
       {
         href: "/admin/murojaatlar?queue=overdue",
         label: "Muddati o'tgan",
         icon: AlertTriangle,
+        roles: ["district_admin"],
         countKey: "overdue",
         danger: true,
       },
@@ -70,6 +73,7 @@ const ADMIN_NAV: GatedGroup[] = [
         href: "/admin/murojaatlar?queue=need_info",
         label: "Ma'lumot kutilmoqda",
         icon: MessageCircleQuestion,
+        roles: ["district_admin"],
         countKey: "awaiting_info",
       },
       // «Barcha murojaatlar» shu guruhning oxirida — filtrsiz ro'yxat.
@@ -84,36 +88,41 @@ const ADMIN_NAV: GatedGroup[] = [
       //
       // Eslatma: eksport uchun alohida menyu elementi YO'Q va bo'lmasin —
       // sabab docs/10 §10.2 da yozilgan.
-      { href: "/admin/murojaatlar", label: "Barcha murojaatlar", icon: List },
+      { href: "/admin/murojaatlar", label: "Barcha murojaatlar", icon: List, roles: ["district_admin"] },
     ],
   },
   {
     title: "Monitoring",
     items: [
-      { href: "/admin/kpi", label: "KPI", icon: BarChart3, roles: ["admin"] },
-      { href: "/admin/xarita", label: "Xarita", icon: Map, roles: ["admin"] },
+      { href: "/admin/kpi", label: "KPI", icon: BarChart3, roles: ["district_admin"] },
+      { href: "/admin/xarita", label: "Xarita", icon: Map, roles: ["district_admin"] },
     ],
   },
   {
     title: "Sozlamalar",
     items: [
-      { href: "/admin/bolimlar", label: "Bo'limlar", icon: Building2, roles: ["admin"] },
-      { href: "/admin/xodimlar", label: "Xodimlar", icon: Users, roles: ["admin"] },
-      { href: "/admin/kategoriyalar", label: "Kategoriyalar", icon: Tags, roles: ["admin"] },
+      { href: "/admin/bolimlar", label: "Bo'limlar", icon: Building2, roles: ["district_admin", "system_admin"] },
+      { href: "/admin/xodimlar", label: "Xodimlar", icon: Users, roles: ["district_admin", "system_admin"] },
+      { href: "/admin/kategoriyalar", label: "Kategoriyalar", icon: Tags, roles: ["district_admin", "system_admin"] },
     ],
   },
   {
     title: "Vositalar",
     items: [
-      { href: "/admin/qr", label: "QR kodlar", icon: QrCode, roles: ["admin"] },
-      { href: "/admin/audit", label: "Audit log", icon: ScrollText, roles: ["admin"] },
+      { href: "/admin/qr", label: "QR kodlar", icon: QrCode, roles: ["district_admin"] },
+      { href: "/admin/audit", label: "Audit log", icon: ScrollText, roles: ["district_admin", "system_admin"] },
     ],
   },
 ];
 
 function visibleGroups(role: string, queues: QueueStats | null): NavGroup[] {
   return ADMIN_NAV.map((group) => ({
-    title: group.title,
+    title:
+      group.title === "Operatsion navbat" && role === "system_admin"
+        ? "Boshqaruv"
+        : group.title === "Operatsion navbat" && role === "province_admin"
+          ? "Viloyat monitoringi"
+          : group.title,
     items: group.items
       .filter((item) => !item.roles || item.roles.includes(role))
       .map((item) => ({
@@ -153,10 +162,9 @@ export function AppShell({
     }
   }, [user, loading, router]);
 
-  // Navbat hisoblagichlari faqat adminda — `stats/queues` admin-only
-  // (department_staff uchun 403 bo'lardi).
+  // Navbat hisoblagichlari faqat tuman operatsion adminida kerak.
   useEffect(() => {
-    if (user?.role !== "admin") return;
+    if (user?.role !== "district_admin") return;
     apiGet<QueueStats>("/api/admin/stats/queues")
       .then(setQueues)
       .catch(() => setQueues(null));

@@ -2,7 +2,9 @@
   "common": {
     "appName": "e-Murojaat",
     "issuer": "Uychi District Administration",
-    "phoneSupport": "Need help? Call: 71 000 00 00",
+    "phoneSupport": "Need help? Call",
+    "telegramButton": "Send via Telegram",
+    "telegramComingSoon": "Telegram bot coming soon",
     "backToHome": "Home",
     "loading": "Loading...",
     "back": "Back",
@@ -21,7 +23,8 @@
     "step2": "Leave your phone number",
     "step3": "Get a tracking number — we'll notify you by SMS",
     "footerOrg": "Uychi District Administration",
-    "footerBot": "You can also submit a complaint via our Telegram bot"
+    "telegramButton": "Send via Telegram",
+    "telegramComingSoon": "Telegram bot coming soon"
   },
   "wizard": {
     "progress": "Step {current} of {total}",

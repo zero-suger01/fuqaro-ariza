@@ -1,6 +1,6 @@
 // --- Auth (docs/03-kontraktlar.md §4) ---
 
-export type StaffRole = "department_staff" | "admin";
+export type StaffRole = "department_staff" | "district_admin" | "province_admin" | "system_admin";
 
 export interface AuthUser {
   kind: "citizen" | "staff";
@@ -13,6 +13,9 @@ export interface AuthUser {
   role: StaffRole | null;
   department_id: string | null;
   department_name: string | null;
+  region_id: string | null;
+  district_id: string | null;
+  district_name: string | null;
   /** v1.4 — `true` bo'lsa boshqa hech qayerga o'tmasdan parol almashtiriladi. */
   must_change_password?: boolean;
   /** v1.7 — profil rasmi (S3/MinIO). */
@@ -399,6 +402,7 @@ export interface PublicCategory {
 export interface PublicNeighborhood {
   id: string;
   name: string;
+  district_id: string | null;
 }
 
 export interface ComplaintSubmitResponse {
@@ -461,6 +465,7 @@ export interface SttJobStatus {
 
 export interface QrLanding {
   neighborhood_id: string | null;
+  district_id: string | null;
   neighborhood_name: string | null;
   // v1.7.2 — QR tuman/MFY/ko'chaga noyob, shuning uchun `/yangi` 2-qadam
   // manzilini avtomatik to'ldirish uchun (app/routers/public.py).

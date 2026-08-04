@@ -87,10 +87,17 @@ class CategoryOut(BaseModel):
 class NeighborhoodOut(BaseModel):
     id: uuid.UUID
     name: str
+    district_id: uuid.UUID | None = None
+
+
+class SupportContactOut(BaseModel):
+    phone: str | None = None
+    telegram_url: str | None = None
 
 
 class QrLandingOut(BaseModel):
     neighborhood_id: uuid.UUID | None
+    district_id: uuid.UUID | None = None
     neighborhood_name: str | None
     # v1.7.2 — QR manzilga bog'liq (tuman/MFY/ko'cha noyob), shuning uchun
     # fuqaro `/yangi`ga shu orqali kirsa 2-qadam manzilini avtomatik

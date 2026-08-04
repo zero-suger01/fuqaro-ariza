@@ -138,7 +138,7 @@ function DepartmentsView() {
   }
 
   return (
-    <AppShell title="Bo'limlar" requireRoles={["admin"]}>
+    <AppShell title="Bo'limlar" requireRoles={["district_admin", "system_admin"]}>
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-text-primary">Bo&apos;lim va tashkilotlar</h2>

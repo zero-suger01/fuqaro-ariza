@@ -32,6 +32,9 @@ class MeOut(BaseModel):
     role: str | None = None
     department_id: uuid.UUID | None = None
     department_name: str | None = None
+    region_id: uuid.UUID | None = None
+    district_id: uuid.UUID | None = None
+    district_name: str | None = None
     # v1.4: seed'dan yaratilgan xodim standart parol bilan ishlab
     # ketmasligi uchun — `true` bo'lsa FE parol almashtirish sahifasiga
     # majburan yo'naltiradi ([04] §2 users).

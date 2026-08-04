@@ -151,7 +151,7 @@ export default function KpiPage() {
   }));
 
   return (
-    <AppShell title="KPI" requireRoles={["admin"]}>
+    <AppShell title="KPI" requireRoles={["district_admin"]}>
       <div className="flex flex-col md:flex-row gap-4 flex-wrap">
         <StatCard label="Bugungi murojaatlar" value={stats?.today ?? 0} />
         <StatCard label="Haftalik murojaatlar" value={stats?.this_week ?? 0} />

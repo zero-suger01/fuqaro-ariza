@@ -1,6 +1,6 @@
-# 09 — Mobil ilova (V2 — hozir QILINMAYDI)
+# 09 — Mobil ilova (V2 — M1 boshlandi)
 
-Bu workstream **P1–P3 da boshlanmaydi**. Veb portali mobile-first bo'lgani + Telegram bot bo'lgani uchun pilotda mobil ilova shart emas. Bu fayl kelajakdagi ishni kontrakt bilan moslab qo'yish uchun.
+Expo + React Native skeleti `mobile/` papkasida yaratildi. Birinchi M1 oqimi real public API bilan ishlaydi; keyingi native imkoniyatlar bosqichma-bosqich qo'shiladi.
 
 ## Qarorlar (hozirdan qat'iy)
 
@@ -14,6 +14,10 @@ Bu workstream **P1–P3 da boshlanmaydi**. Veb portali mobile-first bo'lgani + T
 2. **M2:** Push bildirishnoma (Expo Push; backendga `push_tokens` jadvali va endpoint docs-first qo'shiladi), murojaatlarim (lokal saqlangan ticketlar), offline draft.
 3. **M3:** Play Market / App Store nashr, OTA update (EAS).
 
-## Nega hozir emas
+## M1 holati (2026-08-04)
 
-2 kishilik jamoada P1–P3 (veb+AI+bot) muhimroq; ilova do'kon moderatsiyasi va signing bilan vaqt oladi; foydalanuvchi bazasi avval veb/botda tekshiriladi.
+- [x] Expo skeleti, typed API client va Android/iOS konfiguratsiyasi
+- [x] Fuqaro bosh sahifasi, murojaat yuborish wizard'i va ticket holatini tekshirish
+- [x] Mavjud `/api/public/neighborhoods`, `/api/public/complaints`, `/api/public/complaints/track`, `/api/public/support` kontraktlariga ulanish
+- [x] Foto/video/ovoz va lokatsiyani native picker orqali yuborish
+- [ ] Push bildirishnoma, lokal ticketlar va offline draft

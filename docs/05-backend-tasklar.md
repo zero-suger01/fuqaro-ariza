@@ -73,6 +73,16 @@ Sabab: rollar (`operator`/`employee`/`manager`/`admin`) bo'limga bog'lanmagan, g
 
 **Docker'da/local'da real sinovdan o'tkazildi:** yuqori ishonchli "tok urmoqda, sim uzilgan, elektr ta'minoti yo'q" matnli murojaat avtomatik "Elektr tarmoqlari korxonasi"ga tushdi (`status=assigned`, `complaint_events.assigned actor_type=ai`); past ishonchli matn biriktirilmagan qoldi; `department_staff` (Elektr bo'limiga bog'langan test hisob) login qilib faqat shu murojaatni ko'rdi, `dashboard`/`kpi`ga 403 oldi; admin qo'lda boshqa bo'limga qayta yo'naltirganda `ai_routing_corrected_7d` to'g'ri oshdi. Brauzerda (real login, real backend) ham tasdiqlandi: nav faqat "Murojaatlar" (department_staff) yoki to'liq (admin), "Bo'limga biriktirish" kartochkasi faqat admin uchun. `pytest -m smoke` 4/4, `npm run lint && npm run build` toza.
 
+## M18 — Namangan multi-tuman
+
+- [x] **M18.1** Hudud jadvallari va users/complaints/neighborhoods/qr_codes FK migratsiyasi.
+- [x] **M18.2** To'rt pog'onali RBAC va eski `admin` → `district_admin` migratsiyasi.
+- [x] **M18.3** Viloyat aggregate API va scope enforcement.
+- [x] **M20.1** Foydalanuvchi bergan Namangan ma'muriy-hududiy DOCX'dagi ko'rsatilgan MFYlar importi (186 ta).
+- [x] **M21.1** Tuman drill-down summary/MFY API va district scope tekshiruvi.
+- [x] **M21.2** DB-driven district/MFY catalog va QR CRUD scope himoyasi.
+- [x] **M22.1** `system_admin` hudud va MFY CRUD API, parent-region validation.
+
 ## R1–R2 — Avtomatlashtirish (premortem asosida, kontrakt v1.2)
 
 Sabab: premortem hisoboti (2026-07-25) ko'rsatdi — AI'ning ko'rinadigan qiymati (xulosa, javob drafti) faqat LLM fallback yo'lida yaratilardi, ya'ni eng ko'p uchraydigan murojaatlarda AI hech narsa bermasdi; xodim javobni noldan yozib, murojaatni 3–4 bosishda qo'lda yopardi. Kontrakt o'zgarishi: [03](03-kontraktlar.md) v1.2, [07](07-ai-layer.md) §1.
@@ -144,6 +154,11 @@ Sabab: lokal sinovda «Uyimizda 2 kundan beri chiroq va suv to'xtab qoldi» matn
 - [ ] **S3.3 (M)** `worker.py`: har `secondary_category_codes` kodi uchun sub-task (bo'lim = kategoriyaning `department_id`). **LLM'ga ishonilmaydi** — noma'lum kod, asosiy kategoriyaning takrori, asosiy bo'lim bilan bir xil bo'limga tushadigan kod va bo'limsiz kategoriya tashlanadi. `needs_review=true`, `subtask_created` event `actor_type=ai`, bo'lim xodimlariga bildirishnoma.
 - [ ] **S3.4 (S)** `SubtaskOut` ga `created_by_ai`; tafsilot sahifasida «AI aniqladi» belgisi.
 - [ ] **S3.5 (S)** `tests/test_multi_department.py`: AI sub-task yaratishi, filtrlar (dublikat/noma'lum/bir xil bo'lim), ochiq sub-task bilan `resolved` bloklanishi.
+
+## M23 — Fuqaro aloqa kanallari
+
+- [x] **M23.1** `districts.support_phone` migratsiyasi va tuman admini uchun `GET/PATCH /api/admin/district-settings`.
+- [x] **M23.2** Ochiq `GET /api/public/support` endpointi: tuman raqami va konfiguratsiyadagi Telegram havolasi.
 
 ## Doimiy qoidalar (har taskda)
 

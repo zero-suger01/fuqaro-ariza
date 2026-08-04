@@ -20,6 +20,7 @@ from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
 from app.models.complaint_file import ComplaintFile
 from app.models.neighborhood import Neighborhood
+from app.models.district import District
 from app.services.deadline import compute_deadline
 from app.services.notifications import notify_citizen
 from app.services.queue import enqueue
@@ -60,6 +61,14 @@ def create_complaint(
 
     if neighborhood_id is not None and db.get(Neighborhood, neighborhood_id) is None:
         raise AppError(422, "validation_error", "Mahalla topilmadi")
+    district_id = None
+    if neighborhood_id is not None:
+        neighborhood = db.get(Neighborhood, neighborhood_id)
+        district_id = neighborhood.district_id if neighborhood else None
+    if district_id is None:
+        district_id = db.execute(
+            select(District.id).where(District.code == "UYCHI", District.is_active.is_(True)).limit(1)
+        ).scalar_one_or_none()
 
     citizen = db.execute(select(Citizen).where(Citizen.phone == phone)).scalar_one_or_none()
     if citizen is None:
@@ -109,6 +118,7 @@ def create_complaint(
         longitude=longitude,
         address=address,
         neighborhood_id=neighborhood_id,
+        district_id=district_id,
         deadline_at=compute_deadline(now, category.sla_hours, "medium"),
     )
     db.add(complaint)

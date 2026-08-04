@@ -64,10 +64,11 @@ export default function AdminComplaintDetailPage() {
   }
 
   useEffect(() => {
+    if (user?.role !== "district_admin") return;
     load();
     apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => setDepartments([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, user?.role]);
 
   // v1.4: avtomatik `accepted` OLIB TASHLANDI. Sahifani ochish «ko'rdim»
   // degani, «qabul qildim» degani emas — u SLA va birinchi-harakat
@@ -216,7 +217,7 @@ export default function AdminComplaintDetailPage() {
 
   if (!complaint) {
     return (
-      <AppShell title="Murojaat tafsiloti">
+      <AppShell title="Murojaat tafsiloti" requireRoles={["district_admin"]}>
         <div className="py-10 text-center text-text-muted text-sm">Yuklanmoqda...</div>
       </AppShell>
     );
@@ -257,7 +258,7 @@ export default function AdminComplaintDetailPage() {
   const otherFiles = complaint.files.filter((f) => f.kind !== "image" && f.kind !== "audio");
 
   return (
-    <AppShell title={`Murojaat ${complaint.ticket_number}`}>
+    <AppShell title={`Murojaat ${complaint.ticket_number}`} requireRoles={["district_admin"]}>
       {error && (
         <div className="rounded-inner bg-danger/10 text-danger text-sm px-4 py-3">{error}</div>
       )}
@@ -715,7 +716,7 @@ export default function AdminComplaintDetailPage() {
             )}
           </Card>
 
-          {user?.role === "admin" && (
+          {["district_admin", "system_admin"].includes(user?.role ?? "") && (
             <Card>
               <h2 className="text-base font-semibold text-text-primary mb-4">Bo&apos;limga biriktirish / qayta yo&apos;naltirish</h2>
               {complaint.department && (
@@ -801,7 +802,7 @@ export default function AdminComplaintDetailPage() {
                       </span>
                     )}
                     <p className="text-sm text-text-secondary mt-1">{s.note}</p>
-                    {s.status === "open" && (user?.role === "admin" || user?.department_id === s.department_id) && (
+                    {s.status === "open" && (["district_admin", "system_admin"].includes(user?.role ?? "") || user?.department_id === s.department_id) && (
                       <Button
                         variant="secondary"
                         className="mt-2"
@@ -816,7 +817,7 @@ export default function AdminComplaintDetailPage() {
               </div>
             )}
 
-            {user?.role === "admin" && !["closed", "rejected", "archived"].includes(complaint.status) && (
+            {["district_admin", "system_admin"].includes(user?.role ?? "") && !["closed", "rejected", "archived"].includes(complaint.status) && (
               <form onSubmit={handleCreateSubtask} className="mt-4 pt-4 border-t border-border flex flex-col gap-2">
                 <Label>Qo&apos;shimcha bo&apos;lim</Label>
                 <Select value={subtaskDept} onChange={(e) => setSubtaskDept(e.target.value)}>

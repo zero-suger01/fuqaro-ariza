@@ -18,7 +18,9 @@ class User(Base):
     phone: Mapped[str] = mapped_column(String(16), unique=True, index=True)
     email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
-    role: Mapped[str] = mapped_column(String(20), default="department_staff")
+    role: Mapped[str] = mapped_column(String(24), default="department_staff")
+    region_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("regions.id"), nullable=True, index=True)
+    district_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("districts.id"), nullable=True, index=True)
     department_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("departments.id"), nullable=True, index=True
     )
@@ -32,6 +34,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     department: Mapped["Department | None"] = relationship(foreign_keys=[department_id])
+    district: Mapped["District | None"] = relationship(foreign_keys=[district_id])
 
     @property
     def fullname(self) -> str:

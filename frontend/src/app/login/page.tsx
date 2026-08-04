@@ -29,8 +29,10 @@ export default function LoginPage() {
       // v1.4: vaqtinchalik parol bilan kirgan xodim avval uni almashtiradi.
       const staffHome = user.must_change_password
         ? "/parol"
-        : user.role === "admin"
+        : ["district_admin", "system_admin"].includes(user.role ?? "")
           ? "/admin"
+          : user.role === "province_admin"
+            ? "/admin/viloyat"
           : "/admin/navbatim";
       router.push(user.kind === "staff" ? staffHome : "/");
     } catch (err) {

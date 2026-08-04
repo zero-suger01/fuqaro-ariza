@@ -48,5 +48,12 @@ def require_roles(*roles: str):
     return _dep
 
 
-get_current_admin = require_roles("admin")
-get_current_staff_up = require_roles("department_staff", "admin")
+get_current_admin = require_roles("district_admin", "system_admin")
+get_current_province = require_roles("province_admin", "system_admin")
+get_current_system_admin = require_roles("system_admin")
+get_current_staff_up = require_roles("department_staff", "district_admin", "system_admin")
+
+
+def can_access_region(user: User, region_id: uuid.UUID | None) -> bool:
+    """Global users may cross regions; province users stay in their region."""
+    return user.role == "system_admin" or region_id is None or user.region_id == region_id

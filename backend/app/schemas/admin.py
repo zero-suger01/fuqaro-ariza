@@ -60,6 +60,23 @@ class DepartmentPatch(BaseModel):
     wip_limit: int | None = Field(default=None, ge=0)
 
 
+class DistrictSettingsOut(BaseModel):
+    district_id: uuid.UUID
+    district_name: str
+    support_phone: str | None
+
+
+class DistrictSettingsPatch(BaseModel):
+    support_phone: str | None = Field(default=None, max_length=16)
+
+    @field_validator("support_phone")
+    @classmethod
+    def validate_support_phone(cls, value: str | None) -> str | None:
+        if value is not None and value and (not value.startswith("+998") or len(value) != 13 or not value[1:].isdigit()):
+            raise ValueError("Telefon +998XXXXXXXXX formatida bo'lishi kerak")
+        return value or None
+
+
 class CategoryAdminOut(BaseModel):
     id: uuid.UUID
     code: str

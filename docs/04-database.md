@@ -9,11 +9,16 @@ citizens, users(staff), departments, categories,
 neighborhoods, complaints, complaint_files, complaint_events, replies,
 citizen_messages, complaint_subtasks,
 ai_analyses, stt_jobs, notifications, audit_logs,
-qr_codes, ticket_counters, settings
+    regions, districts, district_departments,
+    qr_codes, ticket_counters, settings
 ```
 
 > v1.3: `category_keywords` va `keyword_suggestions` jadvallari **olib tashlandi** (keyword dvigateli yo'q, [07](07-ai-layer.md) §1). Migratsiya: M8.
 > v1.4: `citizen_messages` va `complaint_subtasks` qo'shildi. Migratsiya: M9.
+> v2.0/M18: Namangan viloyati multi-tuman scope jadvallari va FKlari qo'shildi; mavjud yozuvlar `NAMANGAN/UYCHI`ga backfill, `admin` roli `district_admin`ga map qilinadi.
+> v2.0.1/M19: 12 tuman + Namangan shahri rasmiy seed'i; `YANGI_NAMANGAN` uchun self-FK parent scope.
+> v2.0.2/M20: foydalanuvchi bergan DOCX'da ko'rsatilgan 186 ta MFY nomi `neighborhoods.district_id` bilan import qilindi; `NAMUNA` demo qatorlari olib tashlandi.
+> v2.1: tuman drill-down va DB-driven MFY/QR catalog endpointlari; QR yozuvlari district scope bilan himoyalandi.
 
 ## 2. Jadval spetsifikatsiyalari
 
@@ -34,11 +39,19 @@ Guest submit: telefon bo'yicha upsert (ism yangilanadi, mavjud bo'lsa qayta yara
 
 ### users — FAQAT xodimlar
 
-Mavjud jadval o'zgaradi: `role` → `department_staff|admin` (B6, `alembic/versions/m6_role_model_v2.py`; dastlab `operator|employee|manager|admin` edi, `operator/employee/manager` birlashtirildi); qo'shiladi: `department_id uuid NULL FK`, `is_active bool default true`. Fuqaro-akkauntlar bu jadvaldan `citizens` ga ko'chiriladi (§4).
+ Mavjud jadval o'zgaradi: `role` → `department_staff|district_admin|province_admin|system_admin`; qo'shiladi: `department_id uuid NULL FK`, `region_id uuid NULL FK`, `district_id uuid NULL FK`, `is_active bool default true`. Fuqaro-akkauntlar bu jadvaldan `citizens` ga ko'chiriladi (§4). M18 eski `admin` ni `district_admin` ga map qiladi.
 
 **v1.4:** `must_change_password bool NOT NULL default false` — seed'dan yaratilgan admin uchun `true`. Login javobida qaytadi; `true` bo'lsa FE parol almashtirish sahifasiga majburan yo'naltiradi. Standart parol bilan production'ga chiqib ketishning oldini oladi.
 
 **v1.7:** `avatar_url varchar(500) NULL` — xodim profil rasmi, S3/MinIO'da saqlanadi (`avatars/{user_id}.{ext}` deterministik kalit — qayta yuklash eskisini almashtiradi). Migratsiya: `alembic/versions/m14_staff_avatar.py`. Parolni tiklash kodi jadvalga tushmaydi — Redis'da vaqtinchalik (`pwreset:code:{phone}`, TTL 10 daqiqa, [03](03-kontraktlar.md) §4).
+
+### regions / districts — hududiy scope
+
+`regions(id, code UNIQUE, names jsonb, is_active, created_at)`; `districts(id, region_id FK, parent_district_id FK NULL, code, names jsonb, support_phone NULL, is_active, created_at)`. `UNIQUE(region_id, code)`. `parent_district_id` Namangan shahri ichidagi Yangi Namangan kabi ma'muriy birliklarni ifodalaydi. `support_phone` — shu tuman fuqarolari ko'radigan aloqa telefoni, E.164.
+
+### district_departments — tuman-bo'lim konfiguratsiyasi
+
+`id, district_id FK, department_id FK, phone, email, wip_limit, is_active, created_at`; `UNIQUE(district_id, department_id)`. Global `departments/categories` katalogi saqlanadi, mahalliy kontakt/SLA shu jadvalda.
 
 ### departments — ichki bo'limlar va tashqi tashkilotlar (mavjud `organizations` o'rniga)
 
@@ -62,7 +75,7 @@ Mavjud jadval o'zgaradi: `role` → `department_staff|admin` (B6, `alembic/versi
 
 ### neighborhoods — mahallalar
 
-`id, name varchar(150), is_active bool`. Seed: Uychi tumani MFY ro'yxati (hokimlikdan olinadi; boshlanishiga CSV import buyrug'i). **Hozircha `backend/data/uychi_mfy_SAMPLE.csv` (8 ta "NAMUNA —" prefiksli o'ylab topilgan nom) import qilingan — faqat wizard/UI mexanizmini tekshirish uchun, real ma'lumot EMAS.** Internetdan tumanning to'liq rasmiy 62 ta MFY ro'yxatini ishonchli topib bo'lmadi (qisman/ziddiyatli manbalar chiqdi). Hokimlikdan haqiqiy ro'yxat kelganda: yangi CSV yaratib `python -m app.tools.import_neighborhoods <csv>` ishga tushirish, so'ng namuna yozuvlarni `DELETE FROM neighborhoods WHERE name LIKE 'NAMUNA %'` bilan tozalash kerak.
+`id, district_id FK, name varchar(150), is_active bool`; `INDEX(district_id, name)`. Seed/import har bir tuman kesimida ishlaydi.
 
 ### complaints — asosiy jadval (mavjudi kengayadi)
 
@@ -71,6 +84,7 @@ Qo'shiladi:
 | Ustun | Tur | Izoh |
 |---|---|---|
 | ticket_number | varchar(20) UNIQUE NOT NULL | 85123456 |
+| district_id | uuid FK NOT NULL | murojaatning yagona hududiy scope'i |
 | citizen_id | uuid FK NOT NULL | user_id o'rnini bosadi |
 | category_id | uuid FK NOT NULL | enum ustunlar o'chadi |
 | priority | varchar(10) default 'medium' | |

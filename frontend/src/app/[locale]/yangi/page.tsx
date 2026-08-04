@@ -48,6 +48,7 @@ function WizardContent() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<ComplaintSubmitResponse | null>(null);
   const aiRouting = useAiRouting(result?.ticket_number ?? null);
+  const supportDistrictId = neighborhoods.find((item) => item.id === draft.neighborhoodId)?.district_id ?? null;
 
   // AI natijasi kelgan zahoti SuccessScreen'ga sakramaymiz — fuqaro 3-bosqich
   // ("... bo'limiga yuborildi") matnini AnalyzingScreen'da ko'rishi uchun
@@ -156,7 +157,7 @@ function WizardContent() {
   if (result) {
     if (aiRouting.status === "polling" || (aiRouting.status === "routed" && confirmPending)) {
       return (
-        <GuestShell>
+        <GuestShell districtId={supportDistrictId}>
           <AnalyzingScreen
             confirmed={aiRouting.status === "routed"}
             department={aiRouting.status === "routed" ? aiRouting.department : null}
@@ -165,7 +166,7 @@ function WizardContent() {
       );
     }
     return (
-      <GuestShell>
+      <GuestShell districtId={supportDistrictId}>
         <SuccessScreen
           ticketNumber={result.ticket_number}
           department={aiRouting.status === "routed" ? aiRouting.department : null}
@@ -175,7 +176,7 @@ function WizardContent() {
   }
 
   return (
-    <GuestShell>
+    <GuestShell districtId={supportDistrictId}>
       {pendingDraft && (
         <DraftPrompt
           onResume={() => {

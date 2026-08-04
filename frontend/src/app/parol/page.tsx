@@ -55,7 +55,7 @@ export default function ChangePasswordPage() {
         new_password: next,
       });
       await refresh();
-      router.replace(updated.role === "admin" ? "/admin" : "/admin/navbatim");
+      router.replace(["district_admin", "system_admin"].includes(updated.role ?? "") ? "/admin" : updated.role === "province_admin" ? "/admin/viloyat" : "/admin/navbatim");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
     } finally {

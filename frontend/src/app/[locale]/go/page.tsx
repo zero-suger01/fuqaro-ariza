@@ -35,7 +35,7 @@ function GoContent() {
     : null;
 
   return (
-    <GuestShell>
+    <GuestShell districtId={landing?.district_id}>
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-[22px] font-bold text-text-primary">{t("orgName")}</h1>
         {landing?.neighborhood_name && (

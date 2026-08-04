@@ -1,0 +1,9 @@
+node_modules/
+.expo/
+.expo-shared/
+.env
+.env.*
+!.env.example
+dist/
+build/
+*.tsbuildinfo

@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
 import { apiDelete, apiGet, apiPost, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/formatDate";
-import { districtNames, mfyNames, streetNames } from "@/lib/qrLocations";
 import type { QrCodeAdmin } from "@/lib/types";
+
+interface DistrictCatalog { id: string; code: string; name: string; parent_district_id: string | null; neighborhoods: { id: string; name: string }[] }
 
 interface SearchableSelectProps {
   id?: string;
@@ -149,6 +150,7 @@ function QrCodesView() {
   const searchQuery = (searchParams.get("q") ?? "").trim().toLowerCase();
 
   const [qrCodes, setQrCodes] = useState<QrCodeAdmin[]>([]);
+  const [catalog, setCatalog] = useState<DistrictCatalog[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [district, setDistrict] = useState("");
@@ -163,6 +165,7 @@ function QrCodesView() {
     apiGet<QrCodeAdmin[]>("/api/admin/qr-codes")
       .then(setQrCodes)
       .finally(() => setLoading(false));
+    apiGet<DistrictCatalog[]>("/api/admin/districts/catalog").then(setCatalog).catch(() => setCatalog([]));
   }
 
   useEffect(() => {
@@ -170,16 +173,10 @@ function QrCodesView() {
     load();
   }, []);
 
-  // Tuman/MFY/ko'cha ro'yxati statik `qrLocations.ts` ma'lumotlari BILAN
-  // BIRGA — admin "+ qo'shish" orqali yangi nom kiritib QR yaratganda, shu
-  // nom keyingi safar ham dropdown'da ko'rinishi kerak (mijoz so'ragan).
-  // Alohida saqlash joyi kerak emas: yaratilgan har bir QR o'zining
-  // tuman/mfy/ko'chasini bazada saqlaydi, shu sabab allaqachon yuklangan
-  // `qrCodes` ro'yxatidan chiqarib olinadi.
   const districts = useMemo(() => {
     const fromQr = qrCodes.map((q) => q.district).filter((v): v is string => !!v);
-    return Array.from(new Set([...districtNames(), ...fromQr])).sort();
-  }, [qrCodes]);
+    return Array.from(new Set([...catalog.map((d) => d.name), ...fromQr])).sort();
+  }, [catalog, qrCodes]);
 
   const mfys = useMemo(() => {
     if (!district) return [];
@@ -187,8 +184,9 @@ function QrCodesView() {
       .filter((q) => q.district === district)
       .map((q) => q.mfy)
       .filter((v): v is string => !!v);
-    return Array.from(new Set([...mfyNames(district), ...fromQr])).sort();
-  }, [district, qrCodes]);
+    const fromCatalog = catalog.find((d) => d.name === district)?.neighborhoods.map((n) => n.name) ?? [];
+    return Array.from(new Set([...fromCatalog, ...fromQr])).sort();
+  }, [catalog, district, qrCodes]);
 
   const streets = useMemo(() => {
     if (!district || !mfy) return [];
@@ -196,7 +194,7 @@ function QrCodesView() {
       .filter((q) => q.district === district && q.mfy === mfy)
       .map((q) => q.street)
       .filter((v): v is string => !!v);
-    return Array.from(new Set([...streetNames(district, mfy), ...fromQr])).sort();
+    return Array.from(new Set(fromQr)).sort();
   }, [district, mfy, qrCodes]);
 
   // Topbar qidiruvi (mijoz so'ragan: har bo'limda o'ziga tegishlisini
@@ -269,7 +267,7 @@ function QrCodesView() {
   }
 
   return (
-    <AppShell title="QR kodlar" requireRoles={["admin"]}>
+    <AppShell title="QR kodlar" requireRoles={["district_admin"]}>
       <Card className="flex items-center gap-3">
         <QrCodeIcon className="h-5 w-5 text-accent shrink-0" />
         <p className="text-sm text-text-muted">

@@ -14,6 +14,7 @@ class Complaint(Base):
     ticket_number: Mapped[str] = mapped_column(String(20), unique=True, index=True)
 
     citizen_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("citizens.id"), index=True)
+    district_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("districts.id"), nullable=True, index=True)
     category_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("categories.id"), index=True)
 
     description: Mapped[str] = mapped_column(Text)

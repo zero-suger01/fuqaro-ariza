@@ -70,6 +70,19 @@ Sabab: interfeys "ma'lumot ko'rsatardi", "ish boshqarmasdi" — xodimning haqiqi
 
 **Brauzerda real backend bilan sinovdan o'tkazildi:** admin (dashboard KPI/health → tasdiqlash navbatida bir bosishli qabul), `department_staff` (login → navbatim → tafsilot avto-qabul → bir bosishli hal qilish), fuqaro `/holat` (bo'lim + muddat) uz va en tillarida. `npm run lint && i18n:check && build` toza.
 
+## M18 — Namangan multi-tuman
+
+- [x] **M18-FE.1** StaffRole va auth scope (`region_id`, `district_id`) tiplari.
+- [x] **M18-FE.2** `province_admin/system_admin` uchun `/admin/viloyat` dashboard.
+- [x] **M18-FE.3** Sidebar va sahifa gate’lari yangi RBAC rollariga moslandi.
+- [x] **M18-FE.4** `province_admin` uchun sidebar “Viloyat monitoringi” nomiga moslandi; faqat viloyat overview va tuman drill-down ko‘rinadi.
+- [x] **M21-FE.1** Viloyat dashboardidan tuman drill-down va MFY kesimi sahifasi.
+- [x] **M21-FE.4** Viloyat hokimi dashboardi qayta qurildi: 30 kunlik trend, tezkor signal, xavfli hududlar reytingi va tuman natija foizi qo'shildi.
+- [x] **M21-FE.2** QR formasi statik Navoiy ro'yxatidan DB catalog endpointiga o'tkazildi.
+- [x] **M21-FE.3** Ko'rinadigan `SLA` atamalari o'zbekcha **Ijro muddati** nomiga o'tkazildi.
+- [x] **M22-FE.1** `system_admin` uchun `/admin/hududlar` tuman/parent/MFY boshqaruv sahifasi.
+- [x] **M22-FE.2** `system_admin` bosh ekrani katalog holatiga moslandi; operatsion navbat, AI nazorati, KPI/xarita va murojaat sahifalari roldan yashirildi.
+
 ## R3 — Keyword UI olib tashlash (kontrakt v1.3)
 
 - [x] **R3.6 (S)** `/admin/takliflar` (keyword takliflari inbox) butunlay o'chirildi, sidebar'dan olib tashlandi — o'rganish sikli endi yo'q.
@@ -78,6 +91,11 @@ Sabab: interfeys "ma'lumot ko'rsatardi", "ish boshqarmasdi" — xodimning haqiqi
 - [x] **R3.9 (S)** Dashboard AI chizig'i: «Navbatda: N ish» o'rniga **«Tahlil kutmoqda: N murojaat»** (`pending_analysis`); Ollama o'chganda ko'rsatiladigan matn yangilandi — «murojaatlar yo'qolmaydi, tizim har 15 daqiqada qayta uradi». KPI grafigida «LLM ulushi» o'rniga «Past ishonch».
 
 ## F5 — Sayqal (P3)
+
+## M23 — Fuqaro aloqa kanallari
+
+- [x] **M23-FE.1** Fuqaro landing sahifasi ixcham responsive viewportga moslandi; Telegram yuborish tugmasi va dinamik tuman aloqa raqami qo'shildi.
+- [x] **M23-FE.2** Tuman admin profiliga fuqaro aloqa raqamini sozlash formasi qo'shildi.
 
 - [ ] **F5.1 (S)** Accessibility audit: [10](10-ui-ux.md) §8 checklist (kontrast, focus, aria, 200% zoom).
 - [x] **F5.2 (S)** PWA-lite: manifest + ikonlar ("Bosh ekranga qo'shish" uchun), meta/OG teglar, favicon.

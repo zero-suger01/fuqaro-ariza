@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,11 +16,13 @@ from app.core.constants import (
     STATUS_SIMPLE_MAP,
     STATUS_SIMPLE_STEPS,
 )
+from app.config import get_settings
 from app.core.errors import AppError
 from app.core.ratelimit import enforce_info_limit, enforce_stt_limit, enforce_submit_limits, enforce_track_limit
 from app.database import get_db
 from app.models.category import Category
 from app.models.complaint import Complaint
+from app.models.district import District
 from app.models.neighborhood import Neighborhood
 from app.models.qr_code import QrCode
 from app.models.stt_job import SttJob
@@ -37,6 +39,7 @@ from app.schemas.public import (
     QrLandingOut,
     SttJobCreatedOut,
     SttJobStatusOut,
+    SupportContactOut,
     TimelineStep,
     TrackOut,
 )
@@ -47,6 +50,7 @@ from app.services.queue import enqueue
 from app.services.storage import upload_file, validate_file
 
 router = APIRouter(prefix="/api/public", tags=["public"])
+settings = get_settings()
 
 
 @router.post("/complaints", response_model=ComplaintSubmitOut, status_code=201)
@@ -242,13 +246,24 @@ def list_categories(lang: str = "uz", db: Session = Depends(get_db)):
 
 
 @router.get("/neighborhoods", response_model=list[NeighborhoodOut])
-def list_neighborhoods(db: Session = Depends(get_db)):
+def list_neighborhoods(district_id: uuid.UUID | None = Query(None), db: Session = Depends(get_db)):
     rows = (
-        db.execute(select(Neighborhood).where(Neighborhood.is_active.is_(True)).order_by(Neighborhood.name))
+        db.execute(select(Neighborhood).where(Neighborhood.is_active.is_(True), *( [Neighborhood.district_id == district_id] if district_id else [] )).order_by(Neighborhood.name))
         .scalars()
         .all()
     )
-    return [NeighborhoodOut(id=n.id, name=n.name) for n in rows]
+    return [NeighborhoodOut(id=n.id, name=n.name, district_id=n.district_id) for n in rows]
+
+
+@router.get("/support", response_model=SupportContactOut)
+def support_contact(district_id: uuid.UUID | None = Query(None), db: Session = Depends(get_db)):
+    phone = settings.public_support_phone
+    if district_id is not None:
+        district = db.get(District, district_id)
+        if district is not None and district.is_active:
+            phone = district.support_phone or settings.public_support_phone
+    telegram_url = f"https://t.me/{settings.telegram_bot_username}" if settings.telegram_bot_username else None
+    return SupportContactOut(phone=phone, telegram_url=telegram_url)
 
 
 @router.get("/qr/{code}", response_model=QrLandingOut)
@@ -266,6 +281,7 @@ def qr_landing(code: str, db: Session = Depends(get_db)):
     address = ", ".join(p for p in address_parts if p) or None
     return QrLandingOut(
         neighborhood_id=qr.neighborhood_id,
+        district_id=qr.district_id,
         neighborhood_name=qr.neighborhood.name if qr.neighborhood_id else None,
         district=qr.district,
         mfy=qr.mfy,

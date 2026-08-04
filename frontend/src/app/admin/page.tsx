@@ -6,10 +6,14 @@ import { ThinkingOrb } from "thinking-orbs";
 import {
   AlertTriangle,
   ArrowRight,
+  Building2,
   ClipboardList,
   Clock,
+  Map,
   MessageCircleQuestion,
   SquareCheckBig,
+  Tags,
+  Users,
   ZapOff,
   type LucideIcon,
 } from "lucide-react";
@@ -19,6 +23,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Table, type Column } from "@/components/ui/Table";
 import { apiGet } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import type { AiHealth, ComplaintListItem, DepartmentQueueRow, Page, QueueStats } from "@/lib/types";
 import { STATUS_COLORS, STATUS_LABELS } from "@/lib/status";
 
@@ -173,21 +178,86 @@ const DEPARTMENT_COLUMNS: Column<DepartmentQueueRow>[] = [
   },
 ];
 
+type SystemRegion = { id: string; code: string; names: Record<string, string>; is_active: boolean };
+type SystemDistrict = { id: string; names: Record<string, string>; is_active: boolean; neighborhoods: { is_active: boolean }[] };
+
+function SystemAdminHome() {
+  const [regions, setRegions] = useState<SystemRegion[]>([]);
+  const [districts, setDistricts] = useState<SystemDistrict[]>([]);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      apiGet<SystemRegion[]>("/api/system/regions"),
+      apiGet<SystemDistrict[]>("/api/system/districts"),
+    ]).then(([regionItems, districtItems]) => {
+      setRegions(regionItems);
+      setDistricts(districtItems);
+    }).catch(() => setError(true));
+  }, []);
+
+  const activeRegions = regions.filter((item) => item.is_active).length;
+  const activeDistricts = districts.filter((item) => item.is_active).length;
+  const activeNeighborhoods = districts.reduce(
+    (total, district) => total + district.neighborhoods.filter((item) => item.is_active).length,
+    0,
+  );
+
+  return (
+    <AppShell title="Bosh ekran" requireRoles={["system_admin"]}>
+      <div>
+        <p className="text-sm font-medium uppercase tracking-[0.16em] text-accent">Tizim boshqaruvi</p>
+        <h1 className="mt-1 text-2xl font-semibold text-text-primary">Hududlar holati</h1>
+        <p className="mt-1 text-sm text-text-secondary">Viloyat, tuman va MFY kataloglarini bir joydan nazorat qiling.</p>
+      </div>
+      {error && <Card className="border-danger text-sm text-danger">Hudud ma&apos;lumotlarini yuklab bo&apos;lmadi. Qayta urinib ko&apos;ring.</Card>}
+      <div className="grid gap-4 md:grid-cols-3">
+        {[
+          { label: "Faol viloyatlar", value: activeRegions, icon: Map },
+          { label: "Faol tumanlar", value: activeDistricts, icon: Building2 },
+          { label: "Faol MFYlar", value: activeNeighborhoods, icon: Users },
+        ].map(({ label, value, icon: Icon }) => (
+          <Card key={label} className="border-border">
+            <div className="flex items-center gap-2 text-accent"><Icon className="h-4 w-4" /><span className="text-sm font-medium">{label}</span></div>
+            <p className="mt-2 text-4xl font-semibold font-mono tabular-nums text-text-primary">{value}</p>
+            <p className="mt-1 text-xs text-text-muted">Tizim katalogidagi joriy son</p>
+          </Card>
+        ))}
+      </div>
+      <Card>
+        <div className="mb-4"><h2 className="text-base font-semibold text-text-primary">Tezkor boshqaruv</h2><p className="text-sm text-text-muted">Tizim tuzilmasini sozlash uchun kerakli bo&apos;limlar.</p></div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { href: "/admin/hududlar", label: "Hududlar", hint: "Viloyat, tuman, MFY", icon: Map },
+            { href: "/admin/bolimlar", label: "Bo'limlar", hint: "Mas'ul tashkilotlar", icon: Building2 },
+            { href: "/admin/xodimlar", label: "Xodimlar", hint: "Rollar va kirishlar", icon: Users },
+            { href: "/admin/kategoriyalar", label: "Kategoriyalar", hint: "Murojaat turlari", icon: Tags },
+          ].map(({ href, label, hint, icon: Icon }) => <Link key={href} href={href} className="group rounded-control border border-border p-4 transition hover:border-accent hover:bg-bg-subtle"><Icon className="h-5 w-5 text-accent" /><p className="mt-3 font-medium text-text-primary">{label}</p><p className="mt-1 text-xs text-text-muted">{hint}</p><ArrowRight className="mt-3 h-4 w-4 text-text-muted transition group-hover:translate-x-1 group-hover:text-accent" /></Link>)}
+        </div>
+      </Card>
+    </AppShell>
+  );
+}
+
 export default function AdminDashboardPage() {
+  const { user } = useAuth();
   const [queues, setQueues] = useState<QueueStats | null>(null);
   const [health, setHealth] = useState<AiHealth | null>(null);
   const [recent, setRecent] = useState<ComplaintListItem[]>([]);
 
   useEffect(() => {
+    if (user?.role !== "district_admin") return;
     apiGet<QueueStats>("/api/admin/stats/queues").then(setQueues).catch(() => setQueues(null));
     apiGet<AiHealth>("/api/admin/stats/ai-health").then(setHealth).catch(() => {});
     apiGet<Page<ComplaintListItem>>("/api/admin/complaints?page=1&page_size=6")
       .then((res) => setRecent(res.items))
       .catch(() => setRecent([]));
-  }, []);
+  }, [user?.role]);
+
+  if (user?.role === "system_admin") return <SystemAdminHome />;
 
   return (
-    <AppShell title="Bosh ekran" requireRoles={["admin"]}>
+    <AppShell title="Bosh ekran" requireRoles={["district_admin", "system_admin"]}>
       <AiHealthStrip health={health} />
 
       <div>
@@ -217,8 +287,8 @@ export default function AdminDashboardPage() {
             icon={SquareCheckBig}
           />
           <QueueCard
-            label="Muddat tugayapti"
-            hint="Muddatning 75% i o'tgan"
+            label="Ijro muddati tugayapti"
+            hint="Ijro muddatining 75% i o'tgan"
             value={queues?.sla_risk}
             href="/admin/murojaatlar?queue=sla_risk"
             icon={Clock}

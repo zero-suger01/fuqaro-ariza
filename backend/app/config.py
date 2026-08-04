@@ -23,7 +23,12 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     s3_public_base_url: str = "http://localhost:9000/ariza-complaints"
 
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3002",
+        "http://127.0.0.1:3002",
+    ]
 
     smtp_host: str | None = None
     smtp_port: int = 587
@@ -83,9 +88,11 @@ class Settings(BaseSettings):
     eskiz_email: str | None = None
     eskiz_password: str | None = None
     telegram_bot_token: str | None = None
+    telegram_bot_username: str | None = None
     bot_api_token: str | None = None
 
     public_base_url: str = "http://localhost:3000"
+    public_support_phone: str = "71 000 00 00"
 
     # B4.7 — CAPTCHA. Unset secret = disabled (no Cloudflare keys yet, no
     # frontend widget wired up either — see docs/05-backend-tasklar.md B4.7).

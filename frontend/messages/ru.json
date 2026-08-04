@@ -2,7 +2,9 @@
   "common": {
     "appName": "e-Murojaat",
     "issuer": "Хокимият Учинского района",
-    "phoneSupport": "Если у вас возникли трудности, звоните: 71 000 00 00",
+    "phoneSupport": "Если у вас возникли трудности, звоните",
+    "telegramButton": "Отправить через Telegram",
+    "telegramComingSoon": "Telegram-бот скоро заработает",
     "backToHome": "Главная страница",
     "loading": "Загрузка...",
     "back": "Назад",
@@ -21,7 +23,8 @@
     "step2": "Оставьте номер телефона",
     "step3": "Получите номер обращения — сообщим по SMS",
     "footerOrg": "Хокимият Учинского района",
-    "footerBot": "Обращение можно отправить и через Telegram-бота"
+    "telegramButton": "Отправить через Telegram",
+    "telegramComingSoon": "Telegram-бот скоро заработает"
   },
   "wizard": {
     "progress": "Шаг {current} из {total}",

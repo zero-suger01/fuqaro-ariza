@@ -64,7 +64,7 @@ def _notify_owners(db: Session, complaint: Complaint, message: str) -> int:
             User.department_id == complaint.assigned_department_id,
         )
     else:
-        query = query.where(User.role == "admin")
+        query = query.where(User.role.in_(("district_admin", "system_admin")))
 
     staff = db.execute(query).scalars().all()
     for user in staff:

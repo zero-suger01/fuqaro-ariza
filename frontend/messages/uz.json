@@ -2,7 +2,9 @@
   "common": {
     "appName": "e-Murojaat",
     "issuer": "Uychi tumani hokimligi",
-    "phoneSupport": "Qiynalsangiz qo'ng'iroq qiling: 71 000 00 00",
+    "phoneSupport": "Qiynalsangiz qo'ng'iroq qiling",
+    "telegramButton": "Telegram orqali yuborish",
+    "telegramComingSoon": "Telegram bot tez orada",
     "backToHome": "Bosh sahifa",
     "loading": "Yuklanmoqda...",
     "back": "Orqaga",
@@ -21,7 +23,8 @@
     "step2": "Telefon raqamingizni qoldiring",
     "step3": "Raqam olasiz — SMS orqali xabardor qilamiz",
     "footerOrg": "Uychi tumani hokimligi",
-    "footerBot": "Telegram bot orqali ham murojaat yuborishingiz mumkin"
+    "telegramButton": "Telegram orqali yuborish",
+    "telegramComingSoon": "Telegram bot tez orada"
   },
   "wizard": {
     "progress": "{current}/{total}-qadam",

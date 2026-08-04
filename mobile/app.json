@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "e-Murojaat",
+    "slug": "e-murojaat",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "emurojaat",
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-asset",
+      "expo-image-picker",
+      "expo-location"
+    ],
+    "android": {
+      "package": "uz.emurojaat.citizen",
+      "permissions": ["CAMERA", "RECORD_AUDIO", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "READ_MEDIA_IMAGES", "READ_MEDIA_VIDEO"]
+    },
+    "ios": {
+      "bundleIdentifier": "uz.emurojaat.citizen",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Murojaatga foto yoki video biriktirish uchun kamera kerak.",
+        "NSPhotoLibraryUsageDescription": "Murojaatga foto yoki video biriktirish uchun galereyaga kirish kerak.",
+        "NSLocationWhenInUseUsageDescription": "Murojaat manzilini aniq ko‘rsatish uchun joylashuv kerak.",
+        "NSMicrophoneUsageDescription": "Murojaatga ovozli xabar biriktirish uchun mikrofon kerak."
+      }
+    }
+  }
+}

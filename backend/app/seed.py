@@ -307,7 +307,7 @@ def _seed_admin(db) -> None:
             last_name="",
             phone=phone,
             password_hash=hash_password(password),
-            role="admin",
+            role="district_admin",
             # Birinchi kirishda parol almashtirish majburiy — seed
             # paroli uzoq muddat ishlab qolmasin.
             must_change_password=True,

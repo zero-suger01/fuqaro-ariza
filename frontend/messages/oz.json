@@ -2,7 +2,9 @@
   "common": {
     "appName": "e-Мурожаат",
     "issuer": "Учи тумани ҳокимлиги",
-    "phoneSupport": "Қийналсангиз қўнғироқ қилинг: 71 000 00 00",
+    "phoneSupport": "Қийналсангиз қўнғироқ қилинг",
+    "telegramButton": "Telegram орқали юбориш",
+    "telegramComingSoon": "Telegram бот тез орада",
     "backToHome": "Бош саҳифа",
     "loading": "Юкланмоқда...",
     "back": "Орқага",
@@ -21,7 +23,8 @@
     "step2": "Телефон рақамингизни қолдиринг",
     "step3": "Рақам оласиз — СМС орқали хабардор қиламиз",
     "footerOrg": "Учи тумани ҳокимлиги",
-    "footerBot": "Telegram бот орқали ҳам мурожаат юборишингиз мумкин"
+    "telegramButton": "Telegram орқали юбориш",
+    "telegramComingSoon": "Telegram бот тез орада"
   },
   "wizard": {
     "progress": "{current}/{total}-қадам",

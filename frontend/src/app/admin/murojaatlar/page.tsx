@@ -85,7 +85,7 @@ const QUEUES: Record<string, { label: string; hint: string; params: Record<strin
     params: { unassigned: "true" },
   },
   sla_risk: {
-    label: "Muddat tugayapti",
+    label: "Ijro muddati tugayapti",
     hint: "Muddatning 75% i o'tgan, hali kechikmagan",
     params: { sla_risk: "true" },
   },
@@ -374,10 +374,9 @@ function AdminComplaintsView() {
   if (filters.needs_review) activeChips.push({ key: "needs_review", label: "AI tekshiruv kerak" });
 
   useEffect(() => {
+    if (user?.role !== "district_admin") return;
     apiGet<CategoryAdmin[]>("/api/admin/categories").then(setCategories).catch(() => setCategories([]));
-    if (user?.role === "admin") {
-      apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => setDepartments([]));
-    }
+    apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => setDepartments([]));
   }, [user?.role]);
 
   function filterParams(): URLSearchParams {
@@ -392,6 +391,7 @@ function AdminComplaintsView() {
   }
 
   useEffect(() => {
+    if (user?.role !== "district_admin") return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- loading flag for the fetch below
     setLoading(true);
     const params = filterParams();
@@ -402,16 +402,17 @@ function AdminComplaintsView() {
       .then(setResult)
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- filterParams reads `filters`/`queueKey`, both deps
-  }, [filters, page, queueKey, stage]);
+  }, [filters, page, queueKey, stage, user?.role]);
 
   // Tab sonlari — `stage`SIZ, aks holda har tab o'z sonini o'zi filtrlab
   // tashlardi. Tab almashganda qayta so'ralmaydi (sonlar o'zgarmaydi).
   useEffect(() => {
+    if (user?.role !== "district_admin") return;
     apiGet<StageCounts>(`/api/admin/complaints/stage-counts?${filterParams().toString()}`)
       .then(setStageCounts)
       .catch(() => setStageCounts(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- filterParams reads `filters`/`queueKey`, both deps
-  }, [filters, queueKey]);
+  }, [filters, queueKey, user?.role]);
 
   function setStage(next: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -456,7 +457,7 @@ function AdminComplaintsView() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <AppShell title={queue ? queue.label : "Murojaatlar"}>
+    <AppShell title={queue ? queue.label : "Murojaatlar"} requireRoles={["district_admin"]}>
       {queue && (
         <Card className="border border-accent/40">
           <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -510,7 +511,7 @@ function AdminComplaintsView() {
             }}
             categories={categories}
             departments={departments}
-            isAdmin={user?.role === "admin"}
+            isAdmin={["district_admin", "system_admin"].includes(user?.role ?? "")}
           />
         </div>
       </Card>
@@ -522,7 +523,7 @@ function AdminComplaintsView() {
         </h2>
         {/* Eksport — yordamchi amal, triage'dan ustun turmasligi kerak
             (#22: "export should feel secondary, not the hero"). */}
-        {user?.role === "admin" && (
+        {["district_admin", "system_admin"].includes(user?.role ?? "") && (
           <button
             type="button"
             disabled={exporting}

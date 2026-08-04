@@ -25,7 +25,7 @@ from app.core.constants import (
 )
 from app.core.redisdb import redis_client
 from app.core.timezone import day_bounds_utc, format_local
-from app.core.deps import get_current_admin, get_current_staff_up
+from app.core.deps import get_current_admin, get_current_staff_up, require_roles
 from app.core.errors import AppError
 from app.core.security import hash_password
 from app.database import get_db
@@ -40,6 +40,7 @@ from app.models.complaint import Complaint
 from app.models.complaint_event import ComplaintEvent
 from app.models.complaint_subtask import ComplaintSubtask
 from app.models.department import Department
+from app.models.district import District
 from app.models.neighborhood import Neighborhood
 from app.models.qr_code import QrCode
 from app.models.reply import Reply
@@ -66,6 +67,8 @@ from app.schemas.admin import (
     DepartmentQueueRow,
     AiTrendPoint,
     DepartmentPatch,
+    DistrictSettingsOut,
+    DistrictSettingsPatch,
     EventOut,
     FileOut,
     HeatmapPoint,
@@ -106,7 +109,8 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 # (bo'lim murojaatni qabul qilib, ish boshlashini tasdiqlaydi).
 ROLE_ALLOWED_STATUSES = {
     "department_staff": {"accepted", "in_progress", "need_info", "resolved", "rejected", "closed"},
-    "admin": None,
+    "district_admin": None,
+    "system_admin": None,
 }
 DEPARTMENT_SCOPED_ROLES = ("department_staff",)
 
@@ -120,6 +124,8 @@ def _check_status_permission(staff: User, new_status: str) -> None:
 def _check_department_access(complaint: Complaint, staff: User) -> None:
     if staff.role in DEPARTMENT_SCOPED_ROLES and complaint.assigned_department_id != staff.department_id:
         raise AppError(403, "forbidden", "Bu murojaat sizning bo'limingizga tegishli emas")
+    if staff.role != "system_admin" and staff.district_id is not None and complaint.district_id != staff.district_id:
+        raise AppError(403, "forbidden", "Bu murojaat sizning tumaningizga tegishli emas")
 
 
 def _category_brief(category: Category) -> CategoryBrief:
@@ -301,6 +307,8 @@ def _build_complaints_query(
     )
     if staff.role in DEPARTMENT_SCOPED_ROLES:
         query = query.filter(Complaint.assigned_department_id == staff.department_id)
+    if staff.role != "system_admin" and staff.district_id is not None:
+        query = query.filter(Complaint.district_id == staff.district_id)
     if status:
         query = query.filter(Complaint.status == status)
     if stage in STAGES:
@@ -712,7 +720,7 @@ def assign_complaint(
         assignee = db.get(User, payload.assigned_user_id)
         if assignee is None or not assignee.is_active:
             raise AppError(422, "validation_error", "Xodim topilmadi yoki faol emas")
-        if assignee.role != "admin" and assignee.department_id != payload.department_id:
+        if assignee.role not in ("district_admin", "system_admin") and assignee.department_id != payload.department_id:
             raise AppError(422, "validation_error", "Xodim bu bo'limga tegishli emas")
         workflow.assign(db, complaint, payload.department_id, payload.assigned_user_id, actor_id=staff.id)
     else:
@@ -978,6 +986,29 @@ def create_comment(
 @router.get("/departments", response_model=list[DepartmentOut], dependencies=[Depends(get_current_staff_up)])
 def list_departments(db: Session = Depends(get_db)):
     return db.execute(select(Department).order_by(Department.code)).scalars().all()
+
+
+@router.get("/district-settings", response_model=DistrictSettingsOut)
+def get_district_settings(staff: User = Depends(require_roles("district_admin")), db: Session = Depends(get_db)):
+    if staff.district_id is None:
+        raise AppError(403, "forbidden", "Sizga tuman scope'i biriktirilmagan")
+    district = db.get(District, staff.district_id)
+    if district is None:
+        raise AppError(404, "not_found", "Tuman topilmadi")
+    return DistrictSettingsOut(district_id=district.id, district_name=(district.names or {}).get("uz", district.code), support_phone=district.support_phone)
+
+
+@router.patch("/district-settings", response_model=DistrictSettingsOut)
+def update_district_settings(payload: DistrictSettingsPatch, staff: User = Depends(require_roles("district_admin")), db: Session = Depends(get_db)):
+    if staff.district_id is None:
+        raise AppError(403, "forbidden", "Sizga tuman scope'i biriktirilmagan")
+    district = db.get(District, staff.district_id)
+    if district is None:
+        raise AppError(404, "not_found", "Tuman topilmadi")
+    district.support_phone = payload.support_phone
+    db.commit()
+    db.refresh(district)
+    return DistrictSettingsOut(district_id=district.id, district_name=(district.names or {}).get("uz", district.code), support_phone=district.support_phone)
 
 
 @router.post("/departments", response_model=DepartmentOut, status_code=201, dependencies=[Depends(get_current_admin)])
@@ -1668,16 +1699,32 @@ def _qr_to_out(qr: QrCode) -> QrCodeOut:
     )
 
 
+@router.get("/districts/catalog", dependencies=[Depends(get_current_admin)])
+def district_catalog(db: Session = Depends(get_db), staff: User = Depends(get_current_admin)):
+    """DB-driven district/MFY catalog for address and QR forms."""
+    stmt = select(District).where(District.is_active.is_(True)).order_by(District.code)
+    if staff.role != "system_admin" and staff.district_id is not None:
+        stmt = stmt.where(District.id == staff.district_id)
+    districts = db.execute(stmt).scalars().all()
+    return [{"id": d.id, "code": d.code, "name": (d.names or {}).get("uz", d.code), "parent_district_id": d.parent_district_id, "neighborhoods": [{"id": n.id, "name": n.name} for n in db.execute(select(Neighborhood).where(Neighborhood.district_id == d.id, Neighborhood.is_active.is_(True)).order_by(Neighborhood.name)).scalars().all()]} for d in districts]
+
+
 @router.get("/qr-codes", response_model=list[QrCodeOut], dependencies=[Depends(get_current_admin)])
-def list_qr_codes(db: Session = Depends(get_db)):
-    rows = db.execute(select(QrCode).order_by(QrCode.created_at.desc())).scalars().all()
+def list_qr_codes(db: Session = Depends(get_db), staff: User = Depends(get_current_admin)):
+    stmt = select(QrCode).order_by(QrCode.created_at.desc())
+    if staff.role != "system_admin" and staff.district_id is not None:
+        stmt = stmt.where(QrCode.district_id == staff.district_id)
+    rows = db.execute(stmt).scalars().all()
     return [_qr_to_out(qr) for qr in rows]
 
 
 @router.post("/qr-codes", response_model=QrCodeOut, status_code=201, dependencies=[Depends(get_current_admin)])
-def create_qr_code(payload: QrCodeIn, db: Session = Depends(get_db)):
-    if payload.neighborhood_id and db.get(Neighborhood, payload.neighborhood_id) is None:
+def create_qr_code(payload: QrCodeIn, db: Session = Depends(get_db), staff: User = Depends(get_current_admin)):
+    neighborhood = db.get(Neighborhood, payload.neighborhood_id) if payload.neighborhood_id else None
+    if payload.neighborhood_id and neighborhood is None:
         raise AppError(404, "not_found", "Mahalla topilmadi")
+    if neighborhood is not None and staff.role != "system_admin" and staff.district_id != neighborhood.district_id:
+        raise AppError(403, "forbidden", "Bu mahalla sizning tumaningizda emas")
 
     for _ in range(5):
         code = secrets.token_hex(4)
@@ -1688,6 +1735,7 @@ def create_qr_code(payload: QrCodeIn, db: Session = Depends(get_db)):
 
     qr = QrCode(
         code=code,
+        district_id=neighborhood.district_id if neighborhood else staff.district_id,
         neighborhood_id=payload.neighborhood_id,
         note=payload.note,
         district=payload.district,
@@ -1717,10 +1765,12 @@ def create_qr_code(payload: QrCodeIn, db: Session = Depends(get_db)):
 
 
 @router.delete("/qr-codes/{qr_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_admin)])
-def delete_qr_code(qr_id: uuid.UUID, db: Session = Depends(get_db)):
+def delete_qr_code(qr_id: uuid.UUID, db: Session = Depends(get_db), staff: User = Depends(get_current_admin)):
     qr = db.get(QrCode, qr_id)
     if qr is None:
         raise AppError(404, "not_found", "QR topilmadi")
+    if staff.role != "system_admin" and staff.district_id is not None and qr.district_id != staff.district_id:
+        raise AppError(403, "forbidden", "Bu QR kod sizning tumaningizga tegishli emas")
     # PNG/PDF ham S3'dan o'chiriladi — aks holda kod bazadan yo'qolgach ham
     # eski plakat fayllari orfan bo'lib qolib, joy band qilib turaveradi.
     png_url, pdf_url = _qr_urls(qr.code)

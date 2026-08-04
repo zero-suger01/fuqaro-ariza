@@ -2,7 +2,7 @@
 
 > **QOIDA:** Bu fayldagi biror narsani o'zgartirmasdan turib kodda enum/endpoint/format o'zgartirish TAQIQLANADI. O'zgarish tartibi: shu faylga PR → ikkinchi sherik "OK" → kod. AI coder'lar bu faylni faqat O'QIYDI.
 >
-> Versiya: **v1.5** (2026-07-25). O'zgarishlar pastdagi "Changelog" ga yoziladi.
+> Versiya: **v2.1** (2026-08-04). Tuman bo'yicha fuqaro aloqa raqami va Telegram havolasi qo'shildi.
 
 ## 1. Umumiy formatlar
 
@@ -68,7 +68,7 @@ Fuqaroga HECH QACHON 10 status ko'rsatilmaydi. Backend `status_simple` ni hisobl
 - **Sentiment:** `negative` | `neutral` | `positive`
 - **Source:** `web` | `telegram` | `qr` | `operator` (operator — telefon orqali kelganini qo'lda kiritsa)
 - **FileKind:** `image` | `video` | `audio` | `document`
-- **StaffRole:** `department_staff` | `admin` (B6 — dastlab `operator`|`employee`|`manager`|`admin` edi, birinchi uchtasi birlashtirildi)
+- **StaffRole:** `department_staff` | `district_admin` | `province_admin` | `system_admin`. `department_staff` faqat o'z tumani va bo'limi; `district_admin` o'z tumani; `province_admin` Namangan viloyati bo'yicha o'qish/analitika; `system_admin` global konfiguratsiya. Eski `admin` qiymati M18 migratsiyasida `district_admin` ga o'tkaziladi.
 - **AiEngine:** `llm` (v1.3 — `keyword` olib tashlandi, [07](07-ai-layer.md) §1)
 - **LLM javob sxemasi** (v1.5, [07](07-ai-layer.md) §1.1) — Ollama qaytaradigan JSON: `category_code` (asosiy, bitta), **`secondary_category_codes`** (0–3 ta: matnda boshqa bo'limga tegishli ALOHIDA muammo ham bo'lsa), `confidence` (0..1), `priority`, `sentiment`, `summary_uz`, `reply_draft_uz`, `tags`. `secondary_category_codes` har bir elementi uchun worker avtomatik sub-task yaratadi (§5) va `needs_review=true` qo'yadi. Server LLM'ga ishonmaydi: noma'lum kod, asosiy kategoriyaning takrori, asosiy bo'lim bilan bir xil bo'limga tushadigan kod va bo'limsiz kategoriya **tashlab yuboriladi**
 - **NotificationChannel:** `in_app` | `sms` | `telegram` | `email`
@@ -140,6 +140,7 @@ Javob `202`: `{"job_id": "..."}`. Keyin `GET /api/public/stt/{job_id}` → `{"st
 - `GET /api/public/categories?lang=uz` → `[{"code": "suv", "name": "Suv va kanalizatsiya", "icon": "droplet"}, ...]` (faqat `is_active`).
 - `GET /api/public/neighborhoods` → `[{"id": "...", "name": "Bog'ishamol MFY"}, ...]`.
 - `GET /api/public/qr/{qr_code}` → `{"neighborhood_id": "...", "neighborhood_name": "..."}` (QR landing prefill uchun; topilmasa 404).
+- `GET /api/public/support?district_id=<uuid>` → `{"phone": "+998...", "telegram_url": "https://t.me/..."}`. `district_id` berilmasa tizimning umumiy aloqa raqami qaytadi; telefon raqami tuman admini tomonidan sozlanadi, Telegram havolasi frontend konfiguratsiyasidan olinadi.
 
 ### 3.5 `POST /api/public/complaints/info` — fuqaro qo'shimcha ma'lumot yuboradi (v1.4, multipart/form-data)
 
@@ -180,6 +181,8 @@ Mavjud `/api/auth/register|login|me` saqlanadi. `register` endi **fuqaro kabinet
 `MeOut` ga `avatar_url: str \| null` qo'shildi.
 
 ## 5. Admin API (`/api/admin/*`, JWT + StaffRole tekshiruvi)
+
+`GET/PATCH /api/admin/district-settings` — tuman admini o'z scope'ining fuqarolar uchun aloqa raqamini ko'radi/o'zgartiradi. Body: `{"support_phone": "+998901234567"}` yoki `null`; telefon E.164 formatida bo'ladi.
 
 Mavjud endpointlar saqlanadi, quyidagilar o'zgaradi/qo'shiladi (— bilan belgilanganlar breaking):
 
@@ -250,7 +253,30 @@ Bildirishnomalar: backend worker statusi o'zgarganda `citizens.telegram_chat_id`
 Backend: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `TICKET_PREFIX=UY`, `S3_*` (mavjud), `LLM_PROVIDER=ollama|deepseek` (v1.5.1, vaqtincha almashtirish uchun — standart `ollama`), `OLLAMA_URL=http://localhost:11434`, `OLLAMA_MODEL=gemma3:12b`, `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL=deepseek-chat`, `DEEPSEEK_BASE_URL=https://api.deepseek.com`, `LLM_TIMEOUT_S=300`, `LLM_MAX_ATTEMPTS=2` ([07](07-ai-layer.md) §3 o'lchovlari), `AI_LOW_CONFIDENCE=0.6` (v1.3 — shundan past ishonchda `needs_review` belgisi qo'yiladi, lekin yo'naltirish bajariladi), `STT_PROVIDER=gigaam|mohirai` (v1.6.1 — `whisper`/`faster-whisper` butunlay olib tashlandi), `GIGAAM_MODEL_DIR`, `MOHIRAI_API_KEY`, `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `BOT_API_TOKEN`, `PUBLIC_BASE_URL`, `TURNSTILE_SECRET_KEY` (B4.7, bo'sh = captcha o'chirilgan), **v1.4:** `ADMIN_SEED_PHONE` / `ADMIN_SEED_PASSWORD` (seed default adminni FAQAT ikkalasi berilganda yaratadi; yaratilgan hisobda birinchi kirishda parol almashtirish majburiy), `TEST_DATABASE_URL` (faqat testlar uchun — `DATABASE_URL` dan boshqa baza bo'lishi SHART).
 Frontend: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` (F3.1, bo'sh = `/go`dagi Telegram tugmasi "tez orada" holatida). Bot: `TELEGRAM_BOT_TOKEN`, `BACKEND_URL`, `BOT_API_TOKEN`.
 
+### 5.2 Viloyat API (`/api/province/*`, JWT)
+
+Faqat `province_admin` (o'z `region_id`) va `system_admin`. Query parametr user scope'ini kengaytirmaydi; aggregate javoblarda fuqaro PII berilmaydi.
+
+| Endpoint | Javob |
+|---|---|
+| `GET /api/province/overview` | region nomi, jami/ochiq/hal qilingan/muddati o'tgan va `districts[]` summary |
+| `GET /api/province/districts` | tumanlar kesimida summary |
+| `GET /api/province/districts/{district_id}/summary` | tanlangan tuman status va MFY kesimi |
+| `GET /api/province/trends?days=30` | kunlik `day,total,resolved` |
+
+`GET /api/admin/districts/catalog` — district_admin uchun o'z tumani, system_admin uchun barcha tumanlar va ularning DB'dagi MFY ro'yxati. QR va manzil formalarida statik ro'yxat ishlatilmaydi.
+
+`system_admin` hudud CRUD: `GET/POST /api/system/regions`, `PATCH /api/system/regions/{id}` (faollik), `GET/POST /api/system/districts`, `PATCH /api/system/districts/{id}` (faollik), `POST /api/system/neighborhoods`, `PATCH /api/system/neighborhoods/{id}` (faollik).
+
+**RBAC M18:** `department_staff` — `district_id + department_id` scope; `district_admin` — o'z tumani to'liq operatsiyasi; `province_admin` — o'z viloyati aggregate o'qish; `system_admin` — global.
+
 ## Changelog
+
+- **v2.0** (2026-08-03, M18) — Namangan multi-tuman scope: `regions`, `districts`, `district_departments`; complaint/neighborhood/QR/user hudud FKlari; `department_staff|district_admin|province_admin|system_admin`; eski `admin` → `district_admin`; `/api/province/*` aggregate dashboard kontrakti. Eski ma'lumotlar Uychi tumaniga backfill qilinadi.
+- **v2.0.1** (2026-08-03, M19) — Namangan rasmiy hududlar seed'i: 12 tuman + Namangan shahri; `YANGI_NAMANGAN` shahar ichki tuman sifatida `parent_district_id` bilan bog'landi.
+- **v2.0.2** (2026-08-03, M20) — foydalanuvchi bergan ma'muriy-hududiy DOCX'dagi ko'rsatilgan 186 ta MFY nomi import qilindi; hujjatdagi `790+` statistik ko'rsatkich nomlar bilan to'liq ochilmaganligi sababli qolgan nomlar uydirma qilinmadi.
+- **v2.1** (2026-08-03) — tuman drill-down (`summary` + MFY kesimi), DB-driven district/MFY catalog, QR endpointlarida district scope; UI atamasi `SLA` o'rniga **Ijro muddati**.
+- **v2.2** (2026-08-03) — `system_admin` uchun hududlar boshqaruvi: tuman/shahar, parent hudud va MFY yaratish/faolsizlantirish UI/API.
 
 - **v1.9.1** (2026-07-27, eksport filtrlari) — `GET /api/admin/complaints/export.xlsx` **navbat filtrlarini e'lon qilmagandi**: `unassigned`, `sla_risk`, `need_info_over_hours`, `mine`, `stuck_ai` (v1.4 da ro'yxatga qo'shilgan) endpoint imzosida yo'q edi, FastAPI esa e'lon qilinmagan query parametrni **indamay tashlab yuboradi**. Natijada frontend to'g'ri URL yuborsa ham fayl butun bazani qaytarardi va bu hech qayerda ko'rinmasdi — dev bazadagi o'lchov: «Biriktirilmagan» navbatidan eksport 98 emas, **119** qator; `Muddat tugayapti` 18 emas 119; ekranda bo'sh turgan `Mening ishlarim`/`AI javob bermagan` navbatlaridan ham 119 qator. Faqat `overdue` tasodifan ishlagan (e'lon qilingan yagona navbat parametri). Endi beshtasi ham e'lon qilinadi va `_build_complaints_query` ga uzatiladi (`mine` — ro'yxatdagi kabi `staff` bo'yicha), tartib esa v1.9 dagi `queues.ordering()` ga xuddi shu bayroqlar bilan boradi, ya'ni fayldagi qator tartibi ekrandagi navbat tartibi bilan bir xil. Filtr nomlari, javob formati va RBAC O'ZGARMADI — bu v1.4 da tushib qolgan simni ulash. Regressiya testi: `backend/tests/test_queues.py::test_export_respects_every_queue_filter` (har navbat uchun `export.xlsx` = ro'yxat, tartibi bilan). **Birlashtirishda aniqlangan ikkinchi holat:** xuddi shu drift v1.9 `stage` bilan takrorlangan edi (eksport bosqich tabini e'tiborsiz qoldirib, butun bazani berardi) va `mine` uchun tartib ro'yxatdagidan farq qilardi — ikkalasi ham yopildi, qo'riqchisi `test_export_respects_stage_tabs` (uchala bosqich birgalikda butun to'plamni kesishmasdan qoplashini ham tekshiradi).
 - **v1.9** (2026-07-27, navbat tartibi) — `GET /api/admin/complaints` endi **navbatga qarab tartiblanadi** (avval har doim `created_at DESC` edi, ya'ni «Muddati o'tgan» navbatida eng ko'p kechikkan emas, eng yangi kelgan ish birinchi turardi — dev bazada 2 kun kechikkan `critical` murojaat 11-o'rinda edi). Shart bilan bitta joyda: `services/queues.py::ordering()`. Tartib: `overdue`/`sla_risk` → `deadline_at ASC`; `need_info_over_hours` → `info_requested_at ASC`; `stuck_ai`/`unassigned` → `created_at ASC`; **`mine` → `deadline_at ASC`** («Navbatim» — ish navbati, jurnal emas; muddatsizlar oxirida); navbatsiz (`Barcha murojaatlar`, qidiruv) → `created_at DESC` (o'zgarmadi). Bir nechta bayroq birga kelsa eng shoshilinchi yutadi (overdue > sla_risk > need_info > stuck_ai > unassigned). Har tartibga `id` uzilish nuqtasi qo'shildi — teng qiymatlarda pagination qatorni ikki marta ko'rsatib, boshqasini tushirmay qolmasligi uchun. `export.xlsx` ham xuddi shu tartibda chiqadi. Filtr/shartlar va javob sxemasi O'ZGARMADI. (2) **Bosqich (`stage`) server filtriga aylandi** — yangi `stage=new|progress|done` parametri va `GET /complaints/stage-counts` endpointi (§5). Xarita `app/core/constants.py::STAGES` da, frontendda TAKRORLANMAYDI. Sabab: avval bu guruhlash faqat UI ichida (kanban ustunlari) edi va joriy sahifaning 20 ta yozuvini qayta guruhlardi — bazada 96/2/21 bo'lgani holda ekranda «20/0/0» ko'rinardi. UI tomoni: [10](10-ui-ux.md) §10.2.

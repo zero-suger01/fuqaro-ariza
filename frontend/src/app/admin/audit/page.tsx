@@ -114,7 +114,7 @@ export default function AuditLogPage() {
   ];
 
   return (
-    <AppShell title="Audit log" requireRoles={["admin"]}>
+    <AppShell title="Audit log" requireRoles={["district_admin", "system_admin"]}>
       <Card>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 items-end">
           <div>

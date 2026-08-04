@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Camera, KeyRound, Trash2, UserCog } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, KeyRound, Phone, Trash2, UserCog } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
-import { apiDelete, apiPatch, apiPost, apiPostForm, ApiError } from "@/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPostForm, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/status";
 import type { AuthUser } from "@/lib/types";
@@ -218,6 +218,42 @@ function PasswordCard() {
   );
 }
 
+function DistrictSupportCard() {
+  const [districtName, setDistrictName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    apiGet<{ district_name: string; support_phone: string | null }>("/api/admin/district-settings")
+      .then((settings) => { setDistrictName(settings.district_name); setPhone(settings.support_phone ?? ""); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Sozlamani yuklab bo'lmadi"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setSaved(false); setError(null);
+    try {
+      await apiPatch("/api/admin/district-settings", { support_phone: phone || null });
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Saqlab bo'lmadi");
+    } finally { setSaving(false); }
+  }
+
+  return <Card>
+    <div className="mb-4 flex items-center gap-2"><Phone className="h-5 w-5 text-accent" /><div><h2 className="text-base font-semibold text-text-primary">Fuqaro aloqa raqami</h2><p className="text-xs text-text-muted">{districtName || "Tuman"} fuqarolari ko&apos;radigan raqam</p></div></div>
+    <form onSubmit={handleSubmit} className="flex max-w-md flex-col gap-3">
+      <div><Label>“Qiynalsangiz qo&apos;ng&apos;iroq qiling” raqami</Label><Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998901234567" disabled={loading} /><p className="mt-1 text-xs text-text-muted">E.164 format: +998XXXXXXXXX. Bo&apos;sh qoldirilsa umumiy raqam ko&apos;rsatiladi.</p></div>
+      {error && <p className="text-sm text-danger">{error}</p>}{saved && <p className="text-sm text-success">Aloqa raqami saqlandi</p>}
+      <div><Button type="submit" disabled={loading || saving}>{saving ? "Saqlanmoqda..." : "Raqamni saqlash"}</Button></div>
+    </form>
+  </Card>;
+}
+
 export default function ProfilePage() {
   const { user, refresh } = useAuth();
 
@@ -228,6 +264,7 @@ export default function ProfilePage() {
       <div className="flex flex-col gap-6 max-w-2xl">
         <AvatarCard user={user} onUpdated={refresh} />
         <ProfileInfoCard user={user} onUpdated={refresh} />
+        {user.role === "district_admin" && <DistrictSupportCard />}
         <PasswordCard />
       </div>
     </AppShell>

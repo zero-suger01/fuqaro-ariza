@@ -77,7 +77,7 @@ def _warn_before_deadline(db: Session, now: datetime) -> int:
         if complaint.assigned_department_id is not None:
             query = query.where(User.role == "department_staff", User.department_id == complaint.assigned_department_id)
         else:
-            query = query.where(User.role == "admin")
+            query = query.where(User.role.in_(("district_admin", "system_admin")))
         staff = db.execute(query).scalars().all()
         for user in staff:
             notify_staff(
@@ -132,7 +132,7 @@ def escalate_overdue(db: Session) -> dict[str, int]:
             )
             counts["to_manager"] += 1
         elif admin_event is None and now - manager_event.created_at >= ADMIN_ESCALATION_DELAY:
-            admins = db.execute(select(User).where(User.role == "admin", User.is_active.is_(True))).scalars().all()
+            admins = db.execute(select(User).where(User.role.in_(("district_admin", "system_admin")), User.is_active.is_(True))).scalars().all()
             _escalate(
                 db,
                 complaint,

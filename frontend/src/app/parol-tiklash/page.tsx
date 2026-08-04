@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
       });
       setToken(res.access_token);
       await refresh();
-      router.replace(res.user.role === "admin" ? "/admin" : "/admin/navbatim");
+      router.replace(["district_admin", "system_admin"].includes(res.user.role ?? "") ? "/admin" : res.user.role === "province_admin" ? "/admin/viloyat" : "/admin/navbatim");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
     } finally {

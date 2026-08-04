@@ -121,7 +121,7 @@ export default function TasdiqlashPage() {
   }
 
   return (
-    <AppShell title="AI nazorati" requireRoles={["admin"]}>
+    <AppShell title="AI nazorati" requireRoles={["district_admin"]}>
       {error && <div className="rounded-inner bg-danger/10 text-danger text-sm px-4 py-3">{error}</div>}
 
       <p className="text-sm text-text-secondary max-w-2xl">
