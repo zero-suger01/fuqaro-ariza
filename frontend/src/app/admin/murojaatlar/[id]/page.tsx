@@ -601,7 +601,17 @@ export default function AdminComplaintDetailPage() {
                           </Button>
                         </>
                       ) : (
-                        <Button variant="danger" disabled={saving} onClick={() => setRejectReason("")}>
+                        /* Rad etish — kamdan-kam va orqaga qaytarilmaydigan
+                           harakat. Avval u to'ldirilgan qizil tugma edi va
+                           oddiy holat o'zgartirishlari bilan bir xil og'irlikda
+                           turardi: mushak xotirasi bilan bosib yuborish oson.
+                           Endi u tinch, TASDIQLASH tugmasi esa qizil. */
+                        <Button
+                          variant="ghost"
+                          className="text-danger hover:bg-danger-soft"
+                          disabled={saving}
+                          onClick={() => setRejectReason("")}
+                        >
                           {STATUS_LABELS.rejected}
                         </Button>
                       )}
@@ -617,8 +627,17 @@ export default function AdminComplaintDetailPage() {
           </Card>
 
           {/* R2/Q2 — asosiy ish kartasi: AI xulosasi + tayyor javob + bir
-              bosishli hal qilish. order-first — o'ng ustunda eng tepada. */}
-          <Card className={`order-first ${complaint.needs_review ? "border-2 border-warning" : "border border-accent/40"}`}>
+              bosishli hal qilish. `order-first` uni o'ng ustunda eng tepaga
+              chiqaradi — LEKIN faqat AI aytadigan gapi bo'lsa.
+
+              Tahlil hali tayyor emas bo'lganda tepada bo'sh qutи turardi
+              («AI tahlili hali tayyor emas»), operator kerakli faktlarni —
+              holat, muhimlik, muddat, mas'ul — pastdan qidirardi. Ekran
+              ochilgandagi birinchi savol «bu nima va kimniki», «AI nima
+              dedi» emas. */}
+          <Card
+            className={`${complaint.ai ? "order-first" : ""} ${complaint.needs_review ? "border-2 border-warning" : "border border-accent/40"}`}
+          >
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="h-4 w-4 text-accent" />
               <h2 className="text-base font-semibold text-text-primary">AI xulosasi va javob</h2>

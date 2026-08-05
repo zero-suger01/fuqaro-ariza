@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Shriftlar repo ichidan (npm paketi), Google Fonts'dan EMAS.
+   `next/font/google` build paytida fonts.gstatic.com ga chiqadi va bu
+   bugun ikki marta build'ni yiqitdi; internet cheklangan serverda esa
+   umuman ishlamaydi. Fontsource paketlari woff2 fayllarni o'zi bilan
+   olib keladi va to'g'ri `unicode-range` beradi, ya'ni kirill subseti
+   faqat kerak bo'lganda yuklanadi. Ikkalasi ham OFL litsenziyasida. */
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/jetbrains-mono";
+
 /* =====================================================================
    PALITRA — «Registon»
 
@@ -136,6 +145,10 @@
   /* Rangli ko'tarilish — bosishni «sotadigan» yorug'lik */
   --shadow-action: 0 10px 24px rgba(10, 108, 98, 0.3);
   --shadow-gild: 0 8px 20px rgba(141, 106, 32, 0.26);
+
+  /* Shrift oilalari — o'zgaruvchan (variable) yuzlar, 200..800 */
+  --font-manrope: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-jetbrains: "JetBrains Mono Variable", ui-monospace, monospace;
 
   /* Layout */
   --sidebar-w-collapsed: 76px;

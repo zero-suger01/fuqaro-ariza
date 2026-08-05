@@ -1,19 +1,6 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
-
-// Manrope — mobil ilova bilan bir xil shrift, lotin + kirill qamrovi
-// bilan (o'zbek krill va rus tillari uchun shart).
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin", "cyrillic"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains",
-  subsets: ["latin"],
-});
 
 // F5.2 — PWA-lite + ijtimoiy ulashish. `manifest` va `appleWebApp`
 // «Bosh ekranga qo'shish» uchun: qishloq foydalanuvchisi saytni ikon
@@ -54,7 +41,7 @@ export default function RootLayout({
   return (
     <html
       lang="uz"
-      className={`${manrope.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className="h-full antialiased"
       suppressHydrationWarning
     >
       <head>

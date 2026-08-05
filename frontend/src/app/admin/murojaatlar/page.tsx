@@ -536,15 +536,19 @@ function AdminComplaintsView() {
 
   return (
     <AppShell title={queue ? queue.label : "Murojaatlar"} requireRoles={["district_admin"]}>
-      <div className="flex flex-col gap-2">
-        <QueueChips active={queueKey} counts={queueStats} />
-        {queue && <p className="px-1 text-xs text-text-muted">{queue.hint}</p>}
-      </div>
-
       {/* Tab + filtr bitta idishda: tab — navigatsiya (birlamchi), filtr —
           aniqlashtirish (ikkilamchi). Avval bu joyda faqat doim ochiq
           ~250px lik filtr kartasi turardi. */}
       <Card padded={false}>
+        {/* Navbat — birinchi qatlam: «qaysi ish menga kerak». Kartaning
+            ICHIDA, chunki tashqarida turganda sahifada to'rtta alohida
+            boshqaruv lentasi paydo bo'lardi (navbat, bosqich, qidiruv,
+            ro'yxat sarlavhasi) va bitta qator ma'lumotga shuncha jihoz
+            ortiqcha ko'rinardi. */}
+        <div className="flex flex-col gap-2 border-b border-border px-4 py-3">
+          <QueueChips active={queueKey} counts={queueStats} />
+          {queue && <p className="text-xs text-text-muted">{queue.hint}</p>}
+        </div>
         {/* Navbatda tab ko'rsatilmaydi: navbat filtrlari terminal
             statuslarni allaqachon chiqarib tashlaydi, ya'ni «Yakunlangan»
             tabi doim 0 bo'lardi (LIST_GRID izohi). */}
