@@ -16,7 +16,9 @@
   "landing": {
     "greeting": "Hurmatli fuqaro!",
     "subtitle": "Muammoingizni bizga ayting — hal qilamiz.",
+    "badge": "Fuqarolar uchun yagona portal",
     "submitButton": "Murojaat yuborish",
+    "submitHint": "Uch bosqichda toʻldiriladi",
     "checkStatusButton": "Holatini tekshirish",
     "howItWorksTitle": "Qanday ishlaydi?",
     "step1": "Muammoni yozing yoki ovoz bilan ayting",

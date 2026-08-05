@@ -16,7 +16,9 @@
   "landing": {
     "greeting": "Dear citizen!",
     "subtitle": "Tell us about your problem — we'll solve it.",
+    "badge": "One portal for every citizen",
     "submitButton": "Submit a complaint",
+    "submitHint": "Three short steps",
     "checkStatusButton": "Check status",
     "howItWorksTitle": "How it works",
     "step1": "Write or say your problem out loud",

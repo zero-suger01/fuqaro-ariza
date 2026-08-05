@@ -29,8 +29,10 @@ export function IkatBand({
   const gradientId = `ikat-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const gold = accent ?? color;
   const step = width / repeat;
-  const flameWidth = step * 0.78;
-  const flameHeight = height * 0.72;
+  // An abr flame is taller than it is wide — at 0.78 of the step it flattened
+  // into a triangle and stopped reading as ikat at all.
+  const flameWidth = step * 0.42;
+  const flameHeight = height * 0.86;
 
   return (
     <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} {...props}>
@@ -66,7 +68,7 @@ export function IkatBand({
               }
             >
               <Path
-                d={ikatFlamePath(x, height * 0.14, flameWidth, flameHeight)}
+                d={ikatFlamePath(x, height * 0.07, flameWidth, flameHeight)}
                 fill="none"
                 stroke={`url(#${gradientId})`}
                 strokeWidth={1.3}

@@ -1,118 +1,141 @@
 @import "tailwindcss";
 
 /* =====================================================================
-   PALITRA — «Ishkor»
+   PALITRA — «Registon»
 
-   Nomi o'zbek me'morchiligidagi ishqor sirlangan koshin rangidan olingan.
-   Manba ataylab loyihaning o'z dunyosidan: hokimlik, gerb, koshin —
-   moviy-yashil sir, to'q petrol zamin va rasmiy muhrning latun yaltirog'i.
-   Bu «to'q ko'k = davlat sayti» yoki indigo/binafsha kabi standart
-   dasturiy yechim EMAS.
+   Rang Temuriylar me'morchiligidan olinadi, generic «davlat ko'ki»dan
+   emas: Shohi Zinda gumbazlaridagi turkuaz, Registon peshtoqlaridagi
+   lojuvard, muqarnas zarhali va Samarqand qog'ozidek iliq fil suyagi
+   zamin. Mobil ilova ham aynan shu palitrada — bitta mahsulot, bitta
+   ovoz.
 
    --- Tuzilmaviy cheklov (did emas, muhandislik) ---
    SLA'ga asoslangan tizimda amber «ogohlantirish», qizil «muddat o'tdi»
    ma'nosini DOIMIY egallaydi. Demak brend rangi iliq bo'la olmaydi —
-   aks holda brend har doim signal bilan raqobatlashadi (v1.7 gacha aynan
-   shunday edi: accent 27°, warning 39° — atigi 12° farq).
+   aks holda brend har doim signal bilan raqobatlashadi. Turkuaz sovuq
+   maydonda qoladi, latun esa FAQAT to'q sirtda urg'u sifatida ishlaydi.
 
    --- Ikki qonun ---
    1. «Rang = holat. Tuzilma = brend.»  Brend yorqin accent bilan emas,
-      to'q petrol sirt + tipografika + latun muhr bilan beriladi.
-   2. «Sovuq = normal, iliq = e'tibor.»  Butun interfeys sovuq maydonda;
-      amber va qizil kamdan-kam uchraydi, shuning uchun ko'zga tashlanadi.
+      to'q kechki sirt + naqsh + tipografika bilan beriladi.
+   2. «Sovuq = normal, iliq = e'tibor.»  Amber va qizil kamdan-kam
+      uchraydi, shuning uchun ko'zga tashlanadi.
 
    --- Hick qonuni: 7 ta holat rangi -> 4 ta + neytral ---
-   Avval har bir status o'z rangiga ega edi (7 ta ton). Xodim ro'yxatni
-   «bu menga kerakmi?» savoli bilan ko'zdan kechiradi, shuning uchun rang
-   AYNAN shu savolga javob beradi, bosqich nomini esa yozuv aytadi:
       kulrang — hali hech kim tegmagan
       ko'k    — bizda, harakatda
       amber   — TO'SIQ: fuqaro javobini kutamiz
       yashil  — hal qilindi
       qizil   — rad etildi
-   Aniq bosqich (`assigned` / `accepted` / `in_progress`) yozuv va kanban
-   ustuni orqali ko'rinadi — uni rang bilan takrorlash ortiqcha tanlov.
 
-   O'lchov: har juftlik ΔE ≥ 33.6, har bir rang oq fonda ≥4.5:1.
+   Kontrast: har bir matn rangi o'z fonida >= 4.5:1 (pastda o'lchov
+   qavs ichida). Bu qiymatlar taxmin emas — WCAG formulasi bo'yicha
+   hisoblangan.
    ===================================================================== */
 
 :root {
-  /* --- Brend: petrol qobiq (to'q sirtlar — sidebar, tugma, muhr) ------ */
-  --shell-deep: #082227;
-  --shell: #0d3138;
-  --shell-raised: #17474f;
+  /* --- Brend: kechki lojuvard qobiq (sidebar, sarlavha lentasi) ------- */
+  --shell-deep: #060e1f;
+  --shell: #0a1730;
+  --shell-raised: #173163;
 
-  /* Latun — rasmiy muhr notasi. FAQAT to'q sirt ustida ishlatiladi
-     (logotip, aktiv menyu). Oq fonda u amber ogohlantirish bilan
-     chalkashardi, shuning uchun yorug' yuzalarda umuman yo'q. */
-  --brass: #d9a83c;
-  --brass-light: #ebd9a8;
+  /* Kechki sirtlarning gradiyenti — hero, muhr kartalari.
+     Mobil `gradients.night` bilan bir xil uchta to'xtash nuqtasi. */
+  --night-1: #060e1f;
+  --night-2: #102246;
+  --night-3: #06403b;
 
-  /* --- Neytral shkala: petrol tomon sal og'gan, sof kulrang emas ------
+  /* Latun — muqarnas zarhali. FAQAT to'q sirt ustida: oq fonda u amber
+     ogohlantirish bilan chalkashardi. */
+  --brass: #d3a63c;
+  --brass-light: #efd696;
+  --brass-deep: #8d6a20;
+
+  /* --- Neytral shkala: iliq fil suyagi, sovuq kulrang EMAS ------------
      Yagona shkala — fuqaro ham, admin ham shu ranglarda.               */
-  --bg-app: #eef1f1;
-  --bg-subtle: #f5f7f7;
-  --bg-surface: #ffffff;
-  --border: #e0e6e6;
-  --border-strong: #c3cccc;
+  --bg-app: #f5f1e8;
+  --bg-subtle: #fbf8f2;
+  --bg-surface: #fffdf9;
+  --border: #eae4d7;
+  --border-strong: #d9d1c0;
 
-  --text-primary: #12252a; /* petrol-siyoh — sarlavhalar shu rangda */
-  --text-secondary: #4f5f63;
-  --text-muted: #5f6d72; /* 4.6:1 `--bg-subtle` ustida */
-  --text-inverse: #ffffff;
+  --text-primary: #06222a; /* 15.9:1 `--bg-surface` ustida */
+  --text-secondary: #2e5560; /* 8.1:1 */
+  --text-muted: #4a727c; /* 5.0:1 `--bg-subtle` ustida */
+  --text-inverse: #fffdf9;
 
   /* --- Accent: yagona interaktiv rang (havola, tugma, focus) ---------
-     Majolika moviysi. Hech qachon holat bildirmaydi.                   */
-  --accent: #0b6e7a; /* 6.0:1 */
-  --accent-hover: #095a64;
-  --accent-soft: rgba(11, 110, 122, 0.1);
-  /* `--accent` ikki vazifani bajaradi: yorug' fonda MATN rangi va tugma
-     FONI. Bu ikkisi qarama-qarshi yorug'lik talab qiladi — dark rejimda
-     accent yorqin sirga aylanadi va ustidagi oq matn 2.1:1 ga tushib
-     ketardi. Shuning uchun «accent ustidagi matn» alohida token. */
-  --accent-contrast: #ffffff;
+     Timuriy turkuaz. Hech qachon holat bildirmaydi.
+
+     Nega 600 va 500 emas: `--accent` bir vaqtda MATN rangi ham (havola),
+     shuning uchun 4.5:1 dan o'tishi shart. Turkuaz 500 (#0e877a) oq
+     fonda atigi 4.46:1 — chegaradan pastda. 600 esa 6.3:1.            */
+  --accent: #0a6c62; /* 6.3:1 */
+  --accent-hover: #08554e;
+  --accent-soft: rgba(10, 108, 98, 0.1);
+  --accent-contrast: #fffdf9;
+  /* Gradiyent va to'q sirt uchun yorqin variant — matn sifatida emas,
+     faqat to'ldirish. */
+  --accent-bright: #0e877a;
+  --accent-lit: #2aa396;
+  /* Tugma rampasi alohida token: `--accent-hover` light'da to'qroq,
+     dark'da esa OCHROQ bo'lishi kerak (hover konvensiyasi), shuning uchun
+     uni gradiyent to'xtashi sifatida ishlatib bo'lmaydi — dark'da ramp
+     deyarli tekis chiqardi. */
+  --btn-from: #2aa396;
+  --btn-to: #076159;
 
   /* Eski `--navy-*` nomlari saqlanadi (avatar doiralari), qobiqqa qaraydi */
-  --navy-900: #082227;
-  --navy-800: #0d3138;
-  --navy-700: #17474f;
-  --navy-600: #22606a;
+  --navy-900: #060e1f;
+  --navy-800: #0a1730;
+  --navy-700: #102246;
+  --navy-600: #173163;
 
   /* --- Semantik: sovuq = normal, iliq = e'tibor ---------------------- */
-  --info: #1f5fbf; /* 6.1:1 — «bizda, harakatda» */
-  --success: #15803d; /* 5.0:1 */
-  --warning: #b45309; /* 5.0:1 */
-  --danger: #be2233; /* 6.1:1 */
+  --info: #2a539f; /* 7.3:1 — «bizda, harakatda» */
+  --success: #2e7d4f; /* 5.1:1 */
+  --warning: #945d0f; /* 5.5:1 */
+  --danger: #b93a4b; /* 5.6:1 */
   --st-new: #6e6a66; /* 5.4:1 — neytral: hali hech kim tegmagan */
   --purple: #6e5aa6; /* faqat KPI grafik chizig'i */
 
+  /* Holat fonlari — chip va rels uchun iliq zamin bilan uyg'un */
+  --info-soft: #ecf1fb;
+  --success-soft: #ebf6ee;
+  --warning-soft: #fff5e4;
+  --danger-soft: #fceeef;
+
   /* --- Sidebar / to'q qobiq -------------------------------------------
-     Temaga bog'liq emas: bu brend sirti, light/dark'da bir xil.
-     Aktiv element latun tusda — moviy accent to'q petrol ustida
-     yetarlicha ajralmasdi.                                             */
-  --sidebar-bg: #0d3138;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-text: rgba(255, 255, 255, 0.72);
+     Temaga bog'liq emas: bu brend sirti, light/dark'da bir xil.        */
+  --sidebar-bg: #0a1730;
+  --sidebar-border: rgba(255, 255, 255, 0.09);
+  --sidebar-text: rgba(255, 255, 255, 0.74);
   --sidebar-text-hover: #ffffff;
-  --sidebar-text-muted: rgba(255, 255, 255, 0.45);
+  --sidebar-text-muted: rgba(255, 255, 255, 0.48);
   --sidebar-hover-bg: rgba(255, 255, 255, 0.07);
   --sidebar-badge-bg: rgba(255, 255, 255, 0.1);
-  --sidebar-active-bg: rgba(255, 255, 255, 0.16);
-  --sidebar-active-text: #ebd9a8; /* 9.9:1 */
+  --sidebar-active-bg: rgba(255, 255, 255, 0.14);
+  --sidebar-active-text: #efd696; /* 11.2:1 qobiq ustida */
   /* `--danger` qobiq ustida atigi 2.0:1 — hisoblagich uchun ochiq variant */
   --sidebar-danger: #ff9ba5;
   --sidebar-danger-bg: rgba(255, 155, 165, 0.16);
 
-  /* Radius */
-  --radius-inner: 12px;
-  --radius-control: 10px;
-  --radius-card: 20px;
+  /* Radius — mobil `radius` tokenlari bilan bir xil qadamlar */
+  --radius-inner: 16px;
+  --radius-control: 14px;
+  --radius-card: 22px;
+  --radius-hero: 34px;
   --radius-pill: 999px;
 
-  /* Shadow — petrol tusli, neytral qora emas */
-  --shadow-sm: 0 1px 2px rgba(8, 34, 39, 0.05);
-  --shadow-card: 0 4px 20px rgba(8, 34, 39, 0.07);
-  --shadow-lift: 0 8px 30px rgba(8, 34, 39, 0.12);
+  /* Shadow — siyoh tusli, neytral qora emas. Kulrang soya iliq
+     palitrani bir zumda arzon ko'rsatadi. */
+  --shadow-sm: 0 1px 2px rgba(6, 34, 42, 0.05);
+  --shadow-card: 0 8px 24px rgba(6, 34, 42, 0.07);
+  --shadow-lift: 0 16px 40px rgba(6, 34, 42, 0.11);
+  --shadow-float: 0 22px 52px rgba(6, 34, 42, 0.15);
+  /* Rangli ko'tarilish — bosishni «sotadigan» yorug'lik */
+  --shadow-action: 0 10px 24px rgba(10, 108, 98, 0.3);
+  --shadow-gild: 0 8px 20px rgba(141, 106, 32, 0.26);
 
   /* Layout */
   --sidebar-w-collapsed: 76px;
@@ -120,31 +143,35 @@
 }
 
 .dark {
-  --bg-app: #0b1416;
-  --bg-subtle: #121e21;
-  --bg-surface: #16262a;
-  --border: #24393e;
-  --border-strong: #354e54;
+  --bg-app: #071319;
+  --bg-subtle: #0c1e24;
+  --bg-surface: #102a31;
+  --border: #1d3a42;
+  --border-strong: #2c525c;
 
-  --text-primary: #e8efef;
-  --text-secondary: #a8babe;
-  --text-muted: #8ba0a4;
-  --text-inverse: #12252a;
+  --text-primary: #e9f1f0;
+  --text-secondary: #a9c3c4;
+  --text-muted: #8ca9ac;
+  --text-inverse: #06222a;
 
-  --shell-deep: #0b1416;
-  --shell: #0d3138;
-  --shell-raised: #17474f;
+  --shell-deep: #060e1f;
+  --shell: #0a1730;
+  --shell-raised: #173163;
 
-  --navy-900: #0d3138;
-  --navy-800: #17474f;
-  --navy-700: #22606a;
-  --navy-600: #2e7a86;
+  --navy-900: #0a1730;
+  --navy-800: #102246;
+  --navy-700: #173163;
+  --navy-600: #2a539f;
 
-  /* To'q fonda sir yorqinroq bo'ladi — to'q moviy o'qilmaydi */
-  --accent: #4fc3d4;
-  --accent-hover: #6fd6e5;
-  --accent-soft: rgba(79, 195, 212, 0.16);
-  --accent-contrast: #06232a; /* yorqin sir ustida to'q matn — 9.4:1 */
+  /* To'q fonda sir yorqinroq bo'ladi — to'q turkuaz o'qilmaydi */
+  --accent: #3fbfb3;
+  --accent-hover: #6ad3c6;
+  --accent-soft: rgba(63, 191, 179, 0.16);
+  --accent-contrast: #042c29; /* yorqin sir ustida to'q matn — 9.1:1 */
+  --accent-bright: #2aa396;
+  --accent-lit: #5fbfb4;
+  --btn-from: #6ad3c6;
+  --btn-to: #1e9184;
 
   --info: #6ba5f5;
   --success: #4ade80;
@@ -152,6 +179,17 @@
   --danger: #fb7185;
   --st-new: #9aa3a3;
   --purple: #a78bfa;
+
+  --info-soft: rgba(107, 165, 245, 0.14);
+  --success-soft: rgba(74, 222, 128, 0.13);
+  --warning-soft: rgba(251, 191, 36, 0.13);
+  --danger-soft: rgba(251, 113, 133, 0.13);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lift: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 22px 52px rgba(0, 0, 0, 0.55);
+  --shadow-action: 0 10px 24px rgba(14, 135, 122, 0.34);
 }
 
 @theme inline {
@@ -169,8 +207,12 @@
   --color-shell-deep: var(--shell-deep);
   --color-shell: var(--shell);
   --color-shell-raised: var(--shell-raised);
+  --color-night-1: var(--night-1);
+  --color-night-2: var(--night-2);
+  --color-night-3: var(--night-3);
   --color-brass: var(--brass);
   --color-brass-light: var(--brass-light);
+  --color-brass-deep: var(--brass-deep);
 
   --color-navy-900: var(--navy-900);
   --color-navy-800: var(--navy-800);
@@ -181,6 +223,10 @@
   --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
   --color-accent-contrast: var(--accent-contrast);
+  --color-accent-bright: var(--accent-bright);
+  --color-accent-lit: var(--accent-lit);
+  --color-btn-from: var(--btn-from);
+  --color-btn-to: var(--btn-to);
 
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -188,6 +234,11 @@
   --color-info: var(--info);
   --color-purple: var(--purple);
   --color-st-new: var(--st-new);
+
+  --color-info-soft: var(--info-soft);
+  --color-success-soft: var(--success-soft);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger-soft: var(--danger-soft);
 
   --color-sidebar-bg: var(--sidebar-bg);
   --color-sidebar-border: var(--sidebar-border);
@@ -201,17 +252,21 @@
   --color-sidebar-danger: var(--sidebar-danger);
   --color-sidebar-danger-bg: var(--sidebar-danger-bg);
 
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-manrope);
   --font-mono: var(--font-jetbrains);
 
   --radius-inner: var(--radius-inner);
   --radius-control: var(--radius-control);
   --radius-card: var(--radius-card);
+  --radius-hero: var(--radius-hero);
   --radius-pill: var(--radius-pill);
 
   --shadow-sm: var(--shadow-sm);
   --shadow-card: var(--shadow-card);
   --shadow-lift: var(--shadow-lift);
+  --shadow-float: var(--shadow-float);
+  --shadow-action: var(--shadow-action);
+  --shadow-gild: var(--shadow-gild);
 }
 
 body {
@@ -220,20 +275,26 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Admin/xodim paneli — FAQAT zichlik farqi: shrift va radius.
-   Rang override'lari yo'q: avval bu blok neytral shkalani sof kulrangga
-   o'zgartirardi, ya'ni fuqaro va admin ikki xil rang haroratida ishlardi
-   va bitta accent ikkalasida ikki xil ko'rinardi. */
-.theme-admin {
-  --font-sans: var(--font-jakarta);
+/* Manrope optik jihatdan kattaroq ko'rinadi — sarlavhalar hajm bilan
+   emas, zich harf oralig'i bilan og'irlik oladi. */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+h1 {
+  letter-spacing: -0.032em;
+}
 
-  --radius-inner: 16px;
-  --radius-control: 14px;
-  --radius-card: 24px;
+/* Admin/xodim paneli — FAQAT zichlik farqi: radius.
+   Rang va shrift override'lari yo'q: butun mahsulot bitta shkalada. */
+.theme-admin {
+  --radius-inner: 14px;
+  --radius-control: 12px;
+  --radius-card: 20px;
 
   background: var(--bg-app);
   color: var(--text-primary);
-  font-family: var(--font-sans);
   min-height: 100vh;
 }
 
@@ -241,9 +302,8 @@ body {
   border-color: var(--border);
 }
 
-/* Fokus halqasi — Fitts/klaviatura: har bir interaktiv element uchun
-   ko'rinadigan, bir xil va yetarli kontrastli. Avval brauzer standarti
-   qolib ketgan edi va to'q sirtlarda deyarli ko'rinmasdi. */
+/* Fokus halqasi — har bir interaktiv element uchun ko'rinadigan, bir xil
+   va yetarli kontrastli. */
 :where(a, button, [role="button"], input, select, textarea, summary):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -252,6 +312,105 @@ body {
 .theme-admin :where(aside) :where(a, button):focus-visible,
 :where(aside) :where(a, button):focus-visible {
   outline-color: var(--brass-light);
+}
+
+/* ---------------------------------------------------------------------
+   Kechki sirt — mobil `NightPanel` ning web varianti.
+
+   Uch qatlam: lojuvard→turkuaz ramp, ikkita yumshoq yorug'lik manbasi
+   (radial-gradient bilan «mesh» qo'lda yig'iladi) va ustidan panjara
+   naqshi. Latun turkuaz ustiga tushsa loyqa zaytun rang beradi, shuning
+   uchun iliq nur yuqori-o'ngda, sovuq nur quyi-chapda — ular uchrashmaydi.
+   --------------------------------------------------------------------- */
+.night-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 86% 8%, rgba(227, 190, 95, 0.28) 0%, rgba(227, 190, 95, 0) 62%),
+    radial-gradient(130% 100% at 8% 94%, rgba(95, 191, 180, 0.42) 0%, rgba(95, 191, 180, 0) 66%),
+    linear-gradient(135deg, var(--night-1) 0%, var(--night-2) 52%, var(--night-3) 100%);
+  color: #ffffff;
+}
+
+/* Identifikatsiya lentasi — faqat ramp, radial nursiz. Hero ostida
+   turgani uchun uning nurlari qayta boshlanib ko'rinadigan chok hosil
+   qilardi; tekis variant ikkalasini bitta uzluksiz peshtoq qiladi. */
+.night-panel--flat {
+  background: linear-gradient(135deg, var(--night-1) 0%, var(--night-2) 62%, var(--night-2) 100%);
+}
+
+/* Latun soch chizig'i — kechki sirtning yuqori qirrasi */
+.night-panel--gilded::before {
+  content: "";
+  position: absolute;
+  inset-inline: 8%;
+  top: 0;
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(227, 190, 95, 0), rgba(227, 190, 95, 0.85), rgba(227, 190, 95, 0));
+  z-index: 2;
+}
+
+/* ---------------------------------------------------------------------
+   Harakat — mobil `Reveal` / `Drift` / `StarLoader` ning web varianti.
+   Hammasi `prefers-reduced-motion` blokida o'chadi (pastda).
+   --------------------------------------------------------------------- */
+@keyframes motif-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes motif-spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+@keyframes motif-drift {
+  0%,
+  100% {
+    transform: translateY(-7px) rotate(-2.5deg);
+  }
+  50% {
+    transform: translateY(7px) rotate(2.5deg);
+  }
+}
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.motif-spin {
+  animation: motif-spin 2.6s linear infinite;
+}
+.motif-spin-reverse {
+  animation: motif-spin-reverse 2.6s linear infinite;
+}
+.motif-drift {
+  animation: motif-drift 11s ease-in-out infinite;
+}
+/* Sahifa bloklari ketma-ket chiqadi — `--reveal-delay` bilan siljitiladi. */
+.reveal {
+  animation: reveal-up 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+/* Bosishda fizik cho'kish — mobil `Touchable` prujinasining web ekvivalenti */
+.press {
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+.press:active {
+  transform: scale(0.975);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -265,8 +424,7 @@ body {
   }
 }
 
-/* Sidebar nav — scrollable but without a visible scrollbar (the native
-   overlay scrollbar reads as a stray white bar against the panel). */
+/* Sidebar nav — scrollable but without a visible scrollbar. */
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;

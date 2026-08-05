@@ -1,23 +1,17 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
+// Manrope — mobil ilova bilan bir xil shrift, lotin + kirill qamrovi
+// bilan (o'zbek krill va rus tillari uchun shart).
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin", "cyrillic"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
-  subsets: ["latin"],
-});
-
-// Faqat /admin (xodim/admin paneli) uchun — fuqaro sahifalari Inter'da
-// qoladi. `.theme-admin` (globals.css) shu o'zgaruvchini --font-sans
-// qilib qo'yadi, frontend/src/app/admin/layout.tsx orqali ulanadi.
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
   subsets: ["latin"],
 });
 
@@ -45,7 +39,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#0f2744",
+  themeColor: "#0a1730",
   width: "device-width",
   initialScale: 1,
   // Keksa foydalanuvchi matnni kattalashtira olishi kerak (docs/10 §8).
@@ -60,7 +54,7 @@ export default function RootLayout({
   return (
     <html
       lang="uz"
-      className={`${inter.variable} ${jetbrainsMono.variable} ${plusJakarta.variable} h-full antialiased`}
+      className={`${manrope.variable} ${jetbrainsMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

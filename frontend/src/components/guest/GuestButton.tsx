@@ -2,14 +2,18 @@ import { clsx } from "clsx";
 import { AnchorHTMLAttributes, ButtonHTMLAttributes } from "react";
 import { Link } from "@/i18n/navigation";
 
-type Variant = "primary" | "secondary";
+type Variant = "primary" | "secondary" | "gold";
 
 export function guestButtonClasses(variant: Variant, className?: string) {
   return clsx(
-    "flex w-full items-center justify-center gap-3 rounded-card px-6 py-4 text-lg font-semibold transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed",
-    "min-h-[56px]",
-    variant === "primary" && "bg-accent text-accent-contrast hover:bg-accent-hover",
-    variant === "secondary" && "bg-bg-surface text-text-primary border-2 border-border-strong hover:bg-bg-subtle",
+    "press relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-card px-6 py-4 text-lg font-bold",
+    "min-h-[58px] disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
+    variant === "primary" &&
+      "bg-linear-to-br from-btn-from to-btn-to text-accent-contrast shadow-action hover:brightness-[1.06]",
+    variant === "secondary" &&
+      "border-[1.5px] border-border-strong bg-bg-surface text-text-primary shadow-sm hover:bg-bg-subtle",
+    variant === "gold" &&
+      "bg-linear-to-br from-brass-light to-brass text-[#654c17] shadow-gild hover:brightness-[1.04]",
     className
   );
 }
@@ -18,8 +22,8 @@ interface GuestButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
 }
 
-/** Large touch-friendly button for citizen pages (docs/10-ui-ux.md §2:
- * height >= 56px, full width, text + icon together). */
+/** Large touch-friendly button for citizen pages: height >= 58px, full
+ * width, text and icon together. */
 export function GuestButton({ variant = "primary", className, children, ...props }: GuestButtonProps) {
   return (
     <button className={guestButtonClasses(variant, className)} {...props}>
