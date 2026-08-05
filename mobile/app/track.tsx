@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Feather } from '@expo/vector-icons';
 import { trackComplaint, type TrackResult } from '@/api';
 import { BottomNav } from '@/components/BottomNav';
+import { InfoRequest } from '@/components/track/InfoRequest';
 import { Timeline } from '@/components/track/Timeline';
 import { useI18n, type Language } from '@/i18n';
 import {
@@ -195,7 +196,18 @@ export default function TrackScreen() {
               </NightPanel>
             </Reveal>
 
-            <Reveal index={2} style={styles.resultBlock}>
+            {result.need_info ? (
+              <Reveal index={2} style={styles.resultBlock}>
+                <InfoRequest
+                  ticket={result.ticket_number}
+                  question={result.info_request_text}
+                  alreadyProvided={result.info_provided}
+                  onSent={search}
+                />
+              </Reveal>
+            ) : null}
+
+            <Reveal index={3} style={styles.resultBlock}>
               <Card round="2xl" padded="lg" lift="card">
                 <DetailRow
                   icon="briefcase"

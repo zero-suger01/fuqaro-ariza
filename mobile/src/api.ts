@@ -18,6 +18,12 @@ export type TrackResult = {
   deadline_at: string | null;
   reply_text: string | null;
   timeline: { step: string; at: string | null; done: boolean }[];
+  /** Xodim fuqarodan qo'shimcha ma'lumot so'ragan — javob kutilmoqda. */
+  need_info: boolean;
+  /** So'ralgan savolning O'ZI. Usiz fuqaro nima yuborishini bilmaydi. */
+  info_request_text: string | null;
+  /** Javob allaqachon yuborilgan — takror yubormasin. */
+  info_provided: boolean;
 };
 export type AuthUser = { kind: 'citizen'; id: string; first_name: string; last_name: string | null; fullname: string; phone: string };
 export type CitizenComplaint = { id: string; ticket_number: string; status_simple: CitizenStatusCode; category: { code: string; name: string }; department: { code: string; name: string } | null; assigned_staff: { name: string; phone: string } | null; description: string; created_at: string; deadline_at: string | null };
@@ -62,6 +68,27 @@ export const getNeighborhoods = () => request<Neighborhood[]>('/api/public/neigh
 export const getSupport = () => request<SupportContact>('/api/public/support');
 export const trackComplaint = (ticket: string) =>
   request<TrackResult>(`/api/public/complaints/track?ticket=${encodeURIComponent(ticket)}`);
+
+/**
+ * Xodim so'ragan qo'shimcha ma'lumot yoki hujjatni yuborish.
+ *
+ * Bu sikl web (`/holat`) va Telegram botda allaqachon bor edi, mobil
+ * ilovada esa yo'q: u holatni ko'rsatardi-yu, javob qaytarish yo'li
+ * bo'lmagani uchun fuqaro «hujjatni olib keling» degan xabarni olib,
+ * telefon qilishdan boshqa chorasi qolmasdi. Telefonda kamera va fayl
+ * tanlagich qo'lda — hujjat yuborish uchun eng qulay kanal aynan shu.
+ */
+export async function submitCitizenInfo(data: {
+  ticket: string;
+  text: string;
+  images?: MediaAttachment[];
+}): Promise<{ resumed: boolean }> {
+  const form = new FormData();
+  form.append('ticket', data.ticket);
+  form.append('text', data.text);
+  data.images?.forEach((file) => form.append('images', file as unknown as Blob));
+  return request<{ resumed: boolean }>('/api/public/complaints/info', { method: 'POST', body: form });
+}
 
 export async function submitComplaint(data: {
   description: string;

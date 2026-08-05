@@ -146,6 +146,14 @@ export type Dict = {
     timeline: string;
     reply: string;
     category: string;
+    infoTitle: string;
+    infoHint: string;
+    infoPlaceholder: string;
+    infoPhoto: string;
+    infoSend: string;
+    infoSent: string;
+    infoEmpty: string;
+    infoFailed: string;
   };
   common: { back: string; loading: string; retry: string; close: string };
 };
@@ -289,6 +297,14 @@ const uz: Dict = {
     timeline: 'Jarayon',
     reply: 'Rasmiy javob',
     category: 'Yoʻnalish',
+    infoTitle: 'Sizdan maʼlumot kutilmoqda',
+    infoHint: 'Javobni yozing yoki hujjat rasmini biriktiring — murojaat shundan keyin davom etadi.',
+    infoPlaceholder: 'Masalan: uy raqami 12, muammo uch kundan beri...',
+    infoPhoto: 'Rasm biriktirish',
+    infoSend: 'Javobni yuborish',
+    infoSent: 'Javobingiz yuborildi. Rahmat!',
+    infoEmpty: 'Javob matnini yozing.',
+    infoFailed: 'Javobni yuborib boʻlmadi. Qayta urinib koʻring.',
   },
   common: { back: 'Orqaga', loading: 'Yuklanmoqda', retry: 'Qayta urinish', close: 'Yopish' },
 };
@@ -432,6 +448,14 @@ const oz: Dict = {
     timeline: 'Жараён',
     reply: 'Расмий жавоб',
     category: 'Йўналиш',
+    infoTitle: 'Сиздан маълумот кутилмоқда',
+    infoHint: 'Жавобни ёзинг ёки ҳужжат расмини бириктиринг — мурожаат шундан кейин давом этади.',
+    infoPlaceholder: 'Масалан: уй рақами 12, муаммо уч кундан бери...',
+    infoPhoto: 'Расм бириктириш',
+    infoSend: 'Жавобни юбориш',
+    infoSent: 'Жавобингиз юборилди. Раҳмат!',
+    infoEmpty: 'Жавоб матнини ёзинг.',
+    infoFailed: 'Жавобни юбориб бўлмади. Қайта уриниб кўринг.',
   },
   common: { back: 'Орқага', loading: 'Юкланмоқда', retry: 'Қайта уриниш', close: 'Ёпиш' },
 };
@@ -575,6 +599,14 @@ const ru: Dict = {
     timeline: 'Процесс',
     reply: 'Официальный ответ',
     category: 'Направление',
+    infoTitle: 'От вас ждут информацию',
+    infoHint: 'Напишите ответ или приложите фото документа — после этого обращение продолжится.',
+    infoPlaceholder: 'Например: дом 12, проблема уже три дня...',
+    infoPhoto: 'Приложить фото',
+    infoSend: 'Отправить ответ',
+    infoSent: 'Ваш ответ отправлен. Спасибо!',
+    infoEmpty: 'Напишите текст ответа.',
+    infoFailed: 'Не удалось отправить ответ. Попробуйте ещё раз.',
   },
   common: { back: 'Назад', loading: 'Загрузка', retry: 'Повторить', close: 'Закрыть' },
 };
@@ -718,6 +750,14 @@ const en: Dict = {
     timeline: 'Progress',
     reply: 'Official reply',
     category: 'Category',
+    infoTitle: 'Information is needed from you',
+    infoHint: 'Write your answer or attach a photo of the document — the request continues once you do.',
+    infoPlaceholder: 'For example: house number 12, the problem started three days ago...',
+    infoPhoto: 'Attach a photo',
+    infoSend: 'Send the answer',
+    infoSent: 'Your answer has been sent. Thank you!',
+    infoEmpty: 'Write the answer text.',
+    infoFailed: 'Could not send the answer. Please try again.',
   },
   common: { back: 'Back', loading: 'Loading', retry: 'Try again', close: 'Close' },
 };
