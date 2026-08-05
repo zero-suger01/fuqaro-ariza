@@ -289,6 +289,7 @@ def _build_complaints_query(
     date_from: date | None,
     date_to: date | None,
     unassigned: bool = False,
+    unclaimed: bool = False,
     sla_risk: bool = False,
     need_info_over_hours: int | None = None,
     mine: bool = False,
@@ -334,6 +335,8 @@ def _build_complaints_query(
         query = query.filter(*queues.ai_exceptions())
     if unassigned:
         query = query.filter(*queues.unassigned())
+    if unclaimed:
+        query = query.filter(*queues.unclaimed())
     if sla_risk:
         query = query.filter(*queues.sla_risk())
     if need_info_over_hours is not None:
@@ -363,6 +366,7 @@ def list_complaints(
     overdue: bool = False,
     needs_review: bool = False,
     unassigned: bool = False,
+    unclaimed: bool = False,
     sla_risk: bool = False,
     need_info_over_hours: int | None = Query(None, ge=0),
     mine: bool = False,
@@ -391,6 +395,7 @@ def list_complaints(
         date_from=date_from,
         date_to=date_to,
         unassigned=unassigned,
+        unclaimed=unclaimed,
         sla_risk=sla_risk,
         need_info_over_hours=need_info_over_hours,
         mine=mine,
@@ -407,6 +412,7 @@ def list_complaints(
                 need_info_over_hours=need_info_over_hours,
                 stuck_ai=stuck_ai,
                 unassigned=unassigned,
+                unclaimed=unclaimed,
                 mine=mine,
             )
         )
@@ -454,6 +460,7 @@ def complaint_stage_counts(
     overdue: bool = False,
     needs_review: bool = False,
     unassigned: bool = False,
+    unclaimed: bool = False,
     sla_risk: bool = False,
     need_info_over_hours: int | None = Query(None, ge=0),
     mine: bool = False,
@@ -487,6 +494,7 @@ def complaint_stage_counts(
         date_from=date_from,
         date_to=date_to,
         unassigned=unassigned,
+        unclaimed=unclaimed,
         sla_risk=sla_risk,
         need_info_over_hours=need_info_over_hours,
         mine=mine,
@@ -510,6 +518,7 @@ def export_complaints_xlsx(
     overdue: bool = False,
     needs_review: bool = False,
     unassigned: bool = False,
+    unclaimed: bool = False,
     sla_risk: bool = False,
     need_info_over_hours: int | None = Query(None, ge=0),
     mine: bool = False,
@@ -553,6 +562,7 @@ def export_complaints_xlsx(
         date_from=date_from,
         date_to=date_to,
         unassigned=unassigned,
+        unclaimed=unclaimed,
         sla_risk=sla_risk,
         need_info_over_hours=need_info_over_hours,
         mine=mine,
@@ -568,6 +578,7 @@ def export_complaints_xlsx(
             need_info_over_hours=need_info_over_hours,
             stuck_ai=stuck_ai,
             unassigned=unassigned,
+            unclaimed=unclaimed,
             mine=mine,
         )
     ).all()
@@ -1401,6 +1412,7 @@ def stats_queues(db: Session = Depends(get_db)):
 
     return QueueStats(
         unassigned=count(queues.unassigned()),
+        unclaimed=count(queues.unclaimed()),
         ai_exceptions=count(queues.ai_exceptions()),
         sla_risk=count(queues.sla_risk(now)),
         overdue=count(queues.overdue(now)),

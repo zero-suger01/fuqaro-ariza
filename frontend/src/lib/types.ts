@@ -275,7 +275,10 @@ export interface StageCounts {
 }
 
 export interface QueueStats {
+  /** Bo'lim biriktirilmagan — tuman adminining ishi. */
   unassigned: number;
+  /** Bo'limga yo'naltirilgan, lekin egasiz — bo'limning o'z navbati. */
+  unclaimed: number;
   ai_exceptions: number;
   sla_risk: number;
   overdue: number;

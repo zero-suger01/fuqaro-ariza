@@ -14,7 +14,6 @@ funksiya ustida).
 """
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import or_
 from sqlalchemy.sql.elements import ColumnElement, UnaryExpression
 
 from app.core.constants import STATUS_NEED_INFO, STATUS_NEW, TERMINAL_STATUSES
@@ -36,10 +35,33 @@ def _active() -> ColumnElement[bool]:
 
 
 def unassigned() -> list[ColumnElement[bool]]:
-    """Dispetcherga tushmagan: bo'limi yoki mas'ul xodimi yo'q."""
+    """Bo'lim biriktirilmagan — AYNAN tuman adminining ishi.
+
+    Avval bu shart `bo'lim YO'Q **YOKI** xodim YO'Q` edi va aynan shu
+    `or_` tuman adminiga ortiqcha yuk tug'dirardi: AI murojaatni to'g'ri
+    bo'limga yo'naltirgan bo'lsa ham, aniq xodim tayinlanmaguncha u
+    adminning «Biriktirilmagan» hisoblagichida turaverardi. Holbuki
+    egalik `claim()` orqali xodimning O'ZIDA tug'iladi ([03] §2.1) —
+    ya'ni admin allaqachon o'z ishini bajarib bo'lgan ishni ko'rib
+    turardi va raqam hech qachon nolga tushmasdi.
+
+    Endi taqsimot chegarasi aniq: bo'limi yo'q — admin hal qiladi;
+    bo'limi bor, egasi yo'q — `unclaimed()`, bo'limning o'z navbati.
+    """
+    return [_active(), Complaint.assigned_department_id.is_(None)]
+
+
+def unclaimed() -> list[ColumnElement[bool]]:
+    """Bo'limga yo'naltirilgan, lekin hali hech kim o'ziga olmagan.
+
+    Bo'lim xodimining «Bo'lim navbati» tabi shu shartdan chiqadi. Xodim
+    so'rovi baribir o'z bo'limi bilan cheklanadi (`DEPARTMENT_SCOPED_ROLES`),
+    shuning uchun bu unga «bizning bo'limda egasiz nima bor» degani.
+    """
     return [
         _active(),
-        or_(Complaint.assigned_department_id.is_(None), Complaint.assigned_user_id.is_(None)),
+        Complaint.assigned_department_id.isnot(None),
+        Complaint.assigned_user_id.is_(None),
     ]
 
 
@@ -94,6 +116,7 @@ def ordering(
     need_info_over_hours: int | None = None,
     stuck_ai: bool = False,
     unassigned: bool = False,
+    unclaimed: bool = False,
     mine: bool = False,
 ) -> list[UnaryExpression]:
     """Navbatga mos tartib — «keyingi qaysi ishni olish kerak».
@@ -112,7 +135,7 @@ def ordering(
     Bir nechta bayroq birga kelishi mumkin (filtr paneli navbat ustiga
     qo'shimcha belgi qo'yadi), shuning uchun tartib aniq: eng shoshilinch
     signal yutadi — muddat o'tgan > muddat tugayapti > fuqaro javobi
-    kutilmoqda > AI qotib qolgan > biriktirilmagan > mening ishlarim.
+    kutilmoqda > AI qotib qolgan > biriktirilmagan/egasiz > mening ishlarim.
 
     Oxirgi `id` — barqaror uzilish nuqtasi: teng qiymatlarda Postgres
     tartibni kafolatlamaydi, u holda pagination'da bir qator ikki sahifada
@@ -129,8 +152,9 @@ def ordering(
         return [Complaint.info_requested_at.asc(), Complaint.id.asc()]
     if stuck_ai:
         return [Complaint.created_at.asc(), Complaint.id.asc()]
-    if unassigned:
-        # Dispetcher uchun FIFO: eng uzoq egasiz turgani birinchi.
+    if unassigned or unclaimed:
+        # Dispetcher va bo'lim navbati uchun FIFO: eng uzoq egasiz
+        # turgani birinchi.
         return [Complaint.created_at.asc(), Complaint.id.asc()]
     if mine:
         # «Navbatim» — xodimning ish navbati, jurnal emas: eng yaqin muddat

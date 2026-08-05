@@ -45,7 +45,7 @@ const TABS: {
     key: "bolim",
     label: "Bo'lim navbati",
     dotColor: "var(--accent)",
-    params: { unassigned: "true" },
+    params: { unclaimed: "true" },
     empty: "Egasiz ish yo'q — hammasi taqsimlangan",
     columns: ["status", "priority", "deadline"],
   },

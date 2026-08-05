@@ -274,7 +274,7 @@ export default function AdminDashboardPage() {
         <div className="flex flex-col md:flex-row gap-4 flex-wrap">
           <QueueCard
             label="Biriktirilmagan"
-            hint="Bo'limi yoki mas'ul xodimi yo'q"
+            hint="Bo'lim biriktirilmagan — sizning ishingiz"
             value={queues?.unassigned}
             href="/admin/murojaatlar?queue=unassigned"
             icon={ClipboardList}
@@ -309,6 +309,20 @@ export default function AdminDashboardPage() {
             icon={MessageCircleQuestion}
           />
         </div>
+        {(queues?.unclaimed ?? 0) > 0 && (
+          /* Bu raqam ATAYLAB yuqoridagi qatorda emas: u bo'limlarga
+             yo'naltirilgan, lekin hali hech kim o'ziga olmagan ish —
+             ya'ni bo'limning navbati, adminning bajaradigan ishi emas.
+             Avval u «Biriktirilmagan» ichiga qo'shilib ketardi va admin
+             o'zi allaqachon taqsimlagan ishni qayta ko'raverardi. */
+          <p className="text-xs text-text-muted">
+            Bo&apos;limlarda egasiz{" "}
+            <Link href="/admin/murojaatlar?queue=unclaimed" className="font-semibold text-accent hover:underline">
+              {queues?.unclaimed} ta
+            </Link>{" "}
+            ish bor — xodimlar o&apos;zlari qabul qiladi, quyidagi jadvaldan kuzating.
+          </p>
+        )}
       </div>
 
       {(queues?.stuck_ai ?? 0) > 0 && (

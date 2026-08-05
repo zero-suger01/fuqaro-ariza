@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  ClipboardList,
   Building2,
   Users,
   Tags,
@@ -13,9 +12,6 @@ import {
   BarChart3,
   Inbox,
   SquareCheckBig,
-  AlertTriangle,
-  Clock,
-  MessageCircleQuestion,
   ScrollText,
   List,
 } from "lucide-react";
@@ -29,11 +25,25 @@ type GatedItem = NavItem & { roles?: string[]; countKey?: keyof QueueStats };
 type GatedGroup = { title: string; items: GatedItem[] };
 
 /**
- * Menyu 5 guruhga bo'lingan (docs/10-ui-ux.md §10.2).
+ * Menyu guruhlari (v2.0).
  *
- * Avval 9 ta element tekis ro'yxatda turardi va `QR kodlar`,
- * `Kategoriyalar` kunda bir marta ochilmaydigan bo'limlar `Murojaatlar`
- * bilan bir qatorda edi — kunlik ish uchun shovqin.
+ * Avval «Operatsion navbat» guruhida tuman admini uchun 7 ta element
+ * turardi va ularning BESHTASI aynan bitta sahifaning `?queue=`
+ * ko'rinishlari edi (`/admin/murojaatlar`). Ya'ni navigatsiya beshta
+ * boshqa joy va'da qilib, har safar o'sha bitta jadvalga olib borardi —
+ * «qayerdaman?» degan savolga javob yo'q edi. Yana bir nusxa bosh
+ * ekranda ham turardi, demak admin bir xil beshta raqamni har ekranda
+ * ikki marta ko'rardi.
+ *
+ * Endi mas'uliyat bo'lingan:
+ *   bosh ekran — triage («bugun nima meni kutyapti»),
+ *   menyu      — navigatsiya (raqamlarsiz, faqat JOYlar),
+ *   navbatlar  — ro'yxat sahifasining ustidagi chiplar, ya'ni qaror
+ *                qabul qilinadigan joyda.
+ *
+ * `AI nazorati` chip emas, menyuda qoladi: u filtr emas, alohida ish
+ * oqimiga ega sahifa (`/admin/tasdiqlash` — AI qarorini tasdiqlash yoki
+ * tuzatish).
  *
  * `countKey` — `stats/queues` dagi maydon nomi; hisoblagich shu yerdan
  * keladi va 0 bo'lsa ko'rsatilmaydi.
@@ -46,13 +56,7 @@ const ADMIN_NAV: GatedGroup[] = [
       { href: "/admin/viloyat", label: "Viloyat monitoringi", icon: BarChart3, roles: ["province_admin", "system_admin"] },
       { href: "/admin/hududlar", label: "Hududlar", icon: Map, roles: ["system_admin"] },
       { href: "/admin/navbatim", label: "Navbatim", icon: Inbox, roles: ["department_staff"] },
-      {
-        href: "/admin/murojaatlar?queue=unassigned",
-        label: "Biriktirilmagan",
-        icon: ClipboardList,
-        roles: ["district_admin"],
-        countKey: "unassigned",
-      },
+      { href: "/admin/murojaatlar", label: "Murojaatlar", icon: List, roles: ["district_admin"] },
       {
         href: "/admin/tasdiqlash",
         label: "AI nazorati",
@@ -60,35 +64,6 @@ const ADMIN_NAV: GatedGroup[] = [
         roles: ["district_admin"],
         countKey: "ai_exceptions",
       },
-      { href: "/admin/murojaatlar?queue=sla_risk", label: "Muddat tugayapti", icon: Clock, roles: ["district_admin"], countKey: "sla_risk" },
-      {
-        href: "/admin/murojaatlar?queue=overdue",
-        label: "Muddati o'tgan",
-        icon: AlertTriangle,
-        roles: ["district_admin"],
-        countKey: "overdue",
-        danger: true,
-      },
-      {
-        href: "/admin/murojaatlar?queue=need_info",
-        label: "Ma'lumot kutilmoqda",
-        icon: MessageCircleQuestion,
-        roles: ["district_admin"],
-        countKey: "awaiting_info",
-      },
-      // «Barcha murojaatlar» shu guruhning oxirida — filtrsiz ro'yxat.
-      //
-      // Avval u alohida `Murojaatlar` guruhida turardi, lekin o'lik
-      // «Eksport» elementi olib tashlangach guruhda bitta element qolib,
-      // sarlavha ortiqcha shovqinga aylandi. Proximity bo'yicha joyi ham
-      // aynan shu yer: yuqoridagi navbatlarning aksariyati AYNAN shu
-      // sahifaning filtrlangan ko'rinishlari (`?queue=...`), demak ular
-      // bitta oilaga tegishli. Tartibi oxirida — avval «nima harakat
-      // talab qiladi», keyin «yoki hammasini ko'rish».
-      //
-      // Eslatma: eksport uchun alohida menyu elementi YO'Q va bo'lmasin —
-      // sabab docs/10 §10.2 da yozilgan.
-      { href: "/admin/murojaatlar", label: "Barcha murojaatlar", icon: List, roles: ["district_admin"] },
     ],
   },
   {

@@ -20,6 +20,7 @@ import type {
   DepartmentAdmin,
   Page,
   Priority,
+  QueueStats,
   StageCounts,
 } from "@/lib/types";
 import { PRIORITY_LABELS, STATUS_LABELS } from "@/lib/status";
@@ -81,8 +82,13 @@ const PAGE_SIZE = 20;
 const QUEUES: Record<string, { label: string; hint: string; params: Record<string, string> }> = {
   unassigned: {
     label: "Biriktirilmagan",
-    hint: "Bo'limi yoki mas'ul xodimi yo'q — dispetcher saralashi kerak",
+    hint: "Bo'lim biriktirilmagan — dispetcher saralashi kerak",
     params: { unassigned: "true" },
+  },
+  unclaimed: {
+    label: "Egasiz",
+    hint: "Bo'limga yo'naltirilgan, lekin hali hech kim o'ziga olmagan",
+    params: { unclaimed: "true" },
   },
   sla_risk: {
     label: "Ijro muddati tugayapti",
@@ -103,6 +109,69 @@ const QUEUES: Record<string, { label: string; hint: string; params: Record<strin
   },
   mine: { label: "Mening ishlarim", hint: "Menga biriktirilgan murojaatlar", params: { mine: "true" } },
 };
+
+/**
+ * Navbat chiplari (v2.0).
+ *
+ * Avval bu navbatlarning har biri yon menyuda ALOHIDA element edi, lekin
+ * hammasi shu bitta sahifaning `?queue=` ko'rinishlari — ya'ni menyu
+ * ettita joy va'da qilib, bitta joyga olib borardi. Endi ular tanlov
+ * qilinadigan joyda, ro'yxatning ustida turadi: admin bir bosishda
+ * navbatdan navbatga o'tadi, sahifa almashmaydi.
+ *
+ * Sonlar `stats/queues` dan — bosh ekrandagi kartalar bilan AYNAN bir xil
+ * manba, shuning uchun ikki joyda ikki xil raqam chiqmaydi.
+ */
+const QUEUE_CHIPS: { key: string; countKey?: keyof QueueStats; danger?: boolean }[] = [
+  { key: "", countKey: undefined },
+  { key: "unassigned", countKey: "unassigned" },
+  { key: "overdue", countKey: "overdue", danger: true },
+  { key: "sla_risk", countKey: "sla_risk" },
+  { key: "need_info", countKey: "awaiting_info" },
+  { key: "stuck_ai", countKey: "stuck_ai", danger: true },
+];
+
+function QueueChips({ active, counts }: { active: string; counts: QueueStats | null }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Navbat">
+      {QUEUE_CHIPS.map(({ key, countKey, danger }) => {
+        const isActive = active === key;
+        const label = key ? QUEUES[key].label : "Barchasi";
+        const count = countKey && counts ? counts[countKey] : undefined;
+        return (
+          <Link
+            key={key || "all"}
+            href={key ? `/admin/murojaatlar?queue=${key}` : "/admin/murojaatlar"}
+            aria-current={isActive ? "page" : undefined}
+            title={key ? QUEUES[key].hint : "Filtrsiz to'liq ro'yxat"}
+            className={clsx(
+              "press inline-flex min-h-9 items-center gap-2 rounded-pill border px-3 text-[13px] font-semibold",
+              isActive
+                ? "border-accent bg-accent text-accent-contrast"
+                : "border-border bg-bg-surface text-text-secondary hover:border-accent hover:text-accent"
+            )}
+          >
+            {label}
+            {typeof count === "number" && count > 0 && (
+              <span
+                className={clsx(
+                  "rounded-pill px-1.5 text-[11px] font-mono tabular-nums",
+                  isActive
+                    ? "bg-white/20"
+                    : danger
+                      ? "bg-danger-soft text-danger"
+                      : "bg-bg-subtle text-text-muted"
+                )}
+              >
+                {count}
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
 /**
  * Ixcham filtr paneli (v1.9).
@@ -336,6 +405,7 @@ function AdminComplaintsView() {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<Page<ComplaintListItem> | null>(null);
   const [stageCounts, setStageCounts] = useState<StageCounts | null>(null);
+  const [queueStats, setQueueStats] = useState<QueueStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<CategoryAdmin[]>([]);
   const [departments, setDepartments] = useState<DepartmentAdmin[]>([]);
@@ -378,6 +448,14 @@ function AdminComplaintsView() {
     apiGet<CategoryAdmin[]>("/api/admin/categories").then(setCategories).catch(() => setCategories([]));
     apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => setDepartments([]));
   }, [user?.role]);
+
+  // Chip sonlari. `queueKey` ham bog'liqlikda: navbatdan navbatga
+  // o'tilganda raqamlar eskirib qolmasin (ish taqsimlangach
+  // «Biriktirilmagan» darhol kamayadi).
+  useEffect(() => {
+    if (user?.role !== "district_admin") return;
+    apiGet<QueueStats>("/api/admin/stats/queues").then(setQueueStats).catch(() => setQueueStats(null));
+  }, [user?.role, queueKey]);
 
   function filterParams(): URLSearchParams {
     const params = new URLSearchParams();
@@ -458,22 +536,10 @@ function AdminComplaintsView() {
 
   return (
     <AppShell title={queue ? queue.label : "Murojaatlar"} requireRoles={["district_admin"]}>
-      {queue && (
-        <Card className="border border-accent/40">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <p className="text-sm font-semibold text-text-primary">Navbat: {queue.label}</p>
-              <p className="text-xs text-text-muted mt-0.5">{queue.hint}</p>
-            </div>
-            <Link
-              href="/admin/murojaatlar"
-              className="text-sm font-medium text-accent hover:underline shrink-0"
-            >
-              Barcha murojaatlarga qaytish
-            </Link>
-          </div>
-        </Card>
-      )}
+      <div className="flex flex-col gap-2">
+        <QueueChips active={queueKey} counts={queueStats} />
+        {queue && <p className="px-1 text-xs text-text-muted">{queue.hint}</p>}
+      </div>
 
       {/* Tab + filtr bitta idishda: tab — navigatsiya (birlamchi), filtr —
           aniqlashtirish (ikkilamchi). Avval bu joyda faqat doim ochiq

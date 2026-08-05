@@ -177,6 +177,36 @@ def test_mine_filter_splits_the_queue(client, admin_headers, staff_headers):
     assert mine_only in ids
     assert unowned not in ids
 
-    unassigned = client.get("/api/admin/complaints", params={"unassigned": True}, headers=staff_headers)
-    unassigned_ids = {i["id"] for i in unassigned.json()["items"]}
-    assert unowned in unassigned_ids
+    unclaimed = client.get("/api/admin/complaints", params={"unclaimed": True}, headers=staff_headers)
+    assert unclaimed.status_code == 200, unclaimed.text
+    unclaimed_ids = {i["id"] for i in unclaimed.json()["items"]}
+    assert unowned in unclaimed_ids
+    assert mine_only not in unclaimed_ids
+
+
+@pytest.mark.smoke
+def test_routed_work_leaves_the_admin_queue(client, admin_headers, staff_headers):
+    """Bo'limga yo'naltirilgan ish tuman adminining navbatidan CHIQADI.
+
+    Avval `unassigned` sharti `bo'lim YO'Q **YOKI** xodim YO'Q` edi, ya'ni
+    AI to'g'ri yo'naltirgan murojaat ham xodim uni o'ziga olmaguncha
+    adminda osilib turardi — admin bajarilgan ishini qayta-qayta ko'rardi.
+    Endi chegara aniq: bo'limi yo'q — admin, bo'limi bor-u egasi yo'q —
+    bo'lim.
+    """
+    routed = _assigned_to_sanitation(client, admin_headers)
+
+    admin_queue = client.get("/api/admin/complaints", params={"unassigned": True}, headers=admin_headers)
+    assert admin_queue.status_code == 200, admin_queue.text
+    assert routed not in {i["id"] for i in admin_queue.json()["items"]}
+
+    # …va o'sha ish bo'limning navbatida turadi.
+    department_queue = client.get(
+        "/api/admin/complaints", params={"unclaimed": True}, headers=staff_headers
+    )
+    assert routed in {i["id"] for i in department_queue.json()["items"]}
+
+    # Ikkala hisoblagich ham ro'yxatlar bilan bir xil shartdan chiqadi.
+    stats = client.get("/api/admin/stats/queues", headers=admin_headers).json()
+    assert stats["unassigned"] == admin_queue.json()["total"]
+    assert "unclaimed" in stats

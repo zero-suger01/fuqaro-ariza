@@ -433,6 +433,10 @@ class QueueStats(BaseModel):
     mos kelmasligi ishonchni yo'qotadi."""
 
     unassigned: int
+    #: Bo'limga yo'naltirilgan, lekin hali egasiz. Tuman adminining
+    #: `unassigned` raqamidan ATAYLAB ajratilgan — bu bo'limning ishi,
+    #: adminning emas (`services/queues.unassigned` izohiga qarang).
+    unclaimed: int
     ai_exceptions: int
     sla_risk: int
     overdue: int
