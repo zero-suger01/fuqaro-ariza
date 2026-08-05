@@ -496,6 +496,14 @@ class AiHealthOut(BaseModel):
 
     ollama_ok: bool
     model: str
+    # SMS — fuqaroning YAGONA xabar kanali (kabinet ixtiyoriy, bot hali
+    # hamma joyda emas). LLM jim o'lsa admin qo'lda yo'naltiradi va ish
+    # davom etadi; SMS jim o'lsa tizim ishlayotgandek ko'rinadi-yu, fuqaro
+    # uchun umuman mavjud bo'lmay qoladi. Shuning uchun u ham shu yerda.
+    sms_ok: bool
+    sms_sent_24h: int
+    sms_failed_24h: int
+    last_sms_success_at: datetime | None
     last_llm_success_at: datetime | None
     llm_queue_depth: int
     llm_errors_1h: int

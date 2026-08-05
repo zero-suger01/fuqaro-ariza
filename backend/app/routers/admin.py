@@ -42,6 +42,7 @@ from app.models.complaint_subtask import ComplaintSubtask
 from app.models.department import Department
 from app.models.district import District
 from app.models.neighborhood import Neighborhood
+from app.models.notification import Notification
 from app.models.qr_code import QrCode
 from app.models.reply import Reply
 from app.models.user import User
@@ -1354,10 +1355,40 @@ def stats_ai_health(db: Session = Depends(get_db)):
     )
     stt_ok = last_stt is None or last_stt.status != "failed"
 
+    # SMS — haqiqatda nima bo'lganidan hisoblanadi (ping emas):
+    # `notifications` har urinishni `channel='sms'` + `status` bilan yozadi.
+    # Provayderni ping qilish "token amal qiladimi" degan savolga javob
+    # bermaydi, bu jadval esa beradi.
+    sms_since = now - timedelta(hours=24)
+    sms_rows = db.execute(
+        select(Notification.status, func.count())
+        .where(Notification.channel == "sms", Notification.created_at >= sms_since)
+        .group_by(Notification.status)
+    ).all()
+    sms_counts = {status: count for status, count in sms_rows}
+    sms_sent_24h = sms_counts.get("sent", 0)
+    sms_failed_24h = sms_counts.get("failed", 0)
+    sms_attempts = sms_sent_24h + sms_failed_24h
+    # Urinish bo'lmasa hukm chiqarmaymiz. Aks holda yetkazib berish
+    # ulushi 80% dan past bo'lsa kanal nosoz deb belgilanadi — bitta
+    # tasodifiy xato panelni qizartirmasin, lekin muntazam uzilish
+    # yashirinib qolmasin.
+    sms_ok = sms_attempts == 0 or (sms_sent_24h / sms_attempts) >= 0.8
+    last_sms_success_at = db.execute(
+        select(Notification.created_at)
+        .where(Notification.channel == "sms", Notification.status == "sent")
+        .order_by(Notification.created_at.desc())
+        .limit(1)
+    ).scalars().first()
+
     _, active_model = current_engine_and_model()
     return AiHealthOut(
         ollama_ok=ollama_ok,
         model=active_model,
+        sms_ok=sms_ok,
+        sms_sent_24h=sms_sent_24h,
+        sms_failed_24h=sms_failed_24h,
+        last_sms_success_at=last_sms_success_at,
         last_llm_success_at=last_success,
         llm_queue_depth=llm_queue_depth,
         llm_errors_1h=llm_errors_1h,

@@ -290,6 +290,11 @@ export interface QueueStats {
 // R0/Q4 — GET /api/admin/stats/ai-health
 export interface AiHealth {
   ollama_ok: boolean;
+  /** SMS — fuqaroning yagona xabar kanali; 24 soatlik yetkazish ulushi. */
+  sms_ok: boolean;
+  sms_sent_24h: number;
+  sms_failed_24h: number;
+  last_sms_success_at: string | null;
   model: string;
   last_llm_success_at: string | null;
   llm_queue_depth: number;

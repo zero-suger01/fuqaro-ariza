@@ -11,6 +11,7 @@ import {
   Clock,
   Map,
   MessageCircleQuestion,
+  MessageSquare,
   SquareCheckBig,
   Tags,
   Users,
@@ -84,15 +85,25 @@ function QueueCard({
   );
 }
 
-/** R1/Q4 — AI salomatlik indikatori: LLM jim o'lishi ko'rinadigan hodisa. */
-function AiHealthStrip({ health, stuckAi }: { health: AiHealth | null; stuckAi: number }) {
+/**
+ * Tizim salomatligi — LLM VA SMS.
+ *
+ * Avval bu yerda faqat AI turardi. Lekin ikkovining ta'siri assimetrik:
+ * LLM jim o'lsa admin qo'lda yo'naltiradi va ish davom etadi; SMS jim
+ * o'lsa panel butunlay sog'lom ko'rinadi-yu, fuqaro murojaat yuborib
+ * hech qachon hech narsa eshitmaydi — chunki kabinet ixtiyoriy va bot
+ * hamma joyda emas. Ya'ni ko'rinmaydigan nosozlik ko'rinadiganidan
+ * jiddiyroq edi.
+ */
+function SystemHealthStrip({ health, stuckAi }: { health: AiHealth | null; stuckAi: number }) {
   if (!health) return null;
   const lastText = health.last_llm_success_at
     ? new Date(health.last_llm_success_at).toLocaleString("uz-UZ")
     : "hali javob yo'q";
+  const smsAttempts = health.sms_sent_24h + health.sms_failed_24h;
   const aiColor = "#0d3138";
   return (
-    <Card className={health.ollama_ok ? "border border-success/40" : "border-2 border-danger"}>
+    <Card className={health.ollama_ok && health.sms_ok ? "border border-success/40" : "border-2 border-danger"}>
       <div className="flex items-center gap-3 flex-wrap text-sm">
         <span className="flex items-center gap-2 font-semibold" style={{ color: aiColor }}>
           <ThinkingOrb
@@ -118,6 +129,37 @@ function AiHealthStrip({ health, stuckAi }: { health: AiHealth | null; stuckAi: 
         )}
         {!health.stt_ok && <span className="text-warning font-medium">STT oxirgi ishi xato</span>}
       </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-border pt-2 text-sm">
+        <span className="flex items-center gap-2 font-semibold" style={{ color: aiColor }}>
+          <MessageSquare className="h-4 w-4" aria-hidden />
+          SMS xabarnoma:
+          <span className={health.sms_ok ? "text-success" : "text-danger"}>
+            {smsAttempts === 0 ? "urinish yo'q" : health.sms_ok ? "yetkazilmoqda" : "YETKAZILMAYAPTI"}
+          </span>
+        </span>
+        {smsAttempts > 0 && (
+          <span className="text-text-muted">
+            24 soatda: {health.sms_sent_24h} yetkazildi
+            {health.sms_failed_24h > 0 && (
+              <span className="font-medium text-danger"> · {health.sms_failed_24h} xato</span>
+            )}
+          </span>
+        )}
+        <span className="text-text-muted">
+          Oxirgi yetkazilgan:{" "}
+          {health.last_sms_success_at
+            ? new Date(health.last_sms_success_at).toLocaleString("uz-UZ")
+            : "hali yo'q"}
+        </span>
+      </div>
+
+      {!health.sms_ok && smsAttempts > 0 && (
+        <p className="mt-2 text-xs text-danger">
+          Fuqaro murojaat raqamini ham, holat o&apos;zgarganini ham SMS orqali oladi — kanal ishlamasa u
+          yuborgan murojaati haqida hech narsa bilmaydi. Eskiz token muddatini va balansni tekshiring.
+        </p>
+      )}
       {!health.ollama_ok && (
         <p className="text-xs text-danger mt-2">
           Ollama javob bermayapti — yangi murojaatlar kategoriyalanmayapti va bo&apos;limlarga yo&apos;naltirilmayapti.
@@ -283,7 +325,7 @@ export default function AdminDashboardPage() {
 
   return (
     <AppShell title="Bosh ekran" requireRoles={["district_admin", "system_admin"]}>
-      <AiHealthStrip health={health} stuckAi={queues?.stuck_ai ?? 0} />
+      <SystemHealthStrip health={health} stuckAi={queues?.stuck_ai ?? 0} />
 
       <div>
         <div className="flex items-baseline gap-2 mb-3">
