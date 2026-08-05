@@ -311,6 +311,12 @@ function StaffUsersView() {
                   >
                     <Pencil className="h-3 w-3" /> Yangilash
                   </button>
+                  {/* O'chirish — orqaga qaytarilmaydigan harakat. Rangi
+                      allaqachon farq qilardi, lekin uchalasi bir xil
+                      ritmda yonma-yon turgani uchun u oddiy amaldek
+                      o'qilardi. Ingichka ajratgich uni juftlikdan uzadi;
+                      yashirilmaydi — bu sahifada o'chirish qonuniy amal. */}
+                  <span aria-hidden className="h-3.5 w-px shrink-0 bg-border" />
                   <button
                     type="button"
                     onClick={() => handleDelete(u)}

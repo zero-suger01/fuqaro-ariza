@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { BotMessageSquare, Clock, Route, Wrench } from "lucide-react";
+import { BarChart3, BotMessageSquare, Clock, Route, Wrench } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -152,12 +152,21 @@ export default function KpiPage() {
 
   return (
     <AppShell title="KPI" requireRoles={["district_admin"]}>
-      <div className="flex flex-col md:flex-row gap-4 flex-wrap">
+      {/* Avval bu qator sarlavhasiz turardi — pastdagi blokda «Avtomatlashtirish
+          KPI» sarlavhasi bor edi-yu, birinchi beshta plitka guruhsiz «sochilib
+          yotgan» ko'rinardi. Ikkalasi ham endi nomlangan. */}
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-accent" />
+          <h2 className="text-base font-semibold text-text-primary">Murojaatlar hajmi</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard label="Bugungi murojaatlar" value={stats?.today ?? 0} />
         <StatCard label="Haftalik murojaatlar" value={stats?.this_week ?? 0} />
         <StatCard label="Oy bo'yicha murojaatlar" value={stats?.this_month ?? 0} />
         <StatCard label="Hal qilinganlar" value={stats?.resolved ?? 0} />
         <StatCard label="Jarayondagilar" value={stats?.in_progress ?? 0} />
+        </div>
       </div>
 
       <div>
@@ -166,7 +175,7 @@ export default function KpiPage() {
           <h2 className="text-base font-semibold text-text-primary">Avtomatlashtirish KPI (7 kun)</h2>
           <p className="text-xs text-text-muted">«AI-powered» — his emas, shu to&apos;rt raqam (docs/00 §5)</p>
         </div>
-        <div className="flex flex-col md:flex-row gap-4 flex-wrap">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             label="Zero-touch yo'naltirish"
             value={stats?.zero_touch_7d ?? null}

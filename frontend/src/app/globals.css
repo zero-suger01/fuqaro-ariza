@@ -437,6 +437,24 @@ h1 {
   }
 }
 
+/* Sana maydoni. Ramka va fokus halqasi `Input` komponentidan keladi,
+   lekin kalendar ikonkasi brauzerning shadow-DOM'ida — u standart holatda
+   qora bo'lib qoladi va to'q mavzuda deyarli ko'rinmaydi. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  opacity: 0.55;
+  transition: opacity 140ms ease;
+}
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="date"]:focus::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
 /* Sidebar nav — scrollable but without a visible scrollbar. */
 .no-scrollbar {
   scrollbar-width: none;
