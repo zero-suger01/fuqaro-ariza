@@ -227,3 +227,79 @@ def test_satisfied_feedback_closes(client, admin_headers):
     detail = client.get(f"/api/admin/complaints/{complaint_id}", headers=admin_headers).json()
     assert detail["status"] == "closed"
     assert detail["satisfaction"] is True
+
+
+# Eng kichik haqiqiy PNG — MinIO'ga yuklanadigan yaroqli tasvir.
+_PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4"
+    "890000000a49444154789c6360000002000100ffff03000006000557bfabd400"
+    "00000049454e44ae426082"
+)
+
+
+@pytest.mark.smoke
+def test_bot_answer_carries_a_photo(client, admin_headers, monkeypatch):
+    """Telegram kanali rasm bilan ([03] §6, docs/08 T2.2).
+
+    Xodim `need_info` da odatda HUJJAT so'raydi, Telegram esa fuqaro uchun
+    eng qulay kanal. Endpoint ilgari faqat JSON matn qabul qilardi — ya'ni
+    bot rasmni umuman uzata olmasdi. Endi multipart, shuning uchun
+    kontrakt test bilan qulflanadi: bot bilan backend birga deploy
+    bo'lgani uchun bu ikkisi jimgina ajralib ketmasligi kerak.
+    """
+    from app.routers import bot as bot_router
+
+    monkeypatch.setattr(bot_router.settings, "bot_api_token", "test-bot-token")
+    bot_headers = {"X-Bot-Token": "test-bot-token"}
+    chat_id = uuid.uuid4().int % 10**9
+
+    ticket, phone, complaint_id = _assigned_complaint(client, admin_headers)
+    link = client.post(
+        "/api/bot/citizens/link",
+        json={"phone": phone, "telegram_chat_id": chat_id, "first_name": "Test"},
+        headers=bot_headers,
+    )
+    assert link.status_code == 200, link.text
+    _request_info(client, admin_headers, complaint_id, "Hujjat suratini yuboring")
+
+    answer = client.post(
+        "/api/bot/complaints/info",
+        data={"telegram_chat_id": str(chat_id), "ticket": ticket, "text": "Hujjat surati"},
+        files=[("images", ("hujjat.png", _PNG, "image/png"))],
+        headers=bot_headers,
+    )
+    assert answer.status_code == 200, answer.text
+    assert answer.json()["accepted"] is True
+    assert answer.json()["status_simple"] == "ijroda"
+
+    detail = client.get(f"/api/admin/complaints/{complaint_id}", headers=admin_headers).json()
+    assert detail["status"] == "in_progress"
+    assert detail["citizen_messages"][0]["source"] == "telegram"
+    # Rasm murojaatning umumiy galereyasiga tushadi — xodim uni ko'ra olsin.
+    assert any(f["kind"] == "image" for f in detail["files"]), detail["files"]
+
+
+@pytest.mark.smoke
+def test_bot_answer_without_a_photo_still_works(client, admin_headers, monkeypatch):
+    """Multipart'ga o'tish matnli javobni buzmasligi kerak."""
+    from app.routers import bot as bot_router
+
+    monkeypatch.setattr(bot_router.settings, "bot_api_token", "test-bot-token")
+    bot_headers = {"X-Bot-Token": "test-bot-token"}
+    chat_id = uuid.uuid4().int % 10**9
+
+    ticket, phone, complaint_id = _assigned_complaint(client, admin_headers)
+    client.post(
+        "/api/bot/citizens/link",
+        json={"phone": phone, "telegram_chat_id": chat_id, "first_name": "Test"},
+        headers=bot_headers,
+    )
+    _request_info(client, admin_headers, complaint_id, "Uy raqamingizni yozing")
+
+    answer = client.post(
+        "/api/bot/complaints/info",
+        data={"telegram_chat_id": str(chat_id), "ticket": ticket, "text": "Uy raqami 12"},
+        headers=bot_headers,
+    )
+    assert answer.status_code == 200, answer.text
+    assert answer.json()["accepted"] is True

@@ -28,12 +28,6 @@ class BotComplaintListItem(BaseModel):
     can_give_feedback: bool = False
 
 
-class BotCitizenInfoIn(BaseModel):
-    telegram_chat_id: int
-    ticket: str
-    text: str = Field(min_length=1, max_length=2000)
-
-
 class BotCitizenInfoOut(BaseModel):
     status_simple: str
     accepted: bool

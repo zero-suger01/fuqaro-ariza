@@ -93,17 +93,32 @@ async def list_complaints(telegram_chat_id: int) -> list[dict]:
         return resp.json()
 
 
-async def submit_info(*, telegram_chat_id: int, ticket: str, text: str) -> dict:
+async def submit_info(
+    *,
+    telegram_chat_id: int,
+    ticket: str,
+    text: str,
+    photos: list[dict] | None = None,
+) -> dict:
     """`need_info` javobi ([03] §6, docs/08 T2.2).
 
     Web varianti (§3.5) bilan bir xil backend yadrosiga tushadi — murojaat
     `need_info` da bo'lsa avtomatik `in_progress` ga qaytadi.
+
+    JSON emas, multipart: xodim ko'pincha hujjat yoki foto so'raydi, shu
+    sababli `submit_complaint` dagi kabi fayl uzatish kerak.
     """
+    files = [
+        ("images", (photo["filename"], bytes.fromhex(photo["content"]), photo["mime"]))
+        for photo in (photos or [])
+    ]
+
     async with _client() as client:
         resp = await client.post(
             "/api/bot/complaints/info",
             headers=_BOT_HEADERS,
-            json={"telegram_chat_id": telegram_chat_id, "ticket": ticket, "text": text},
+            data={"telegram_chat_id": str(telegram_chat_id), "ticket": ticket, "text": text},
+            files=files or None,
         )
         _raise_for_status(resp)
         return resp.json()

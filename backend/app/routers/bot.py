@@ -22,7 +22,6 @@ from app.database import get_db
 from app.models.citizen import Citizen
 from app.models.complaint import Complaint
 from app.schemas.bot import (
-    BotCitizenInfoIn,
     BotCitizenInfoOut,
     BotComplaintListItem,
     BotFeedbackIn,
@@ -171,13 +170,24 @@ def _owned_complaint(db: Session, telegram_chat_id: int, ticket: str) -> Complai
 
 
 @router.post("/complaints/info", response_model=BotCitizenInfoOut, dependencies=[Depends(verify_bot_token)])
-def bot_submit_info(payload: BotCitizenInfoIn, db: Session = Depends(get_db)):
+def bot_submit_info(
+    telegram_chat_id: int = Form(...),
+    ticket: str = Form(...),
+    text: str = Form(..., min_length=1, max_length=2000),
+    images: list[UploadFile] = File(default=[]),
+    db: Session = Depends(get_db),
+):
     """`need_info` javobining Telegram kanali ([03] §6, docs/08 T2.2).
 
     Web varianti (§3.5) bilan bir xil yadroni chaqiradi — yon effektlar
-    ikki kanalda drift qilmasin."""
-    complaint = _owned_complaint(db, payload.telegram_chat_id, payload.ticket)
-    resumed = record_citizen_info(db, complaint, payload.text, source="telegram")
+    ikki kanalda drift qilmasin.
+
+    JSON emas, multipart: xodim ko'pincha HUJJAT so'raydi va Telegram —
+    fuqaro uchun eng qulay kanal. Avval bu endpoint faqat matn qabul
+    qilardi, ya'ni bot rasmni umuman uzata olmasdi va foydalanuvchi
+    to'g'ri ish qilib turib «javob juda qisqa» degan xabar olardi."""
+    complaint = _owned_complaint(db, telegram_chat_id, ticket)
+    resumed = record_citizen_info(db, complaint, text, source="telegram", images=images)
     db.commit()
     db.refresh(complaint)
     return BotCitizenInfoOut(status_simple=STATUS_SIMPLE_MAP[complaint.status], accepted=resumed)
