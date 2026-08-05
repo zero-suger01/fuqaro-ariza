@@ -5,10 +5,10 @@ import Link from "next/link";
 import { ClipboardList } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { ComplaintList, ComplaintRowSkeleton, type ComplaintColumn } from "@/components/admin/ComplaintList";
 import { SegmentedTabs } from "@/components/admin/SegmentedTabs";
-import { apiGet } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { apiGet, apiPost } from "@/lib/api";
 import { useNow } from "@/lib/useNow";
 import { formatUzDayLong } from "@/lib/formatDate";
 import type { ComplaintListItem, Page } from "@/lib/types";
@@ -86,7 +86,6 @@ function paramsFor(key: string, pageSize: number): string {
 }
 
 export default function NavbatimPage() {
-  const { user } = useAuth();
   const now = useNow();
 
   const [active, setActive] = useState(TABS[0].key);
@@ -119,6 +118,33 @@ export default function NavbatimPage() {
       .finally(() => setLoading(false));
   }, [active]);
 
+  // «Qabul qilaman» — navbatning butun maqsadi shu. Avval buni qilish
+  // uchun murojaatni ochish, tugmani topish va orqaga qaytish kerak edi;
+  // ya'ni har ish uchun uch marta sahifa almashardi.
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const claim = useCallback(
+    async (id: string) => {
+      setClaiming(id);
+      try {
+        await apiPost(`/api/admin/complaints/${id}/claim`, {});
+        // Ish bo'lim navbatidan chiqib «Qabul qilganlarim» ga o'tadi —
+        // ikkala son ham, joriy ro'yxat ham yangilanishi kerak.
+        const [page] = await Promise.all([
+          apiGet<Page<ComplaintListItem>>(`/api/admin/complaints?${paramsFor(active, PAGE_SIZE)}`),
+          Promise.resolve(loadCounts()),
+        ]);
+        setResult(page);
+      } catch {
+        // Boshqa xodim ilgarilab ketgan bo'lishi mumkin — ro'yxatni
+        // yangilash o'zi haqiqatni ko'rsatadi.
+        loadCounts();
+      } finally {
+        setClaiming(null);
+      }
+    },
+    [active, loadCounts]
+  );
+
   const tab = TABS.find((t) => t.key === active) ?? TABS[0];
   const items = result?.items ?? [];
   const total = result?.total ?? 0;
@@ -127,10 +153,9 @@ export default function NavbatimPage() {
   return (
     <AppShell title="Navbatim" requireRoles={["department_staff"]}>
       <div className="flex items-baseline justify-between flex-wrap gap-2">
-        <p className="text-sm text-text-secondary">
-          {now === 0 ? "" : formatUzDayLong(now)}
-          {user?.department_name ? ` · ${user.department_name}` : ""}
-        </p>
+        {/* Bo'lim nomi bu yerdan olib tashlandi: u topbardagi foydalanuvchi
+            kartasida allaqachon yozilgan va ikkalasi 40px oralig'ida turardi. */}
+        <p className="text-sm text-text-secondary">{now === 0 ? "" : formatUzDayLong(now)}</p>
         {counts && (
           <p className="text-sm text-text-muted">
             Menda {mineTotal} ish · bo&apos;lim navbatida {counts.bolim}
@@ -172,7 +197,25 @@ export default function NavbatimPage() {
       ) : (
         // `now` berilgani uchun muddat nisbiy ko'rinadi («3 soat qoldi») —
         // navbatda absolute sana shoshilinchlikni ko'rsatmaydi.
-        <ComplaintList items={items} columns={tab.columns} showAiSummary now={now} />
+        <ComplaintList
+          items={items}
+          columns={tab.columns}
+          showAiSummary
+          now={now}
+          rowAction={
+            tab.key === "bolim"
+              ? (c) => (
+                  <Button
+                    onClick={() => claim(c.id)}
+                    disabled={claiming === c.id}
+                    aria-label={`${c.ticket_number} — qabul qilaman`}
+                  >
+                    {claiming === c.id ? "..." : "Qabul qilaman"}
+                  </Button>
+                )
+              : undefined
+          }
+        />
       )}
 
       {/* Kesib qolinganini YASHIRMAYMIZ — avval sahifa jimgina 100 ta bilan

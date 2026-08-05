@@ -38,6 +38,23 @@ import {
 
 const MapPicker = dynamic(() => import("@/components/MapPicker"), { ssr: false });
 
+/**
+ * Bu sahifa BACKEND shartnomasiga ergashadi, undan tor emas.
+ *
+ * `GET /complaints/{id}` va ish harakatlari — `claim`, `status`,
+ * `replies`, `comments`, `citizen-info` — `get_current_staff_up` bilan
+ * himoyalangan, ya'ni har qanday xodimga ochiq; `_check_department_access`
+ * esa uni o'z bo'limi bilan cheklaydi. Faqat `assign` va `subtasks` admin
+ * talab qiladi va ular allaqachon UI'da rol bo'yicha yashiriladi.
+ *
+ * Avval bu yerda `["district_admin"]` turardi va natijada bo'lim xodimi
+ * sahifani UMUMAN ocholmasdi: «Navbatim» dagi har bir qator o'lik havola
+ * edi, «Qabul qilaman» tugmasi esa faqat shu sahifada. Ya'ni rol ko'rinib
+ * turardi-yu, hech qanday ish bajara olmasdi — holbuki sahifaning o'z
+ * ichida (`ROLE_ALLOWED_STATUSES`, `canClaim`) hammasi yozib qo'yilgan edi.
+ */
+const COMPLAINT_DETAIL_ROLES = ["district_admin", "system_admin", "department_staff"];
+
 export default function AdminComplaintDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -64,9 +81,13 @@ export default function AdminComplaintDetailPage() {
   }
 
   useEffect(() => {
-    if (user?.role !== "district_admin") return;
+    if (!user || user.kind !== "staff") return;
     load();
-    apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => setDepartments([]));
+    // Bo'limlar ro'yxati faqat biriktirish kartasi uchun kerak, u esa
+    // adminda — xodimga bu so'rovni yubormaymiz.
+    if (["district_admin", "system_admin"].includes(user.role ?? "")) {
+      apiGet<DepartmentAdmin[]>("/api/admin/departments").then(setDepartments).catch(() => setDepartments([]));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user?.role]);
 
@@ -217,7 +238,7 @@ export default function AdminComplaintDetailPage() {
 
   if (!complaint) {
     return (
-      <AppShell title="Murojaat tafsiloti" requireRoles={["district_admin"]}>
+      <AppShell title="Murojaat tafsiloti" requireRoles={COMPLAINT_DETAIL_ROLES}>
         <div className="py-10 text-center text-text-muted text-sm">Yuklanmoqda...</div>
       </AppShell>
     );
@@ -258,7 +279,7 @@ export default function AdminComplaintDetailPage() {
   const otherFiles = complaint.files.filter((f) => f.kind !== "image" && f.kind !== "audio");
 
   return (
-    <AppShell title={`Murojaat ${complaint.ticket_number}`} requireRoles={["district_admin"]}>
+    <AppShell title={`Murojaat ${complaint.ticket_number}`} requireRoles={COMPLAINT_DETAIL_ROLES}>
       {error && (
         <div className="rounded-inner bg-danger/10 text-danger text-sm px-4 py-3">{error}</div>
       )}

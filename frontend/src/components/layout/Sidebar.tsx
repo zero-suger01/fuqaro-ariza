@@ -112,10 +112,15 @@ function NavTreeInner({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?:
     <nav className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1">
       {groups.map((group, i) => (
         <div key={group.title} className={clsx("flex flex-col gap-0.5 py-2.5", i > 0 && "border-t border-border")}>
-          {/* Guruh sarlavhasi bosilmaydi — u yorliq, havola emas (docs/10 §10.2). */}
-          <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-text-muted">
-            {group.title}
-          </p>
+          {/* Guruh sarlavhasi bosilmaydi — u yorliq, havola emas (docs/10 §10.2).
+              Bitta elementdan iborat guruhda esa umuman chiqmaydi: bo'lim
+              xodimida «Operatsion navbat» yorlig'i yakka «Navbatim» ustida
+              turardi, ya'ni sarlavha guruhlaydigan hech narsa yo'q edi. */}
+          {group.items.length > 1 && (
+            <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-text-muted">
+              {group.title}
+            </p>
+          )}
           {group.items.map((item) => (
             <NavLink key={item.href} item={item} isActive={isActive(item.href)} onNavigate={onNavigate} />
           ))}

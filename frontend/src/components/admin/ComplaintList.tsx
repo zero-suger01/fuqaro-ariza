@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { clsx } from "clsx";
-import { AlertTriangle, FileText, Sparkles, UserX } from "lucide-react";
+import { AlertTriangle, FileText, Quote, Sparkles, UserX } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { formatUzDateTime } from "@/lib/formatDate";
@@ -104,6 +104,7 @@ export function ComplaintRow({
   columns = DEFAULT_COLUMNS,
   showAiSummary = false,
   now,
+  action,
 }: {
   c: ComplaintListItem;
   columns?: ComplaintColumn[];
@@ -112,19 +113,16 @@ export function ComplaintRow({
   /** Berilsa muddat nisbiy ko'rsatiladi («3 soat qoldi»). `useNow()` dan
    * keladi; berilmasa absolute sana chiqadi. */
   now?: number;
+  /** Qator o'ngidagi harakat (masalan «Qabul qilaman»). Havolaning
+   *  ICHIDA emas — `<button>` ni `<a>` ichiga joylash mumkin emas va
+   *  bosilganda murojaat ochilib ketardi. */
+  action?: React.ReactNode;
 }) {
   const overdue = isOverdue(c.deadline_at, c.status);
   const due = now != null ? relativeDeadline(c.deadline_at, now) : null;
 
   return (
-    <Link
-      href={`/admin/murojaatlar/${c.id}`}
-      className={clsx(
-        "group relative flex flex-col gap-3 py-4 pl-6 pr-5 transition-colors hover:bg-bg-subtle",
-        GRID_CLASS
-      )}
-      style={gridStyle(columns)}
-    >
+    <div className="group relative flex items-stretch transition-colors hover:bg-bg-subtle">
       {/* Holat relsi — ro'yxatni O'QIMASDAN saralash imkonini beradi.
           `Holat` ustuni allaqachon bor, lekin u o'ngda va matn bilan;
           ko'z esa avval chap qirradan yuguradi. Rang shu yerda takror
@@ -134,6 +132,11 @@ export function ComplaintRow({
         className="absolute inset-y-0 left-0 w-[3px]"
         style={{ backgroundColor: STATUS_COLORS[c.status] }}
       />
+      <Link
+        href={`/admin/murojaatlar/${c.id}`}
+        className={clsx("min-w-0 flex-1 flex flex-col gap-3 py-4 pl-6 pr-5", GRID_CLASS)}
+        style={gridStyle(columns)}
+      >
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-accent-soft transition-colors group-hover:bg-bg-surface">
           <FileText className="h-4 w-4 text-accent" aria-hidden />
@@ -141,10 +144,20 @@ export function ComplaintRow({
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-text-primary">{c.category.name}</p>
           <p className="font-mono text-xs tabular-nums tracking-wide text-text-muted">{c.ticket_number}</p>
-          {showAiSummary && c.ai?.summary && (
+          {/* Navbatda kategoriya nomi yetarli emas: «Hokimlik va kompleks
+              masalalar» xodimga hech narsa aytmaydi, holbuki fuqaro
+              «maktab oldida katta o'ra, bolalar uchun xavfli» deb yozgan.
+              `description_snippet` backenddan doim keladi — u shunchaki
+              hech qachon chiqarilmagan. AI xulosasi bo'lsa u ustun,
+              chunki u qisqartirilgan; bo'lmasa fuqaroning o'z so'zi. */}
+          {showAiSummary && (c.ai?.summary || c.description_snippet) && (
             <p className="mt-1 flex items-start gap-1 text-xs text-text-secondary">
-              <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-accent" aria-hidden />
-              <span className="line-clamp-2">{c.ai.summary}</span>
+              {c.ai?.summary ? (
+                <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-accent" aria-hidden />
+              ) : (
+                <Quote className="mt-0.5 h-3 w-3 shrink-0 text-text-muted" aria-hidden />
+              )}
+              <span className="line-clamp-2">{c.ai?.summary || c.description_snippet}</span>
             </p>
           )}
           {/* Istisno belgisi — ustun emas, chunki kamdan-kam uchraydi. */}
@@ -193,7 +206,9 @@ export function ComplaintRow({
           </Field>
         ))}
       </div>
-    </Link>
+      </Link>
+      {action ? <div className="flex shrink-0 items-center pr-5">{action}</div> : null}
+    </div>
   );
 }
 
@@ -214,18 +229,28 @@ export function ComplaintList({
   columns = DEFAULT_COLUMNS,
   showAiSummary,
   now,
+  rowAction,
 }: {
   items: ComplaintListItem[];
   columns?: ComplaintColumn[];
   showAiSummary?: boolean;
   now?: number;
+  /** Har qator uchun harakat tugmasi (ixtiyoriy). */
+  rowAction?: (c: ComplaintListItem) => React.ReactNode;
 }) {
   return (
     <Card padded={false} className="overflow-hidden">
       <ListHeader columns={columns} />
       <div className="divide-y divide-border">
         {items.map((c) => (
-          <ComplaintRow key={c.id} c={c} columns={columns} showAiSummary={showAiSummary} now={now} />
+          <ComplaintRow
+            key={c.id}
+            c={c}
+            columns={columns}
+            showAiSummary={showAiSummary}
+            now={now}
+            action={rowAction?.(c)}
+          />
         ))}
       </div>
     </Card>
