@@ -14,7 +14,6 @@ import {
   SquareCheckBig,
   Tags,
   Users,
-  ZapOff,
   type LucideIcon,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -60,7 +59,7 @@ function QueueCard({
       href={href}
       aria-disabled={empty}
       className={clsx(
-        "flex-1 min-w-[168px] rounded-card border bg-bg-surface px-5 py-4 shadow-sm transition",
+        "rounded-card border bg-bg-surface px-4 py-4 shadow-sm transition",
         empty
           ? "border-border opacity-60 hover:opacity-100"
           : alarming
@@ -86,7 +85,7 @@ function QueueCard({
 }
 
 /** R1/Q4 — AI salomatlik indikatori: LLM jim o'lishi ko'rinadigan hodisa. */
-function AiHealthStrip({ health }: { health: AiHealth | null }) {
+function AiHealthStrip({ health, stuckAi }: { health: AiHealth | null; stuckAi: number }) {
   if (!health) return null;
   const lastText = health.last_llm_success_at
     ? new Date(health.last_llm_success_at).toLocaleString("uz-UZ")
@@ -125,6 +124,18 @@ function AiHealthStrip({ health }: { health: AiHealth | null }) {
           Ular yo&apos;qolmaydi: tizim har 15 daqiqada qayta uradi va Ollama tiklanishi bilan navbat o&apos;zi
           ishlab ketadi. Serverda <code className="font-mono">ollama serve</code> va model nomini tekshiring.
         </p>
+      )}
+      {/* Qotib qolgan murojaatlar uchun harakat shu yerda. Avval bu
+          alohida qizil karta bo'lib, navbat kartalari ostida turardi —
+          ya'ni BITTA muammo (LLM javob bermayapti) ekranda ikki marta,
+          ikki xil uslubda aytilardi. */}
+      {stuckAi > 0 && (
+        <Link
+          href="/admin/murojaatlar?queue=stuck_ai"
+          className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-danger hover:underline"
+        >
+          {stuckAi} ta murojaatni qo&apos;lda yo&apos;naltirish <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
       )}
     </Card>
   );
@@ -254,11 +265,25 @@ export default function AdminDashboardPage() {
       .catch(() => setRecent([]));
   }, [user?.role]);
 
+  // Tartib — shoshilinchlik bo'yicha: muddat o'tgan > muddat tugayapti >
+  // egasiz > umumiy yuk. Teng bo'lsa nom bo'yicha, ya'ni tartib har
+  // yangilanishda sakramaydi.
+  const activeDepartments = (queues?.by_department ?? [])
+    .filter((row) => row.new + row.in_progress + row.sla_risk + row.overdue + row.unowned > 0 || row.over_limit)
+    .sort(
+      (a, b) =>
+        b.overdue - a.overdue ||
+        b.sla_risk - a.sla_risk ||
+        b.unowned - a.unowned ||
+        b.new + b.in_progress - (a.new + a.in_progress) ||
+        a.department_name.localeCompare(b.department_name)
+    );
+
   if (user?.role === "system_admin") return <SystemAdminHome />;
 
   return (
     <AppShell title="Bosh ekran" requireRoles={["district_admin", "system_admin"]}>
-      <AiHealthStrip health={health} />
+      <AiHealthStrip health={health} stuckAi={queues?.stuck_ai ?? 0} />
 
       <div>
         <div className="flex items-baseline gap-2 mb-3">
@@ -271,7 +296,9 @@ export default function AdminDashboardPage() {
             sahifasida.
           </p>
         </div>
-        <div className="flex flex-col md:flex-row gap-4 flex-wrap">
+        {/* `flex-wrap` beshta kartani 4+1 qilib bo'lardi va oxirgisi
+            yolg'iz qatorda qolardi. Aniq grid — bitta qatorda beshta. */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <QueueCard
             label="Biriktirilmagan"
             hint="Bo'lim biriktirilmagan — sizning ishingiz"
@@ -325,39 +352,22 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      {(queues?.stuck_ai ?? 0) > 0 && (
-        <Card className="border-2 border-danger">
-          <div className="flex items-start gap-3">
-            <ZapOff className="h-5 w-5 text-danger shrink-0 mt-0.5" />
-            <div>
-              <h2 className="text-base font-semibold text-text-primary">
-                AI {queues?.stuck_ai} murojaatga javob bermagan
-              </h2>
-              <p className="text-sm text-text-secondary mt-1">
-                Bu murojaatlar bir soatdan ko&apos;p tahlilsiz turgan — LLM ishlamayapti. Tizim qayta urinishda
-                davom etadi, lekin kutib o&apos;tirmasdan qo&apos;lda kategoriya va bo&apos;lim qo&apos;yish mumkin.
-              </p>
-              <Link
-                href="/admin/murojaatlar?queue=stuck_ai"
-                className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-danger hover:underline"
-              >
-                Qo&apos;lda yo&apos;naltirish <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          </div>
-        </Card>
-      )}
-
       <Card>
         <div className="mb-4">
           <h2 className="text-base font-semibold text-text-primary">Bo&apos;limlar kesimi</h2>
           <p className="text-sm text-text-muted">Qaysi bo&apos;lim qoqilib qolgan — yuk va risk bo&apos;yicha</p>
         </div>
+        {/* Jadval sarlavhasi «qaysi bo'lim qoqilib qolgan» deydi, lekin
+            avval u BARCHA bo'limlarni alifbo tartibida chiqarardi — 24
+            qator, hammasi nol. Riskni ko'rsatishi kerak bo'lgan jadval bir
+            tekis shovqin berardi va operator ko'zi u yerda hech narsa
+            izlamay qo'ygan edi. Endi faqat ochiq ishi borlari, eng
+            og'rig'i yuqorida. */}
         <Table
           columns={DEPARTMENT_COLUMNS}
-          rows={queues?.by_department ?? []}
+          rows={activeDepartments}
           rowKey={(row) => row.department_id}
-          empty="Bo'limlar hali sozlanmagan"
+          empty="Hech bir bo'limda ochiq ish yo'q"
           onRowClass={(row) => (row.overdue > 0 ? "bg-danger/[0.04]" : undefined)}
         />
       </Card>
