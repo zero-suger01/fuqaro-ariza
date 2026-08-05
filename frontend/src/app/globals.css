@@ -335,22 +335,31 @@ h1 {
    naqshi. Latun turkuaz ustiga tushsa loyqa zaytun rang beradi, shuning
    uchun iliq nur yuqori-o'ngda, sovuq nur quyi-chapda — ular uchrashmaydi.
    --------------------------------------------------------------------- */
-.night-panel {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  background:
-    radial-gradient(120% 90% at 86% 8%, rgba(227, 190, 95, 0.28) 0%, rgba(227, 190, 95, 0) 62%),
-    radial-gradient(130% 100% at 8% 94%, rgba(95, 191, 180, 0.42) 0%, rgba(95, 191, 180, 0) 66%),
-    linear-gradient(135deg, var(--night-1) 0%, var(--night-2) 52%, var(--night-3) 100%);
-  color: #ffffff;
+/* `@layer components` — Tailwind v4 utilitalari `utilities` qatlamida va
+   u `components` dan KEYIN keladi, ya'ni utilita doim yutadi. Bu shart:
+   `.night-panel` ning `position: relative` i sidebar'dagi `sticky` ni
+   bosib qo'ygan edi — sidebar sahifa bilan birga siljib ketardi, ustiga
+   `top-3` nisbiy siljishga aylanib uni sarlavhadan 12px pastga tushirardi. */
+@layer components {
+  .night-panel {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 86% 8%, rgba(227, 190, 95, 0.28) 0%, rgba(227, 190, 95, 0) 62%),
+      radial-gradient(130% 100% at 8% 94%, rgba(95, 191, 180, 0.42) 0%, rgba(95, 191, 180, 0) 66%),
+      linear-gradient(135deg, var(--night-1) 0%, var(--night-2) 52%, var(--night-3) 100%);
+    color: #ffffff;
+  }
 }
 
 /* Identifikatsiya lentasi — faqat ramp, radial nursiz. Hero ostida
    turgani uchun uning nurlari qayta boshlanib ko'rinadigan chok hosil
    qilardi; tekis variant ikkalasini bitta uzluksiz peshtoq qiladi. */
-.night-panel--flat {
-  background: linear-gradient(135deg, var(--night-1) 0%, var(--night-2) 62%, var(--night-2) 100%);
+@layer components {
+  .night-panel--flat {
+    background: linear-gradient(135deg, var(--night-1) 0%, var(--night-2) 62%, var(--night-2) 100%);
+  }
 }
 
 /* Latun soch chizig'i — kechki sirtning yuqori qirrasi */
@@ -398,14 +407,16 @@ h1 {
   }
 }
 
-.motif-spin {
-  animation: motif-spin 2.6s linear infinite;
-}
-.motif-spin-reverse {
-  animation: motif-spin-reverse 2.6s linear infinite;
-}
-.motif-drift {
-  animation: motif-drift 11s ease-in-out infinite;
+@layer components {
+  .motif-spin {
+    animation: motif-spin 2.6s linear infinite;
+  }
+  .motif-spin-reverse {
+    animation: motif-spin-reverse 2.6s linear infinite;
+  }
+  .motif-drift {
+    animation: motif-drift 11s ease-in-out infinite;
+  }
 }
 /* Sahifa bloklari ketma-ket chiqadi — `--reveal-delay` bilan siljitiladi. */
 .reveal {
