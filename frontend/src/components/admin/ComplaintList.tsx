@@ -75,7 +75,7 @@ function ListHeader({ columns }: { columns: ComplaintColumn[] }) {
   return (
     <div
       className={clsx(
-        "hidden border-b border-border bg-bg-subtle px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-text-muted",
+        "hidden border-b border-border bg-bg-subtle py-2.5 pl-6 pr-5 text-[10.5px] font-bold uppercase tracking-widest text-text-muted",
         GRID_CLASS
       )}
       style={gridStyle(columns)}
@@ -119,16 +119,28 @@ export function ComplaintRow({
   return (
     <Link
       href={`/admin/murojaatlar/${c.id}`}
-      className={clsx("group flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-bg-subtle", GRID_CLASS)}
+      className={clsx(
+        "group relative flex flex-col gap-3 py-4 pl-6 pr-5 transition-colors hover:bg-bg-subtle",
+        GRID_CLASS
+      )}
       style={gridStyle(columns)}
     >
+      {/* Holat relsi — ro'yxatni O'QIMASDAN saralash imkonini beradi.
+          `Holat` ustuni allaqachon bor, lekin u o'ngda va matn bilan;
+          ko'z esa avval chap qirradan yuguradi. Rang shu yerda takror
+          emas, birinchi signal. */}
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-[3px]"
+        style={{ backgroundColor: STATUS_COLORS[c.status] }}
+      />
       <div className="flex min-w-0 items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg-subtle transition-colors group-hover:bg-bg-surface">
-          <FileText className="h-4 w-4 text-text-secondary" aria-hidden />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-accent-soft transition-colors group-hover:bg-bg-surface">
+          <FileText className="h-4 w-4 text-accent" aria-hidden />
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-text-primary">{c.category.name}</p>
-          <p className="font-mono text-xs text-text-muted">{c.ticket_number}</p>
+          <p className="truncate text-sm font-bold text-text-primary">{c.category.name}</p>
+          <p className="font-mono text-xs tabular-nums tracking-wide text-text-muted">{c.ticket_number}</p>
           {showAiSummary && c.ai?.summary && (
             <p className="mt-1 flex items-start gap-1 text-xs text-text-secondary">
               <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-accent" aria-hidden />
@@ -187,8 +199,9 @@ export function ComplaintRow({
 
 export function ComplaintRowSkeleton() {
   return (
-    <div className="flex animate-pulse items-center gap-3 px-5 py-4">
-      <span className="h-9 w-9 shrink-0 rounded-full bg-bg-subtle" />
+    <div className="relative flex animate-pulse items-center gap-3 py-4 pl-6 pr-5">
+      <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-border" />
+      <span className="h-9 w-9 shrink-0 rounded-[11px] bg-bg-subtle" />
       <span className="h-3.5 flex-1 rounded-full bg-bg-subtle" />
       <span className="hidden h-3.5 w-24 shrink-0 rounded-full bg-bg-subtle xl:block" />
       <span className="hidden h-3.5 w-20 shrink-0 rounded-full bg-bg-subtle xl:block" />

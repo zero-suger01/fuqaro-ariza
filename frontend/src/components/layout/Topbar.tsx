@@ -59,7 +59,7 @@ function QuickSearch() {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={localPlaceholder ?? "Ticket yoki telefon bo'yicha qidirish..."}
-        className="w-full rounded-pill border border-border bg-bg-subtle py-2 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-accent focus:bg-bg-surface"
+        className="w-full rounded-pill border-[1.5px] border-border bg-bg-subtle py-2 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted outline-none transition focus:border-accent focus:bg-bg-surface focus:ring-4 focus:ring-accent-soft"
       />
     </form>
   );
@@ -67,7 +67,7 @@ function QuickSearch() {
 
 export function Topbar({ title, onOpenMenu }: { title: string; onOpenMenu: () => void }) {
   return (
-    <header className="sticky top-3 z-20 flex h-16 shrink-0 items-center gap-3 rounded-2xl border border-border bg-bg-surface px-4 shadow-card">
+    <header className="sticky top-3 z-20 flex h-16 shrink-0 items-center gap-3 rounded-card border border-border bg-bg-surface px-4 shadow-card">
       {/* Mobil hamburger — drawer holati AppShell'da, Sidebar bilan
           bo'lishiladi. Avval bu tugma Sidebar ichida `fixed` edi va shu
           Topbar sarlavhasini bosib turardi (z-index to'qnashuvi). */}
@@ -75,11 +75,11 @@ export function Topbar({ title, onOpenMenu }: { title: string; onOpenMenu: () =>
         type="button"
         onClick={onOpenMenu}
         aria-label="Menyuni ochish"
-        className="md:hidden -ml-1 h-9 w-9 shrink-0 rounded-full flex items-center justify-center text-text-secondary hover:bg-bg-subtle transition"
+        className="press md:hidden -ml-1 h-9 w-9 shrink-0 rounded-full flex items-center justify-center text-text-secondary hover:bg-bg-subtle"
       >
         <Menu className="h-5 w-5" />
       </button>
-      <h1 className="min-w-0 truncate text-base font-semibold text-text-primary">{title}</h1>
+      <h1 className="min-w-0 truncate text-[17px] font-bold text-text-primary">{title}</h1>
       <div className="flex-1 flex justify-center min-w-0">
         <QuickSearch />
       </div>

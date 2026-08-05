@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { clsx } from "clsx";
 import Image from "next/image";
 import { LogOut, X, type LucideIcon } from "lucide-react";
+import { GildedRule, GirihField } from "@/components/motifs";
 import { useAuth } from "@/lib/auth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
@@ -67,12 +68,21 @@ function NavLink({ item, isActive, onNavigate }: { item: NavItem; isActive: bool
         // Fitts: <md da faqat drawer ko'rinadi, u yerda nishon ≥44px
         // bo'lishi shart (barmoq); desktopda sichqoncha aniqroq, shuning
         // uchun zichroq qolaveradi.
-        "group flex items-center gap-2.5 rounded-pill px-3 py-3 md:py-2 text-[13px] font-medium transition-colors duration-150",
+        "press group relative flex items-center gap-2.5 rounded-pill px-3 py-3 md:py-2 text-[13px] font-medium",
         isActive
-          ? "bg-sidebar-active-bg text-sidebar-active-text font-semibold"
+          ? "bg-sidebar-active-bg text-sidebar-active-text font-bold"
           : "text-sidebar-text hover:bg-sidebar-hover-bg hover:text-sidebar-text-hover"
       )}
     >
+      {/* Latun tirgak — aktivlikni fon bilan birga IKKINCHI signal orqali
+          ham beradi. Faqat fon rangiga tayanish to'q sirtda zaif: yorug'lik
+          past bo'lgan ekranda ikki holat deyarli farqlanmasdi. */}
+      {isActive && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brass"
+        />
+      )}
       <Icon className="h-4 w-4 shrink-0" />
       <span className="min-w-0 truncate">{item.label}</span>
       {showCount && (
@@ -139,7 +149,7 @@ export function Sidebar({
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   const brand = (
-    <div className="px-3 py-2 mb-4">
+    <div className="px-3 pb-3 pt-1">
       <Image
         src="/logo-header.png"
         alt="e-Murojaat"
@@ -148,13 +158,14 @@ export function Sidebar({
         priority
         className="h-9 w-auto object-contain"
       />
+      <GildedRule width={180} color="var(--brass)" opacity={0.7} className="mt-3 max-w-full" />
     </div>
   );
 
   const logoutButton = (
     <button
       onClick={() => setLogoutConfirmOpen(true)}
-      className="flex items-center gap-2.5 rounded-pill px-3 py-3 md:py-2 text-[13px] font-medium text-sidebar-text hover:bg-sidebar-hover-bg hover:text-sidebar-text-hover transition-colors duration-150"
+      className="press mt-1 flex items-center gap-2.5 rounded-pill px-3 py-3 md:py-2 text-[13px] font-semibold text-sidebar-text hover:bg-sidebar-hover-bg hover:text-sidebar-text-hover"
     >
       <LogOut className="h-4 w-4" />
       Chiqish
@@ -168,10 +179,13 @@ export function Sidebar({
           Fon — «Ishkor» palitrasining petrol qobig'i (`--shell`, #0d3138):
           light/dark/theme-admin'dan mustaqil brend sirti, shuning uchun
           alohida `--sidebar-*` tokenlar orqali beriladi (docs/10 §7.1). */}
-      <aside className="hidden md:flex md:flex-col w-[248px] shrink-0 bg-sidebar-bg border border-sidebar-border text-sidebar-text h-[calc(100vh-1.5rem)] sticky top-3 my-3 ml-3 rounded-[28px] px-3 py-4">
-        {brand}
-        <NavTree groups={groups} />
-        {logoutButton}
+      <aside className="night-panel night-panel--gilded hidden md:flex md:flex-col w-[248px] shrink-0 border border-sidebar-border text-sidebar-text h-[calc(100vh-1.5rem)] sticky top-3 my-3 ml-3 rounded-[28px] px-3 py-4">
+        <GirihField color="#FFFFFF" opacity={0.06} tile={112} />
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          {brand}
+          <NavTree groups={groups} />
+          {logoutButton}
+        </div>
       </aside>
 
       {/* Mobil (F1.8) — drawer. Avval mobil admin menyusi umuman yo'q edi:
@@ -184,8 +198,9 @@ export function Sidebar({
             onClick={() => onDrawerOpenChange(false)}
             aria-hidden="true"
           />
-          <aside className="relative flex flex-col w-[272px] max-w-[85vw] bg-sidebar-bg border-r border-sidebar-border text-sidebar-text h-full px-3 py-4">
-            <div className="flex items-start justify-between">
+          <aside className="night-panel relative flex flex-col w-[272px] max-w-[85vw] border-r border-sidebar-border text-sidebar-text h-full px-3 py-4">
+            <GirihField color="#FFFFFF" opacity={0.06} tile={112} />
+            <div className="relative flex items-start justify-between">
               {brand}
               <button
                 type="button"
@@ -196,8 +211,10 @@ export function Sidebar({
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <NavTree groups={groups} onNavigate={() => onDrawerOpenChange(false)} />
-            {logoutButton}
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              <NavTree groups={groups} onNavigate={() => onDrawerOpenChange(false)} />
+              {logoutButton}
+            </div>
           </aside>
         </div>
       )}
