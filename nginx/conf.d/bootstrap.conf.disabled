@@ -12,7 +12,7 @@
 
 server {
     listen 80;
-    server_name ariza.xronuz.uz;
+    server_name ariza.xron.uz;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;

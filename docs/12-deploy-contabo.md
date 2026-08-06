@@ -1,6 +1,6 @@
 # 12 — Contabo serverga deploy (birinchi marta)
 
-Domen: `ariza.xronuz.uz` (DNS A-yozuvi shu serverning IP'siga ishora qilishi SHART — certbot buni tekshiradi). Xizmatlar: nginx (80/443, yagona tashqi ochiq port), frontend, backend, worker, redis, postgres, minio, certbot. Ollama/bot bu bosqichda YO'Q ([11](11-devops.md) D2-D4 asosida qurilgan, `LLM_PROVIDER=deepseek` bilan).
+Domen: `ariza.xron.uz` (DNS A-yozuvi shu serverning IP'siga ishora qilishi SHART — certbot buni tekshiradi). Xizmatlar: nginx (80/443, yagona tashqi ochiq port), frontend, backend, worker, redis, postgres, minio, certbot. Ollama/bot bu bosqichda YO'Q ([11](11-devops.md) D2-D4 asosida qurilgan, `LLM_PROVIDER=deepseek` bilan).
 
 ## 0. Server talabi
 
@@ -16,8 +16,8 @@ curl -fsSL https://get.docker.com | sh
 apt install -y git
 
 # Domenni shu serverga yo'naltirish — DNS panelda A-yozuv:
-#   ariza.xronuz.uz -> <server-ip>
-# Tarqalishini tekshirish: dig +short ariza.xronuz.uz
+#   ariza.xron.uz -> <server-ip>
+# Tarqalishini tekshirish: dig +short ariza.xron.uz
 ```
 
 ## 2. Repo va sirlar
@@ -43,10 +43,10 @@ REDIS_URL=redis://redis:6379/0
 S3_ENDPOINT_URL=http://minio:9000
 S3_ACCESS_KEY=ariza
 S3_SECRET_KEY=<.env dagi MINIO_ROOT_PASSWORD>
-S3_PUBLIC_BASE_URL=https://ariza.xronuz.uz/storage/ariza-complaints
+S3_PUBLIC_BASE_URL=https://ariza.xron.uz/storage/ariza-complaints
 
-CORS_ORIGINS=["https://ariza.xronuz.uz"]
-PUBLIC_BASE_URL=https://ariza.xronuz.uz
+CORS_ORIGINS=["https://ariza.xron.uz"]
+PUBLIC_BASE_URL=https://ariza.xron.uz
 
 JWT_SECRET=<tasodifiy 32+ belgi>
 LLM_PROVIDER=deepseek
@@ -82,7 +82,7 @@ docker compose -f docker-compose.prod.yml up -d nginx
 
 docker compose -f docker-compose.prod.yml run --rm certbot \
   certonly --webroot -w /var/www/certbot \
-  -d ariza.xronuz.uz \
+  -d ariza.xron.uz \
   --email <sizning-emailingiz> --agree-tos --no-eff-email
 
 mv nginx/conf.d/bootstrap.conf nginx/conf.d/bootstrap.conf.disabled
@@ -103,9 +103,9 @@ docker compose -f docker-compose.prod.yml exec backend python -m app.seed
 ## 6. Tekshirish
 
 ```bash
-curl https://ariza.xronuz.uz/api/health
-# Brauzerda: https://ariza.xronuz.uz — fuqaro sahifasi
-# https://ariza.xronuz.uz/admin — admin login (ADMIN_SEED_PHONE bilan)
+curl https://ariza.xron.uz/api/health
+# Brauzerda: https://ariza.xron.uz — fuqaro sahifasi
+# https://ariza.xron.uz/admin — admin login (ADMIN_SEED_PHONE bilan)
 docker compose -f docker-compose.prod.yml logs -f backend worker
 ```
 

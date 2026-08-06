@@ -22,6 +22,44 @@ Android emulator uchun odatda `http://10.0.2.2:8001`, iOS simulator uchun `http:
 
 ---
 
+## Android APK yig'ish (lokal, EAS'siz)
+
+Talab: JDK 17, Android SDK (`brew install --cask android-commandlinetools`,
+`platforms;android-36` + `build-tools;36.0.0` + `ndk;27.1.12297006`).
+
+```bash
+cd mobile
+npx expo prebuild -p android --clean        # android/ ni qayta yaratadi
+cd android
+./gradlew assembleRelease
+# natija: android/app/build/outputs/apk/release/app-release.apk
+```
+
+- `android/` papkasi generatsiya artefakti — git'ga kirmaydi. Prebuild uni
+  o'chirib qayta yozadi, shuning uchun signing sozlamalari `--clean` dan
+  keyin qayta qo'yiladi (pastga qarang).
+- API manzili build vaqtida bundle'ga ko'miladi: `.env` dagi
+  `EXPO_PUBLIC_API_URL` (standart `https://ariza.xron.uz`).
+
+### Release imzosi
+
+Prebuild standart holatda release'ni **debug** kalit bilan imzolaydi. Haqiqiy
+kalit uchun `android/app/build.gradle` da `signingConfigs.release` qo'shilgan
+va parollar `android/gradle.properties` dan o'qiladi:
+
+```properties
+EMUROJAAT_STORE_FILE=release.keystore
+EMUROJAAT_STORE_PASSWORD=...
+EMUROJAAT_KEY_ALIAS=emurojaat
+EMUROJAAT_KEY_PASSWORD=...
+```
+
+Keystore (`android/app/release.keystore`) — **yagona nusxa**. Yo'qolsa
+o'rnatilgan ilovani yangilab bo'lmaydi (foydalanuvchi eski versiyani
+o'chirishga majbur bo'ladi), shuning uchun repo tashqarisida zaxira saqlang.
+
+---
+
 ## Dizayn tizimi — "Registon"
 
 Butun UI `src/design/` ostidagi bitta tizimdan quriladi. Ekranlarda `StyleSheet` ichida
